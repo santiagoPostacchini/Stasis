@@ -25,19 +25,16 @@ namespace Player.Stasis
         
         public void SetBeam(Vector3 start, Vector3 end, bool hit)
         {
-            // Interrumpe cualquier rayo previo
             if (_beamRoutine != null) 
                 StopCoroutine(_beamRoutine);
 
             transform.position = start;
-            // Calcula la dirección y distancia
+            
             Vector3 direction = (end - start).normalized;
             float distance    = Vector3.Distance(start, end);
-            if(lightStasis != null)
-            {
+            if(lightStasis)
                 lightStasis.enabled = true;
-            }
-           
+            
             gameObject.SetActive(true);
 
             _beamRoutine = StartCoroutine(MoveForward(direction, distance, hit));
@@ -51,32 +48,23 @@ namespace Player.Stasis
             {
                 float step = beamSpeed * Time.deltaTime;
                 
-                // Comprueba colisión en este frame
                 if (Physics.Raycast(transform.position, direction, out var info, step))
                 {
-                    // Detén el rayo en el punto de impacto
                     transform.position = info.point;
                     break;
                 }
-
-                // Avanza
+                
                 transform.position += direction * step;
                 travelled           += step;
                 yield return null;
             }
-
-            // Apago la luz
-            if (lightStasis != null)
-            {
+            
+            if (lightStasis)
                 lightStasis.enabled = false;
-            }
-
-            // Disparo el evento correspondiente según el bool 'hit'
+            
+            
             EventManager.TriggerEvent(hit ? successEventName : failEventName, gameObject);
-           // EventManager.TriggerEvent("GearTurn", gameObject);
-            Debug.Log("hit es" + hit);
-
-            // Espero un poquito antes de ocultar el rayo
+            
             yield return new WaitForSeconds(lightOffDelay);
             DisableBeam();
         }

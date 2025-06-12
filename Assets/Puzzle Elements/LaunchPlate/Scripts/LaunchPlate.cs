@@ -1,61 +1,107 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Puzzle_Elements.LaunchPlate.Scripts
 {
+    [RequireComponent(typeof(Collider))]
     public class LaunchPlate : MonoBehaviour
     {
-        [SerializeField] private float jumpForce = 10f; 
-        [SerializeField] private float forwardForce = 5f;
-        [SerializeField] private Transform pos;
-        private float duration = 0.05f;
-        private bool canApplyForce = true;
-        private void OnCollisionEnter(Collision collision)
+        [Header("Trajectory Path")]
+        [Tooltip("Waypoints defining the launch arc in order")]
+        [SerializeField] private List<Transform> waypoints;
+
+        [Header("Timing")]
+        [Tooltip("Total time to follow the path")]
+        [SerializeField] private float travelTime = 1f;
+        [Tooltip("Easing curve for the movement")]
+        [SerializeField] private AnimationCurve timeCurve = AnimationCurve.Linear(0, 0, 1, 1);
+
+        [Header("Cooldown")]
+        [Tooltip("Delay before the plate can launch again")]
+        [SerializeField] private float cooldown = 0.5f;
+
+        private bool _canLaunch = true;
+
+        private void Awake()
         {
-            if (!canApplyForce) return;
-            Rigidbody rb = collision.gameObject.GetComponent<Rigidbody>();
-            Transform t = collision.gameObject.transform;
-            if (rb != null)
-            {
-                StartCoroutine(ApplyJumpForce(rb, t));
-            }
+            // Ensure collider is trigger
+            var col = GetComponent<Collider>();
+            col.isTrigger = true;
         }
-        private IEnumerator ApplyJumpForce(Rigidbody rb, Transform t)
+
+        private void OnTriggerEnter(Collider other)
         {
-            canApplyForce = false;
+            if (!_canLaunch) return;
 
-            Vector3 startPos = t.position;
-            Vector3 endPos = pos.position;
+            // Try to get the Rigidbody on player or object
+            Rigidbody rb = other.attachedRigidbody ?? other.GetComponent<Rigidbody>();
+            if (rb == null) return;
 
+            StartCoroutine(LaunchRoutine(rb));
+        }
+
+        private IEnumerator LaunchRoutine(Rigidbody rb)
+        {
+            _canLaunch = false;
+
+            // Prepare for kinematic path following
             rb.velocity = Vector3.zero;
             rb.angularVelocity = Vector3.zero;
             rb.isKinematic = true;
+            rb.detectCollisions = false;
 
-            float time = 0f;
-            while (time < duration)
+            Vector3 lastPos = rb.transform.position;
+            float elapsed = 0f;
+
+            // Follow the spline path
+            while (elapsed < travelTime)
             {
-                float tLerp = time / duration;
-                t.position = Vector3.Lerp(startPos, endPos, tLerp);
-                time += Time.deltaTime;
+                elapsed += Time.deltaTime;
+                float t = Mathf.Clamp01(elapsed / travelTime);
+                float eval = timeCurve.Evaluate(t);
+                Vector3 targetPos = GetPositionOnSpline(eval);
+                rb.transform.position = targetPos;
                 yield return null;
+                lastPos = targetPos;
             }
 
-            // Aseguramos posici�n exacta
-            t.position = endPos;
+            // Snap to final waypoint
+            rb.transform.position = waypoints[waypoints.Count - 1].position;
 
-            // Esperamos un frame antes de volver a activar la f�sica
-            yield return null;
+            // Compute smooth exit velocity
+            float dt = Time.deltaTime;
+            Vector3 exitVelocity = (rb.transform.position - lastPos) / dt;
+
+            // Restore physics
             rb.isKinematic = false;
+            rb.detectCollisions = true;
+            rb.velocity = exitVelocity;
 
-            // APLICAMOS LA FUERZA JUSTO DESPU�S DE ACTIVAR LA F�SICA
-            yield return new WaitForFixedUpdate(); // Esperamos al siguiente FixedUpdate para que la f�sica est� lista
+            // Cooldown
+            yield return new WaitForSeconds(cooldown);
+            _canLaunch = true;
+        }
 
-            Vector3 jumpDirection = (transform.forward * forwardForce) + (transform.up * jumpForce);
-            rb.AddForce(jumpDirection, ForceMode.VelocityChange);
+        /// <summary>
+        /// Evaluates a simple linear spline between waypoints.
+        /// </summary>
+        private Vector3 GetPositionOnSpline(float t)
+        {
+            if (waypoints == null || waypoints.Count == 0)
+                return transform.position;
+            if (waypoints.Count == 1)
+                return waypoints[0].position;
 
-            // Cooldown para evitar m�ltiples disparos seguidos
-            yield return new WaitForSeconds(0.5f);
-            canApplyForce = true;
+            float totalSegments = waypoints.Count - 1;
+            float scaled = Mathf.Clamp01(t) * totalSegments;
+            int idx = Mathf.FloorToInt(scaled);
+            idx = Mathf.Clamp(idx, 0, waypoints.Count - 2);
+            float localT = scaled - idx;
+
+            Vector3 p0 = waypoints[idx].position;
+            Vector3 p1 = waypoints[idx + 1].position;
+            return Vector3.Lerp(p0, p1, localT);
         }
     }
 }

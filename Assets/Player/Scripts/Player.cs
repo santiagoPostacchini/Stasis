@@ -1,9 +1,10 @@
 using Managers.Events;
+using Puzzle_Elements.AllInterfaces;
 using UnityEngine;
 
 namespace Player.Scripts
 {
-    public class Player : MonoBehaviour
+    public class Player : MonoBehaviour, IPlateActivator
     {
         [Header("Movement")]
         [SerializeField] private float sprintSpeed = 7f;

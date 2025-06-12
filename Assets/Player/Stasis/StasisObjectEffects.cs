@@ -49,17 +49,13 @@ namespace Player.Stasis
                 {
                     if (!_lastLookedStasisObject.IsFreezed)
                     {
-                        //Debug.Log("Es " + lookedStasisObject.IsFreezed);
-                        _lastLookedStasisObject.SetOutlineThickness(0f);
                     }
-                        
 
                     EventManager.TriggerEvent(tickingStopEvent, gameObject);
                 }
                 
-                if (lookedStasisObject !=null && !lookedStasisObject.IsFreezed && !isGrabbing)
+                if (lookedStasisObject is { IsFreezed: false } && !isGrabbing)
                 {
-                    lookedStasisObject.SetOutlineThickness(1.05f);
                     EventManager.TriggerEvent(tickingStartEvent, gameObject);
                     EventManager.TriggerEvent(selectEvent,      gameObject);
                 }

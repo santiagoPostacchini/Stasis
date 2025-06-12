@@ -79,7 +79,7 @@ namespace Player.Camera
         {
             if (_previousBobbingValue < 0 && currentBobbingValue >= 0)
             {
-                if (!_footstepTriggeredThisCycle && player && player.status != Status.Air)
+                if (!_footstepTriggeredThisCycle && player && player.state != Scripts.Player.MovementState.Air)
                 {
                     EventManager.TriggerEvent("OnFootstep", player.gameObject);
                     _footstepTriggeredThisCycle = true;

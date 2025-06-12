@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace Player.Scripts.Interactor
 {
-    public class PlayerInteractor : MonoBehaviour, IPlatePresser
+    public class PlayerInteractor : MonoBehaviour
     {
         [Header("Interaction Settings")]
         [SerializeField] private float throwCharge;
@@ -56,7 +56,6 @@ namespace Player.Scripts.Interactor
 
         void Update()
         {
-            IStasis lookedStasisObject = null;
             GameObject hitObject = null;
 
             if (Physics.Raycast(transform.position, transform.forward, out RaycastHit hit, pickUpRange))
@@ -66,11 +65,9 @@ namespace Player.Scripts.Interactor
             }
             if (Physics.Raycast(transform.position, transform.forward, out RaycastHit hit1))
             {
-                lookedStasisObject = hit1.collider.GetComponent<IStasis>();
+                hit1.collider.GetComponent<IStasis>();
 
             }
-
-           // stasisEffects.HandleVisualStasisFeedback(lookedStasisObject, HasObjectInHand());
             
             if (Input.GetKeyDown(KeyCode.E))
             {
@@ -81,7 +78,6 @@ namespace Player.Scripts.Interactor
                         if (hitObject.GetComponent<IInteractable>() != null)
                         {
                             hitObject.GetComponent<IInteractable>().Interact();
-                            Debug.Log("B");
                         }
                         else
                         {

@@ -1,23 +1,157 @@
+using System.Collections;
+using Managers.Events;
+using Puzzle_Elements.AllInterfaces;
 using UnityEngine;
 
 namespace Puzzle_Elements.Door.Scripts
 {
-    public class Door : MonoBehaviour
+    [RequireComponent(typeof(Collider))]
+    public class Door : MonoBehaviour, IButtonActivator, IPlateActivator
     {
-        [SerializeField] private Animator animator;
-        [SerializeField] private SlidingDoorController doorController;
+        public Transform leftDoor;
+        public Transform rightDoor;
+        public Transform[] gears;
+
+        public float leftSlideDistance = 2f;
+        public float rightSlideDistance = 2f;
+        public float slideDuration = 1f;
+        public float gearRotationAngle = 180f;
+        public float gearRotateDuration = 0.5f;
+
+        public string gearSoundName = "GearTurn";
+        public string openSoundName = "Door.OPEN";
+        public string closeSoundName = "Door.CLOSE";
+
+        public bool isOpen;
+        private Coroutine _currentSequence;
+
+        public bool autoClose = true;
+        public float autoCloseDelay = 1f;
+
+        public bool hasTimedClose;
+        public float timedCloseDelay = 5f;
+
+        private Vector3 _leftClosedPos, _rightClosedPos;
+
+        [SerializeField] private ParticleSystem[] particlesDoor = new ParticleSystem[3];
+
         private void Start()
         {
-            doorController = GetComponentInParent<SlidingDoorController>();
-        }
-        public void Open()
-        {
-            doorController.isOpen = true;
+            _leftClosedPos = leftDoor.localPosition;
+            _rightClosedPos = rightDoor.localPosition;
+
+            var col = GetComponent<Collider>();
+            col.isTrigger = true;
         }
 
-        public void Close()
+        public void ToggleDoor()
         {
-            doorController.isOpen = false;
+            SetDoorState(!isOpen);
+        }
+
+        public void OpenDoor()
+        {
+            SetDoorState(true);
+        }
+
+        public void CloseDoor()
+        {
+            SetDoorState(false);
+        }
+
+        private void SetDoorState(bool open)
+        {
+            if (_currentSequence != null)
+                StopCoroutine(_currentSequence);
+
+            isOpen = open;
+            _currentSequence = StartCoroutine(RunDoorSequence(isOpen));
+        }
+
+        private IEnumerator RunDoorSequence(bool opening)
+        {
+            if (opening)
+            {
+                foreach (var gear in gears)
+                {
+                    EventManager.TriggerEvent(gearSoundName, gameObject);
+                    yield return RotateGear(gear, true);
+                }
+
+                EventManager.TriggerEvent(openSoundName, gameObject);
+                yield return SlideDoors(true);
+
+                if (hasTimedClose)
+                    _currentSequence = StartCoroutine(AutoCloseRoutine(timedCloseDelay));
+            }
+            else
+            {
+                EventManager.TriggerEvent(closeSoundName, gameObject);
+                yield return SlideDoors(false);
+
+                foreach (var gear in gears)
+                {
+                    EventManager.TriggerEvent(gearSoundName, gameObject);
+                    yield return RotateGear(gear, false);
+                }
+            }
+        }
+
+        private IEnumerator AutoCloseRoutine(float delay)
+        {
+            yield return new WaitForSeconds(delay);
+            SetDoorState(false);
+        }
+
+        private IEnumerator RotateGear(Transform gear, bool opening)
+        {
+            float elapsed = 0f;
+            float from = gear.localEulerAngles.z;
+            float to = opening ? from + gearRotationAngle : from - gearRotationAngle;
+
+            while (elapsed < gearRotateDuration)
+            {
+                elapsed += Time.deltaTime;
+                float t = Mathf.SmoothStep(0f, 1f, elapsed / gearRotateDuration);
+                float angle = Mathf.Lerp(from, to, t);
+                gear.localEulerAngles = new Vector3(gear.localEulerAngles.x, gear.localEulerAngles.y, angle);
+                yield return null;
+            }
+
+            gear.localEulerAngles = new Vector3(gear.localEulerAngles.x, gear.localEulerAngles.y, to);
+        }
+
+        private IEnumerator SlideDoors(bool opening)
+        {
+            Vector3 leftStart = leftDoor.localPosition;
+            Vector3 rightStart = rightDoor.localPosition;
+
+            Vector3 leftEnd = opening ? _leftClosedPos + Vector3.right * leftSlideDistance : _leftClosedPos;
+            Vector3 rightEnd = opening ? _rightClosedPos + Vector3.left * rightSlideDistance : _rightClosedPos;
+
+            foreach (var particle in particlesDoor)
+                particle?.Play();
+
+            float elapsed = 0f;
+            while (elapsed < slideDuration)
+            {
+                elapsed += Time.deltaTime;
+                float t = Mathf.SmoothStep(0f, 1f, elapsed / slideDuration);
+                leftDoor.localPosition = Vector3.Lerp(leftStart, leftEnd, t);
+                rightDoor.localPosition = Vector3.Lerp(rightStart, rightEnd, t);
+                yield return null;
+            }
+
+            leftDoor.localPosition = leftEnd;
+            rightDoor.localPosition = rightEnd;
+        }
+
+        private void OnTriggerEnter(Collider other)
+        {
+            if (!other.CompareTag("Player")) return;
+
+            if (!isOpen && !hasTimedClose)
+                OpenDoor();
         }
     }
 }

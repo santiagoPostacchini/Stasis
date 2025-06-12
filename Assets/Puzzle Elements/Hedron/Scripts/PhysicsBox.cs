@@ -1,9 +1,12 @@
+using Managers.Events;
+using Managers.Game;
 using Player.Stasis;
+using Puzzle_Elements.AllInterfaces;
 using UnityEngine;
 
 namespace Puzzle_Elements.Hedron.Scripts
 {
-    public class PhysicsBox : MonoBehaviour, IStasis
+    public class PhysicsBox : MonoBehaviour, IStasis, IPlateActivator
     {
         [Header("Components")] [SerializeField]
         private Collider mainCollider;
@@ -15,11 +18,7 @@ namespace Puzzle_Elements.Hedron.Scripts
         private Vector3 _velocity;
 
         public bool isFreezed;
-
-        public Material matStasis;
-        private readonly string _outlineThicknessName = "_BorderThickness";
-        private MaterialPropertyBlock _mpb;
-        private Renderer _renderer;
+        
         private bool _savedKinematic;
         private Vector3 _savedVelocity;
         private Vector3 _savedAngularVelocity;
@@ -31,16 +30,6 @@ namespace Puzzle_Elements.Hedron.Scripts
 
         public bool IsFreezed => isFreezed;
 
-        //[SerializeField] private TrajectoryCube trajectoryCube;
-
-        private void Start()
-        {
-            _renderer = GetComponent<Renderer>();
-            _mpb = new MaterialPropertyBlock();
-            //trajectoryCube = GetComponent<TrajectoryCube>();
-            SetOutlineThickness(0f);
-        }
-
         public void Grab()
         {
             if (!isFreezed)
@@ -51,17 +40,12 @@ namespace Puzzle_Elements.Hedron.Scripts
 
             originalLayer = gameObject.layer;
             gameObject.layer = _objGrabPointTransform.gameObject.layer;
-            foreach (Transform child in transform)
-            {
-                child.gameObject.layer = _objGrabPointTransform.gameObject.layer;
-            }
 
             transform.parent = _objGrabPointTransform;
             transform.localPosition = Vector3.zero;
             transform.localRotation = Quaternion.identity;
             rb.isKinematic = true;
             rb.useGravity = false;
-            //trajectoryCube.lineRenderer.positionCount = 0;
             SetPlayerColliderState(true);
         }
 
@@ -69,10 +53,6 @@ namespace Puzzle_Elements.Hedron.Scripts
         {
             transform.parent = null;
             gameObject.layer = originalLayer;
-            foreach (Transform child in transform)
-            {
-                child.gameObject.layer = originalLayer;
-            }
 
             if (!isFreezed)
             {
@@ -83,11 +63,6 @@ namespace Puzzle_Elements.Hedron.Scripts
             {
                 float speed = _savedVelocity.magnitude;
                 _savedVelocity = -_objGrabPointTransform.forward * speed;
-
-                if (_savedVelocity.magnitude > 0.5f)
-                {
-                    //trajectoryCube.DrawTrajectory(transform.position, _savedVelocity, rb.drag);
-                }
             }
 
             SetPlayerColliderState(false);
@@ -98,7 +73,7 @@ namespace Puzzle_Elements.Hedron.Scripts
             Drop();
             if (!isFreezed)
             {
-                Vector3 throwVelocity = -_objGrabPointTransform.forward * (force / rb.mass);
+                Vector3 throwVelocity = _objGrabPointTransform.forward * (force / rb.mass);
                 rb.AddForce(throwVelocity);
             }
         }
@@ -115,46 +90,41 @@ namespace Puzzle_Elements.Hedron.Scripts
 
         private void OnTriggerEnter(Collider other)
         {
-            IsOverlappingAnything = true;
+            if(other.gameObject.layer != GameManager.Instance.triggerLayers)
+                IsOverlappingAnything = true;
         }
 
         private void OnTriggerExit(Collider other)
         {
-            IsOverlappingAnything = false;
+            if(other.gameObject.layer != GameManager.Instance.triggerLayers)
+                IsOverlappingAnything = false;
         }
 
         public void StatisEffectActivate()
         {
-            //EventManager.TriggerEvent("StasisStart", gameObject);
+            EventManager.TriggerEvent("StasisStart", gameObject);
             FreezeObject();
         }
 
         public void StatisEffectDeactivate()
         {
-            //EventManager.TriggerEvent("StasisEnd", gameObject);
+            EventManager.TriggerEvent("StasisEnd", gameObject);
             UnfreezeObject();
         }
         private void FreezeObject()
         {
             if (!isFreezed)
             {
-                SaveRigidbodyState();
+                SaveObjectState();
                 rb.velocity = Vector3.zero;
                 rb.angularVelocity = Vector3.zero;
                 rb.useGravity = false;
                 rb.isKinematic = true;
                 isFreezed = true;
-                if (_savedVelocity.magnitude > 0.5f)
-                {
-                    //trajectoryCube.DrawTrajectory(transform.position, _savedVelocity, rb.drag);
-                }
-
-                SetOutlineThickness(1.05f);
-                SetColorOutline(Color.green, 1f);
             }
         }
 
-        private void SaveRigidbodyState()
+        private void SaveObjectState()
         {
             if (!rb) return;
             _savedKinematic = rb.isKinematic;
@@ -163,7 +133,7 @@ namespace Puzzle_Elements.Hedron.Scripts
             _savedDrag = rb.drag;
         }
 
-        private void RestoreRigidbodyState()
+        private void RestoreObjectState()
         {
             if (!rb) return;
             rb.isKinematic = _savedKinematic;
@@ -176,33 +146,10 @@ namespace Puzzle_Elements.Hedron.Scripts
         private void UnfreezeObject()
         {
             if (!isFreezed) return;
-            RestoreRigidbodyState();
+            RestoreObjectState();
             isFreezed = false;
             rb.useGravity = true;
             rb.isKinematic = false;
-            SetOutlineThickness(0f);
-            Color lightGreen = new Color(0.6f, 1f, 0.6f);
-            SetColorOutline(lightGreen, 1f);
-
-            //if (trajectoryCube.lineRenderer)
-                //trajectoryCube.lineRenderer.positionCount = 0;
-        }
-
-
-        public void SetOutlineThickness(float thickness)
-        {
-            if (!_renderer || _mpb == null) return;
-            _renderer.GetPropertyBlock(_mpb);
-            _mpb.SetFloat(_outlineThicknessName, thickness);
-            _renderer.SetPropertyBlock(_mpb);
-        }
-
-        public void SetColorOutline(Color color, float alpha)
-        {
-            _renderer.GetPropertyBlock(_mpb);
-
-            _mpb.SetColor("_Color", color);
-            _renderer.SetPropertyBlock(_mpb);
         }
     }
 }

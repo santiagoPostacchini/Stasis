@@ -7,9 +7,6 @@ namespace Player.Stasis
         void StatisEffectActivate();
         void StatisEffectDeactivate();
 
-        bool IsFreezed { get; }                
-        void SetOutlineThickness(float value); 
-        void SetColorOutline(Color color, float alpha);
-
+        bool IsFreezed { get; }
     }
 }

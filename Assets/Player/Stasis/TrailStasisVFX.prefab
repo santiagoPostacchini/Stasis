@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 931965540823222634}
   - component: {fileID: 42432725101990728}
   - component: {fileID: 7691671397903079946}
-  m_Layer: 11
+  m_Layer: 10
   m_Name: Point Light
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -128,7 +128,7 @@ GameObject:
   m_Component:
   - component: {fileID: 2516160189932935290}
   - component: {fileID: 2289120248479258985}
-  m_Layer: 11
+  m_Layer: 10
   m_Name: Trail
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -281,13 +281,13 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 8605527138207810488}
-  - component: {fileID: 735049279124810913}
   - component: {fileID: 5709557984613904662}
   - component: {fileID: 8633049029571848659}
   - component: {fileID: -2236374205407695580}
-  - component: {fileID: -7155015996170293186}
   - component: {fileID: 5945853407347953319}
-  m_Layer: 11
+  - component: {fileID: 5562539413047130707}
+  - component: {fileID: 6938461213760939098}
+  m_Layer: 10
   m_Name: TrailStasisVFX
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -303,7 +303,7 @@ Transform:
   m_GameObject: {fileID: 7511541719265762720}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 1.38, y: 0.605, z: 4.36}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -311,25 +311,6 @@ Transform:
   - {fileID: 931965540823222634}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &735049279124810913
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7511541719265762720}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8ad351751b8fa3c4793f9e17b4a82679, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  m_moveObject: {fileID: 8605527138207810488}
-  m_shaderPropertyName: _MoveToMaterialUV
-  m_shaderPropertyID: 1082
-  m_materialData:
-  - m_trailRenderer: {fileID: 2289120248479258985}
-    m_uvTiling: {x: 0.5, y: 0.2}
-    m_move: 0.30651402
 --- !u!198 &5709557984613904662
 ParticleSystem:
   m_ObjectHideFlags: 0
@@ -5229,23 +5210,6 @@ LineRenderer:
   m_UseWorldSpace: 1
   m_Loop: 0
   m_ApplyActiveColorSpace: 1
---- !u!114 &-7155015996170293186
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7511541719265762720}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 95aae0ca8d04cf24b96902b2659fa503, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  beamSpeed: 30
-  lightOffDelay: 0.3
-  lightStasis: {fileID: 42432725101990728}
-  failEventName: StasisFail
-  successEventName: StasisSuccess
 --- !u!82 &5945853407347953319
 AudioSource:
   m_ObjectHideFlags: 0
@@ -5342,3 +5306,39 @@ AudioSource:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
+--- !u!114 &5562539413047130707
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7511541719265762720}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 065c080cee45d264a8f7631c27e17c0a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  beamSpeed: 100
+  lightOffDelay: 0.3
+  lightStasis: {fileID: 42432725101990728}
+  failEventName: StasisFail
+  successEventName: StasisSuccess
+--- !u!114 &6938461213760939098
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7511541719265762720}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7345fd6f71e0f2f4fa867ba25f2553d0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_moveObject: {fileID: 8605527138207810488}
+  m_shaderPropertyName: _MoveToMaterialUV
+  m_shaderPropertyID: 964
+  m_materialData:
+  - m_trailRenderer: {fileID: 2289120248479258985}
+    m_uvTiling: {x: 0.5, y: 0.2}
+    m_move: 0.47901416
