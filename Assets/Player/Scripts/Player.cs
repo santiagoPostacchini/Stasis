@@ -60,7 +60,7 @@ namespace Player.Scripts
 
         private void Update()
         {
-            HandleInput();
+            UpdateInput();
             StateHandler();
             HandleJump();
             ApplyGravity();
@@ -71,11 +71,8 @@ namespace Player.Scripts
             CheckCrouchEvents();
         }
 
-        private void HandleInput()
+        private void UpdateInput()
         {
-            _horizontalInput = Input.GetAxisRaw("Horizontal");
-            _verticalInput = Input.GetAxisRaw("Vertical");
-
             if (Input.GetKeyDown(KeyCode.LeftControl))
             {
                 _crouchTargetHeight = crouchHeight;

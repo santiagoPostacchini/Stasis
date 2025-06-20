@@ -2,44 +2,66 @@ using UnityEngine;
 
 namespace Player.Scripts.MVC
 {
-    public class Controller
+    public class Controller : IController
     {
         private Model _model;
         private View _view;
 
-        public void Init(Model model, View view)
+        private KeyCode _crouchKey;
+        private KeyCode _jumpKey;
+
+        private float _v, _h;
+
+        public Controller(Model model, View view, KeyCode crouchKey, KeyCode jumpKey)
         {
-            this._model = model;
-            this._view = view;
+            _model = model;
+            _view = view;
+            
+            _crouchKey = crouchKey;
+            _jumpKey = jumpKey;
+
+            _model.OnCrouch += _view.OnCrouchEvent;
+            _model.OnJump += _view.OnJumpEvent;
+            _model.OnLand += _view.OnLandEvent;
+            _model.OnMove += _view.OnMoveEvent;
+            _model.OnGetDamage += _view.OnDamageEvent;
         }
-
-        void Update()
+        
+        public void OnUpdate()
         {
-            float h = Input.GetAxisRaw("Horizontal");
-            float v = Input.GetAxisRaw("Vertical");
-            _model.SetInput(h, v);
+            _h = Input.GetAxis("Horizontal");
+            _v = Input.GetAxis("Vertical");
+            
+            _model.UpdateMoveInput(_v, _h);
+            
+            if (Input.GetKeyDown(_crouchKey))
+            {
+                _model.UpdateCrouchInput(true);
+            }
 
-            if (Input.GetKeyDown(KeyCode.LeftControl))
-                _model.TryCrouch(true);
-            else if (Input.GetKeyUp(KeyCode.LeftControl))
-                _model.TryCrouch(false);
+            if (Input.GetKeyUp(_crouchKey))
+            {
+                _model.UpdateCrouchInput(false);
+            }
 
-            if (Input.GetKeyDown(KeyCode.Space))
-                _model.TryJump();
+            _model.UpdateCrouchPosition();
 
-            if (Input.GetKeyDown(KeyCode.Mouse0))
-                _model.Shot();
-            if (Input.GetKeyDown(KeyCode.E))
-                _model.Grab();
-            if (Input.GetKeyDown(KeyCode.Q))
-                _model.Drop();
-            if (Input.GetKeyDown(KeyCode.R))
-                _model.Throw();
-
-            _view.UpdateCameraHeight(
-                _model.IsCrouching ? _model.CrouchCenterY : _model.StandCenterY,
-                _model.EyeOffset
-            );
+            if (Input.GetKeyDown(_jumpKey))
+            {
+                _model.UpdateJumpInput();
+            }
+            
+            StateHandler();
+        }
+        
+        private void StateHandler()
+        {
+            if (Input.GetKey(KeyCode.LeftControl))
+                _model.StateUpdater(Model.MovementState.Crouching);
+            else if (_model.characterController.isGrounded)
+                _model.StateUpdater(Model.MovementState.Moving);
+            else
+                _model.StateUpdater(Model.MovementState.Air);
         }
     }
 }
