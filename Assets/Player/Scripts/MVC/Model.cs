@@ -1,9 +1,10 @@
 using System;
+using Puzzle_Elements.AllInterfaces;
 using UnityEngine;
 
 namespace Player.Scripts.MVC
 {
-    public class Model : MonoBehaviour
+    public class Model : MonoBehaviour, IPlateActivator
     {
         [Header("Movement")]
         [SerializeField] private float moveSpeed = 7f;

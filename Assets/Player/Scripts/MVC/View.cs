@@ -1,4 +1,3 @@
-using System;
 using UnityEngine;
 
 namespace Player.Scripts.MVC
@@ -14,7 +13,7 @@ namespace Player.Scripts.MVC
         private readonly int _shotHash = Animator.StringToHash("Shot");
         private readonly int _idleHash = Animator.StringToHash("Idle");
         
-        public Animator animator; //hay que modificar el animator para utilizar estos nuevos valores
+        public Animator animator; //hay que modificar el animator para utilizar estos nuevos valores 
         public AudioSource audioSource;
         
         public Material damageMaterialPostProcess;
