@@ -1,5 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
+using Player.Scripts;
+using Player.Scripts.MVC;
 using UnityEngine;
 
 namespace Puzzle_Elements.LaunchPlate.Scripts
@@ -7,19 +9,17 @@ namespace Puzzle_Elements.LaunchPlate.Scripts
     [RequireComponent(typeof(Collider))]
     public class LaunchPlate : MonoBehaviour
     {
-        [Header("Trajectory Path")]
-        [Tooltip("Parent with child nodes defining the path. First child should be the pad itself.")]
-        [SerializeField] private Transform trajectoryParent;
+        [Header("Player Path")]
+        [SerializeField] private Transform playerTrajectoryParent;
+        private readonly List<Transform> _playerTrajectory = new();
 
-        private List<Transform> _trajectories = new();
+        [Header("Object Path")]
+        [SerializeField] private Transform objectTrajectoryParent;
+        private readonly List<Transform> _objectTrajectory = new();
 
-        [Header("Force Settings")]
-        [Tooltip("Strength of the impulse force towards next node")]
-        [SerializeField] private float impulseForce = 20f;
-        [Tooltip("Distance to consider a node reached")]
-        [SerializeField] private float pointReachThreshold = 0.5f;
-        [Tooltip("Max time the object follows the path")]
-        [SerializeField] private float maxTravelTime = 2f;
+        [Header("Physics")]
+        [SerializeField] private float timeToNextNode = 0.5f;
+        [SerializeField] private float pointReachThreshold = 0.2f;
 
         [Header("Cooldown")]
         [SerializeField] private float cooldown = 0.5f;
@@ -31,60 +31,128 @@ namespace Puzzle_Elements.LaunchPlate.Scripts
             var col = GetComponent<Collider>();
             col.isTrigger = true;
 
-            if (trajectoryParent != null)
-            {
-                _trajectories.Clear();
-                for (int i = 0; i < trajectoryParent.childCount; i++)
-                {
-                    _trajectories.Add(trajectoryParent.GetChild(i));
-                }
-            }
-            else
-            {
-                Debug.LogWarning($"[LaunchPlate] No trajectory parent assigned on {gameObject.name}");
-            }
+            BuildPath(playerTrajectoryParent, _playerTrajectory);
+            BuildPath(objectTrajectoryParent, _objectTrajectory);
+        }
+
+        private void OnValidate()
+        {
+            BuildPath(playerTrajectoryParent, _playerTrajectory);
+            BuildPath(objectTrajectoryParent, _objectTrajectory);
+        }
+
+        private static void BuildPath(Transform parent, List<Transform> path)
+        {
+            path.Clear();
+            if (!parent) return;
+            for (int i = 0; i < parent.childCount; i++)
+                path.Add(parent.GetChild(i));
         }
 
         private void OnTriggerEnter(Collider other)
         {
-            if (!_canLaunch || _trajectories.Count < 2) return;
+            if (!_canLaunch) return;
 
-            Rigidbody rb = other.attachedRigidbody ?? other.GetComponent<Rigidbody>();
-            if (!rb) return;
+            bool isPlayer = other.CompareTag("Player") || other.GetComponent<Model>();
+            var trajectory = isPlayer ? _playerTrajectory : _objectTrajectory;
+            if (trajectory.Count == 0) return;
 
-            StartCoroutine(LaunchWithForces(rb));
+            if (isPlayer)
+            {
+                var model = other.GetComponent<Model>() ?? other.GetComponentInParent<Model>();
+                StartCoroutine(LaunchCharacterRoutine(other.transform, trajectory, model));
+            }
+            else
+            {
+                Rigidbody rb = other.attachedRigidbody ?? other.GetComponent<Rigidbody>();
+                if (!rb) return;
+                StartCoroutine(LaunchRigidbodyRoutine(rb, trajectory));
+            }
         }
 
-        private IEnumerator LaunchWithForces(Rigidbody rb)
+        private IEnumerator LaunchCharacterRoutine(Transform tr, List<Transform> path, Model model)
         {
             _canLaunch = false;
+            int currentIndex = 0;
 
-            // Move to first node (pad origin)
-            rb.position = _trajectories[0].position;
-
-            int currentIndex = 1; // start from second point
-            float elapsed = 0f;
-
-            while (currentIndex < _trajectories.Count && elapsed < maxTravelTime)
+            while (currentIndex < path.Count)
             {
-                Vector3 toNext = _trajectories[currentIndex].position - rb.position;
-                float distance = toNext.magnitude;
+                Vector3 target = path[currentIndex].position;
+                Vector3 velocity = CalculateBallisticVelocity(tr.position, target, timeToNextNode);
 
-                if (distance < pointReachThreshold)
+
+                if (model)
+                    model.Launch(new Vector3(velocity.x, 0f, velocity.z), velocity.y);
+
+                float elapsed = 0f;
+                bool reached = false;
+                while (elapsed < timeToNextNode + 0.1f)
                 {
-                    currentIndex++;
-                    continue;
+                    if (Vector3.Distance(tr.position, target) <= pointReachThreshold)
+                    {
+                        reached = true;
+                        break;
+                    }
+                    elapsed += Time.deltaTime;
+                    yield return new WaitForFixedUpdate();
                 }
 
-                Vector3 forceDir = toNext.normalized;
-                rb.AddForce(forceDir * impulseForce, ForceMode.Acceleration);
+                if (!reached) break;
 
-                elapsed += Time.deltaTime;
-                yield return null;
+                currentIndex++;
             }
 
             yield return new WaitForSeconds(cooldown);
             _canLaunch = true;
+        }
+
+        private IEnumerator LaunchRigidbodyRoutine(Rigidbody rb, List<Transform> path)
+        {
+            _canLaunch = false;
+            int currentIndex = 0;
+
+            while (currentIndex < path.Count)
+            {
+                Vector3 target = path[currentIndex].position;
+                Vector3 velocity = CalculateBallisticVelocity(rb.position, target, timeToNextNode);
+                rb.velocity = velocity;
+
+                float elapsed = 0f;
+                bool reached = false;
+                while (elapsed < timeToNextNode + 0.1f)
+                {
+                    if (Vector3.Distance(rb.position, target) <= pointReachThreshold)
+                    {
+                        reached = true;
+                        break;
+                    }
+                    elapsed += Time.deltaTime;
+                    yield return new WaitForFixedUpdate();
+                }
+
+                if (!reached) break;
+
+                currentIndex++;
+            }
+
+            yield return new WaitForSeconds(cooldown);
+            _canLaunch = true;
+        }
+
+        private Vector3 CalculateBallisticVelocity(Vector3 start, Vector3 end, float time)
+        {
+            Vector3 distance = end - start;
+            Vector3 distanceXZ = new Vector3(distance.x, 0f, distance.z);
+
+            float sy = distance.y;
+            float sxz = distanceXZ.magnitude;
+            float vxz = sxz / time;
+
+            float vy = (sy - 0.5f * Physics.gravity.y * time * time) / time;
+
+            Vector3 result = distanceXZ.normalized * vxz;
+            result.y = vy;
+            return result;
         }
     }
 }

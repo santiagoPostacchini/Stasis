@@ -31,6 +31,8 @@ namespace Player.Scripts.MVC
         {
             _h = Input.GetAxis("Horizontal");
             _v = Input.GetAxis("Vertical");
+
+            _model.StateMachine(_v, Input.GetKey(_jumpKey));
             
             _model.UpdateMoveInput(_v, _h);
             
@@ -60,8 +62,13 @@ namespace Player.Scripts.MVC
                 _model.StateUpdater(Model.MovementState.Crouching);
             else if (_model.characterController.isGrounded)
                 _model.StateUpdater(Model.MovementState.Moving);
+            else if ((_model.wallLeft || _model.wallRight) && _v > 0 && _model.AboveGround() && !_model.exitingWall)
+            {
+                _model.StateUpdater(Model.MovementState.Wallrunning);
+            }
             else
                 _model.StateUpdater(Model.MovementState.Air);
+                
         }
     }
 }

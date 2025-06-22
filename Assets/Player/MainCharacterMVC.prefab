@@ -4087,7 +4087,7 @@ Camera:
   m_Depth: -1
   m_CullingMask:
     serializedVersion: 2
-    m_Bits: 14327
+    m_Bits: 30711
   m_RenderingPath: -1
   m_TargetTexture: {fileID: 0}
   m_TargetDisplay: 0
@@ -4121,6 +4121,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   sens: 200
   orientation: {fileID: 5313641271706486661}
+  camHolder: {fileID: 84328295431277886}
 --- !u!114 &2833760374340982194
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5597,7 +5598,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 7078956528527849312}
   serializedVersion: 2
-  m_LocalRotation: {x: -0, y: 0.37512425, z: -0, w: -0.92697453}
+  m_LocalRotation: {x: 0, y: 0.37512416, z: -0, w: -0.9269746}
   m_LocalPosition: {x: -5.29, y: 1.84, z: 0.54}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -5621,8 +5622,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   moveSpeed: 5.5
   crouchSpeed: 2
+  wallRunSpeed: 2.5
   acceleration: 200
-  deceleration: 30
+  deceleration: 70
   airControlMultiplier: 0.4
   jumpForce: 6
   jumpCooldown: 0.4
@@ -5633,12 +5635,31 @@ MonoBehaviour:
   crouchCenterY: 0.5
   eyeOffset: 0.6
   crouchSmoothTime: 0.08
+  whatIsWallrun:
+    serializedVersion: 2
+    m_Bits: 16384
+  whatIsGround:
+    serializedVersion: 2
+    m_Bits: 128
+  wallRunForce: 5
+  wallJumpUpForce: 8
+  wallJumpSideForce: 5
+  maxWallRunTime: 0.7
+  exitingWall: 0
+  exitWallTime: 0.5
+  exitWallTimer: 0
+  wallCheckDistance: 0.5
+  minJumpHeight: 1.5
+  wallRight: 0
+  wallLeft: 0
   jumpKey: 32
   crouchKey: 306
   orientation: {fileID: 5313641271706486661}
   cameraTransform: {fileID: 84328295431277886}
   characterController: {fileID: 0}
-  state: 3
+  cam: {fileID: 4431770150089194889}
+  state: 0
+  wallrunning: 0
 --- !u!114 &2724009616093454984
 MonoBehaviour:
   m_ObjectHideFlags: 0
