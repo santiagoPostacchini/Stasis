@@ -25,12 +25,20 @@ namespace Player.Scripts.MVC
             _model.OnLand += _view.OnLandEvent;
             _model.OnMove += _view.OnMoveEvent;
             _model.OnGetDamage += _view.OnDamageEvent;
+            _model.OnVaultStart += _view.OnVaultStartEvent;
+            _model.OnVaultEnd += _view.OnVaultEndEvent;
         }
         
         public void OnUpdate()
         {
             _h = Input.GetAxis("Horizontal");
             _v = Input.GetAxis("Vertical");
+            
+            if (_model.isVaulting)
+            {
+                StateHandler();
+                return;
+            }
 
             _model.StateMachine(_v, Input.GetKey(_jumpKey));
             
@@ -58,14 +66,14 @@ namespace Player.Scripts.MVC
         
         private void StateHandler()
         {
-            if (Input.GetKey(KeyCode.LeftControl))
+            if (_model.isVaulting)
+                _model.StateUpdater(Model.MovementState.Vaulting);
+            else if (Input.GetKey(KeyCode.LeftControl))
                 _model.StateUpdater(Model.MovementState.Crouching);
             else if (_model.characterController.isGrounded)
                 _model.StateUpdater(Model.MovementState.Moving);
             else if ((_model.wallLeft || _model.wallRight) && _v > 0 && _model.AboveGround() && !_model.exitingWall)
-            {
                 _model.StateUpdater(Model.MovementState.Wallrunning);
-            }
             else
                 _model.StateUpdater(Model.MovementState.Air);
                 

@@ -1,3 +1,4 @@
+using Player.Camera;
 using UnityEngine;
 
 namespace Player.Scripts.MVC
@@ -15,6 +16,7 @@ namespace Player.Scripts.MVC
         
         public Animator animator; //hay que modificar el animator para utilizar estos nuevos valores 
         public AudioSource audioSource;
+        public PlayerCam cam;
         
         public Material damageMaterialPostProcess;
 
@@ -69,6 +71,26 @@ namespace Player.Scripts.MVC
         public void OnMoveEvent()
         {
             //Debug.Log("Moving!");
+        }
+        
+        public void OnVaultStartEvent()
+        {
+            Debug.Log("Vault Start");
+            if (cam)
+            {
+                cam.DoFov(70f);
+                cam.DoTilt(10f);
+            }
+        }
+
+        public void OnVaultEndEvent()
+        {
+            Debug.Log("Vault End");
+            if (cam)
+            {
+                cam.DoFov(65f);
+                cam.DoTilt(0f);
+            }
         }
 
         public void OnDamageEvent(float damage)

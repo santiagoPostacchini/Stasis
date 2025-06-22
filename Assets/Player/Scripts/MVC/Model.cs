@@ -49,7 +49,13 @@ namespace Player.Scripts.MVC
         private RaycastHit _rightWallHit;
         [HideInInspector] public bool wallRight;
         [HideInInspector] public bool wallLeft;
-
+        
+        [Header("Vaulting")]
+        [SerializeField] private float vaultCheckDistance;
+        [SerializeField] private float minVaultHeight;
+        [SerializeField] private float maxVaultHeight;
+        [SerializeField] private float vaultDuration;
+        [SerializeField] private float vaultArcHeight;
 
         [Header("InputKeys")] public KeyCode jumpKey = KeyCode.Space;
         public KeyCode crouchKey = KeyCode.LeftControl;
@@ -80,12 +86,14 @@ namespace Player.Scripts.MVC
             Moving,
             Crouching,
             Air,
-            Wallrunning
+            Wallrunning,
+            Vaulting
         }
 
         public MovementState state = MovementState.Moving;
 
         public bool wallrunning;
+        public bool isVaulting;
 
         public event Action OnLand = delegate { };
         public event Action<bool> OnCrouch = delegate { };
@@ -93,6 +101,8 @@ namespace Player.Scripts.MVC
         public event Action OnMove = delegate { };
         public event Action<float> OnGetDamage = delegate { };
         public event Action OnDeath = delegate { };
+        public event Action OnVaultStart = delegate { };
+        public event Action OnVaultEnd = delegate { };
 
         IController _controller;
 
@@ -149,6 +159,7 @@ namespace Player.Scripts.MVC
 
         private void Move()
         {
+            if (isVaulting) return;
             _moveDirection = (orientation.forward * _verticalInput + orientation.right * _horizontalInput).normalized;
             float targetSpeed = (state == MovementState.Crouching) ? crouchSpeed : moveSpeed;
             Vector3 desiredVelocity = _moveDirection * targetSpeed;
@@ -282,6 +293,22 @@ namespace Player.Scripts.MVC
         public bool AboveGround()
         {
             return !Physics.Raycast(transform.position, Vector3.down, minJumpHeight, whatIsGround);
+        }
+        
+        public void StartVault()
+        {
+            if (isVaulting) return;
+            isVaulting = true;
+            OnVaultStart();
+        }
+        
+        
+
+        public void EndVault()
+        {
+            if (!isVaulting) return;
+            isVaulting = false;
+            OnVaultEnd();
         }
 
         public void UpdateCrouchPosition()
