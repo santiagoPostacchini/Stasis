@@ -7,60 +7,54 @@ namespace Player.Scripts.MVC
 {
     public class Model : MonoBehaviour, IPlateActivator
     {
-        [Header("Movement")]
-        [SerializeField] private float moveSpeed = 7f;
+        [Header("Movement")] [SerializeField] private float moveSpeed = 7f;
         [SerializeField] private float crouchSpeed = 3f;
         [SerializeField] private float wallRunSpeed = 3f;
         [SerializeField] private float acceleration = 20f;
         [SerializeField] private float deceleration = 30f;
         [SerializeField] private float airControlMultiplier = 0.4f;
-        
 
-        [Header("Jumping")]
-        [SerializeField] private float jumpForce = 8f;
+
+        [Header("Jumping")] [SerializeField] private float jumpForce = 8f;
         [SerializeField] private float jumpCooldown = 0.25f;
         [SerializeField] private float gravity = -18f;
         private bool _useGravity = true;
         private bool _readyToJump = true;
 
-        [Header("Crouch")]
-        [SerializeField] private float standHeight = 2f;
+        [Header("Crouch")] [SerializeField] private float standHeight = 2f;
         [SerializeField] private float crouchHeight = 1f;
         [SerializeField] private float standCenterY;
         [SerializeField] private float crouchCenterY = 0.5f;
         [SerializeField] private float eyeOffset = 0.6f;
         [SerializeField, Range(0.01f, 0.2f)] private float crouchSmoothTime = 0.08f;
 
-        [Header("WallRunning")] 
-        public LayerMask whatIsWallrun;
+        [Header("WallRunning")] public LayerMask whatIsWallrun;
+
         public LayerMask whatIsGround;
+
         //public float gravityCounterForce;
         [SerializeField] private float wallRunForce;
         [SerializeField] private float wallJumpUpForce;
         [SerializeField] private float wallJumpSideForce;
         public float maxWallRunTime;
         private float _wallRunTimer;
-        
-        [Header("Exiting Wall")]
-        public bool exitingWall;
+
+        [Header("Exiting Wall")] public bool exitingWall;
         public float exitWallTime;
         [HideInInspector] public float exitWallTimer;
-        
-        [Header("Wall Detection")]
-        public float wallCheckDistance;
 
+        [Header("Wallrun Detection")] public float wallCheckDistance;
         public float minJumpHeight;
         private RaycastHit _leftWallHit;
         private RaycastHit _rightWallHit;
         [HideInInspector] public bool wallRight;
         [HideInInspector] public bool wallLeft;
-        
-        [Header("InputKeys")]
-        public KeyCode jumpKey = KeyCode.Space;
+
+
+        [Header("InputKeys")] public KeyCode jumpKey = KeyCode.Space;
         public KeyCode crouchKey = KeyCode.LeftControl;
-        
-        [Header("Life")]
-        private float _currentLife;
+
+        [Header("Life")] private float _currentLife;
         private float _baseLife;
 
         private float _crouchTargetHeight = 2f;
@@ -70,7 +64,7 @@ namespace Player.Scripts.MVC
 
         [SerializeField] private Transform orientation;
         [SerializeField] private Transform cameraTransform;
-        
+
         private float _horizontalInput;
         private float _verticalInput;
         private Vector3 _moveDirection;
@@ -81,20 +75,27 @@ namespace Player.Scripts.MVC
         public PlayerCam cam;
         private Coroutine _currentCrouchRoutine;
 
-        public enum MovementState { Moving, Crouching, Air, Wallrunning }
+        public enum MovementState
+        {
+            Moving,
+            Crouching,
+            Air,
+            Wallrunning
+        }
+
         public MovementState state = MovementState.Moving;
 
         public bool wallrunning;
-        
+
         public event Action OnLand = delegate { };
         public event Action<bool> OnCrouch = delegate { };
         public event Action OnJump = delegate { };
         public event Action OnMove = delegate { };
         public event Action<float> OnGetDamage = delegate { };
         public event Action OnDeath = delegate { };
-        
+
         IController _controller;
-        
+
         private void Start()
         {
             characterController = GetComponent<CharacterController>();
@@ -106,11 +107,11 @@ namespace Player.Scripts.MVC
         {
             _controller.OnUpdate();
             CheckForWall();
-            ApplyGravity();
+
             if (wallrunning)
-            {
                 WallRunningMovement();
-            }
+
+            ApplyGravity();
         }
 
         public void UpdateMoveInput(float vertical, float horizontal)
@@ -121,9 +122,10 @@ namespace Player.Scripts.MVC
             {
                 OnMove();
             }
+
             Move();
         }
-        
+
         public void UpdateCrouchInput(bool isCrouching)
         {
             if (isCrouching)
@@ -136,10 +138,10 @@ namespace Player.Scripts.MVC
                 _crouchTargetHeight = standHeight;
                 _crouchTargetCenterY = standCenterY;
             }
-            
+
             OnCrouch(isCrouching);
         }
-        
+
         public void UpdateJumpInput()
         {
             Jump();
@@ -150,10 +152,10 @@ namespace Player.Scripts.MVC
             _moveDirection = (orientation.forward * _verticalInput + orientation.right * _horizontalInput).normalized;
             float targetSpeed = (state == MovementState.Crouching) ? crouchSpeed : moveSpeed;
             Vector3 desiredVelocity = _moveDirection * targetSpeed;
-            
+
             var flatCurrentVel = new Vector3(_currentVelocity.x, 0f, _currentVelocity.z);
             //bool isIdle = flatCurrentVel.magnitude <= 0.1f;
-            
+
             float effectiveAcceleration = acceleration;
             float effectiveDeceleration = deceleration;
             if (!characterController.isGrounded)
@@ -164,7 +166,7 @@ namespace Player.Scripts.MVC
 
             flatCurrentVel = new Vector3(_currentVelocity.x, 0f, _currentVelocity.z);
             var flatDesiredVel = new Vector3(desiredVelocity.x, 0f, desiredVelocity.z);
-            
+
             if (_moveDirection.magnitude > 0.1f)
             {
                 flatCurrentVel = Vector3.MoveTowards(
@@ -201,7 +203,7 @@ namespace Player.Scripts.MVC
                 Invoke(nameof(ResetJump), jumpCooldown);
             }
         }
-        
+
         private void ResetJump()
         {
             _readyToJump = true;
@@ -213,33 +215,33 @@ namespace Player.Scripts.MVC
             _verticalVelocity += gravity * Time.deltaTime;
         }
 
-        public void StartWallRunning()
+        private void StartWallRunning()
         {
             wallrunning = true;
             _verticalVelocity = 0f;
             _useGravity = false;
-            
+
             _wallRunTimer = maxWallRunTime;
-            
+
             cam.DoFov(80f);
-            if(wallLeft) cam.DoTilt(-5f);
-            if(wallRight) cam.DoTilt(5f);
+            if (wallLeft) cam.DoTilt(-5f);
+            if (wallRight) cam.DoTilt(5f);
         }
 
         private void WallRunningMovement()
         {
             Vector3 wallNormal = wallRight ? _rightWallHit.normal : _leftWallHit.normal;
-            
+
             Vector3 wallForward = Vector3.Cross(wallNormal, Vector3.up);
             if ((orientation.forward - wallForward).magnitude > (orientation.forward - -wallForward).magnitude)
                 wallForward = -wallForward;
-            
+
             Vector3 move = wallForward * (wallRunForce * Time.deltaTime);
-            
+
             characterController.Move(move);
         }
 
-        public void StopWallRunning()
+        private void StopWallRunning()
         {
             _useGravity = true;
             wallrunning = false;
@@ -247,40 +249,41 @@ namespace Player.Scripts.MVC
             cam.DoFov(65f);
             cam.DoTilt(0f);
         }
-        
+
         // ReSharper disable Unity.PerformanceAnalysis
-        public void WallJump()
+        private void WallJump()
         {
             exitingWall = true;
             exitWallTimer = exitWallTime;
-            
+
             Vector3 wallNormal = wallRight ? _rightWallHit.normal : _leftWallHit.normal;
-            
+
             Vector3 jumpDirection = transform.up * wallJumpUpForce + wallNormal * wallJumpSideForce;
-            
+
             _verticalVelocity = 0f;
-            
+
             Vector3 planarJump = new Vector3(jumpDirection.x, 0f, jumpDirection.z);
             float verticalJump = jumpDirection.y;
-            
+
             _currentVelocity += planarJump;
             _verticalVelocity += verticalJump;
-            
+
             OnJump();
         }
 
-
         void CheckForWall()
         {
-            wallRight = Physics.Raycast(transform.position, orientation.right, out _rightWallHit, wallCheckDistance, whatIsWallrun);
-            wallLeft = Physics.Raycast(transform.position, -orientation.right, out _leftWallHit, wallCheckDistance, whatIsWallrun);
+            wallRight = Physics.Raycast(transform.position, orientation.right, out _rightWallHit, wallCheckDistance,
+                whatIsWallrun);
+            wallLeft = Physics.Raycast(transform.position, -orientation.right, out _leftWallHit, wallCheckDistance,
+                whatIsWallrun);
         }
 
         public bool AboveGround()
         {
             return !Physics.Raycast(transform.position, Vector3.down, minJumpHeight, whatIsGround);
         }
-        
+
         public void UpdateCrouchPosition()
         {
             characterController.height = Mathf.SmoothDamp(
@@ -335,7 +338,7 @@ namespace Player.Scripts.MVC
                     WallJump();
                 }
             }
-            
+
             else if (exitingWall)
             {
                 if (wallrunning)
@@ -353,7 +356,7 @@ namespace Player.Scripts.MVC
                     exitingWall = false;
                 }
             }
-            
+
             else
             {
                 if (wallrunning)
@@ -362,6 +365,7 @@ namespace Player.Scripts.MVC
                 }
             }
         }
+
         private void UpdateCameraHeight()
         {
             cameraTransform.localPosition = new Vector3(
@@ -371,13 +375,13 @@ namespace Player.Scripts.MVC
             );
         }
 
-        public void TakeDamage(float dmg) 
+        public void TakeDamage(float dmg)
         {
             _currentLife -= dmg;
 
             OnGetDamage(_currentLife / _baseLife);
 
-            if (_currentLife <= 0) 
+            if (_currentLife <= 0)
             {
                 Death();
             }
@@ -387,7 +391,7 @@ namespace Player.Scripts.MVC
         {
             OnDeath();
         }
-        
+
         public void Launch(Vector3 planarVelocity, float verticalVelocity)
         {
             _currentVelocity = new Vector3(planarVelocity.x, _currentVelocity.y, planarVelocity.z);
