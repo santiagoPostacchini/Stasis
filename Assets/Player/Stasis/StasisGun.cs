@@ -60,7 +60,7 @@ namespace Player.Stasis
             
             
             
-            if (Physics.Raycast(posShot.position, direction, out RaycastHit hit, Mathf.Infinity, _layer))
+            if (Physics.Raycast(origin, direction, out RaycastHit hit, Mathf.Infinity, _layer))
             {
                 bool stasisHit = false;
                 
