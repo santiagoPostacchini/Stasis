@@ -23,6 +23,8 @@ namespace Player.Stasis
         private UnityEngine.Camera _mainCam;
 
         [SerializeField] private bool _canShootStasis;
+        [SerializeField] private Transform posShot;
+        [SerializeField] private LayerMask _layer;
     
         void Start()
         {
@@ -58,7 +60,7 @@ namespace Player.Stasis
             
             
             
-            if (Physics.Raycast(origin, direction, out RaycastHit hit))
+            if (Physics.Raycast(posShot.position, direction, out RaycastHit hit, Mathf.Infinity, _layer))
             {
                 bool stasisHit = false;
                 
@@ -79,7 +81,7 @@ namespace Player.Stasis
                 GameObject beamInstance = Instantiate(stasisBeamPrefab, stasisOrigin.position, Quaternion.identity);
                 _activeBeam = beamInstance.GetComponent<StasisBeam>();
                 _activeBeam.SetBeam(stasisOrigin.position, hit.point, stasisHit);
-                EventManager.TriggerEvent("Shot", gameObject.transform.parent.gameObject);
+                EventManager.TriggerEvent("LaserFX", gameObject);
             }
         }
         
