@@ -4,13 +4,13 @@ public class Stone : MonoBehaviour
 {
     private Animator _animator;
 
-    
-
+    public GameObject light1;
+    public GameObject light2;
     private void Awake()
     {
         _animator = GetComponent<Animator>();
     }
-
+    
     // Llamar para activar animación de impacto
     public void PlayImpactAnimation()
     {
@@ -27,5 +27,10 @@ public class Stone : MonoBehaviour
         {
             _animator.Play("Idle", -1, 0f); // Vuelve a animación Idle o cualquier otra
         }
+    }
+    public void ActivateLights()
+    {
+        light1.gameObject.SetActive(true);
+        light2.gameObject.SetActive(true);
     }
 }
