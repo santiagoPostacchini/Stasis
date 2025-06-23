@@ -5638,9 +5638,6 @@ MonoBehaviour:
   whatIsWallrun:
     serializedVersion: 2
     m_Bits: 16384
-  whatIsGround:
-    serializedVersion: 2
-    m_Bits: 128
   wallRunForce: 5
   wallJumpUpForce: 8
   wallJumpSideForce: 5
@@ -5652,6 +5649,22 @@ MonoBehaviour:
   minJumpHeight: 1.5
   wallRight: 0
   wallLeft: 0
+  vaultCheckDistance: 1
+  minVaultHeight: 0.3
+  maxVaultHeight: 1.5
+  vaultDuration: 0.4
+  vaultArcCurve:
+    serializedVersion: 2
+    m_Curve: []
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  whatIsVaultable:
+    serializedVersion: 2
+    m_Bits: 256
+  whatIsGround:
+    serializedVersion: 2
+    m_Bits: 128
   jumpKey: 32
   crouchKey: 306
   orientation: {fileID: 5313641271706486661}
@@ -5660,6 +5673,8 @@ MonoBehaviour:
   cam: {fileID: 4431770150089194889}
   state: 0
   wallrunning: 0
+  isVaulting: 0
+  vaultCooldown: 0.2
 --- !u!114 &2724009616093454984
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5674,6 +5689,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   animator: {fileID: 3580825644545207230}
   audioSource: {fileID: 5492705278498545999}
+  cam: {fileID: 4431770150089194889}
   damageMaterialPostProcess: {fileID: 0}
 --- !u!143 &8453556765652367455
 CharacterController:
