@@ -4025,6 +4025,7 @@ GameObject:
   - component: {fileID: 8730017512593384349}
   - component: {fileID: 1657135900565479314}
   - component: {fileID: 7304966060402934805}
+  - component: {fileID: 1905847580320254484}
   m_Layer: 9
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -4046,6 +4047,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 5467031684937954313}
+  - {fileID: 7994899214465677274}
   m_Father: {fileID: 84328295431277886}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!20 &9125043754901012387
@@ -4296,10 +4298,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 50f3911c5a6ede74d9ea26c37285f62d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  stasisOrigin: {fileID: 1385240977793945729}
+  stasisOrigin: {fileID: 7994899214465677274}
   stasisBeamPrefab: {fileID: 7511541719265762720, guid: c1dc9d25ab9e7ad4b94fb39f47e19e8b,
     type: 3}
   _canShootStasis: 1
+  posShot: {fileID: 7994899214465677274}
+  _layer:
+    serializedVersion: 2
+    m_Bits: 4481
 --- !u!82 &1657135900565479314
 AudioSource:
   m_ObjectHideFlags: 0
@@ -4408,6 +4414,24 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 896953c1212b9e94b8439fdb38bc2c27, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!114 &1905847580320254484
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5101390696477364840}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 65a6ed342655d55489ce9d99edb8913d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  soundEventGroups:
+  - eventName: LaserFX
+    soundDelays:
+    - soundName: LaserFX
+      delay: 0
+    isStopEvent: 0
 --- !u!1 &5114182608029199283
 GameObject:
   m_ObjectHideFlags: 0
@@ -5583,6 +5607,7 @@ GameObject:
   - component: {fileID: 2910963557753249867}
   - component: {fileID: 5492705278498545999}
   - component: {fileID: 1558983459382292603}
+  - component: {fileID: 2077463460289310179}
   m_Layer: 9
   m_Name: MainCharacterMVC
   m_TagString: Player
@@ -5620,13 +5645,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0b003dcbf3cd17943bc8b3a4cb7ab408, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  moveSpeed: 5.5
+  moveSpeed: 8
   crouchSpeed: 2
   wallRunSpeed: 2.5
   acceleration: 200
   deceleration: 70
   airControlMultiplier: 0.4
-  jumpForce: 6
+  jumpForce: 10
   jumpCooldown: 0.4
   gravity: -18
   standHeight: 2
@@ -5655,7 +5680,25 @@ MonoBehaviour:
   vaultDuration: 0.4
   vaultArcCurve:
     serializedVersion: 2
-    m_Curve: []
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 2
+      outSlope: 2
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
@@ -5875,7 +5918,75 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 65a6ed342655d55489ce9d99edb8913d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  soundEventGroups: []
+  soundEventGroups:
+  - eventName: OnObjectThrow
+    soundDelays:
+    - soundName: ObjectThrow
+      delay: 0
+    isStopEvent: 0
+  - eventName: OnObjectGrab
+    soundDelays:
+    - soundName: ObjectGrab
+      delay: 0
+    isStopEvent: 0
+  - eventName: OnObjectDrop
+    soundDelays:
+    - soundName: ObjectDrop
+      delay: 0
+    isStopEvent: 0
+  - eventName: OnJump
+    soundDelays:
+    - soundName: Jump
+      delay: 0
+    isStopEvent: 0
+  - eventName: OnCrouch
+    soundDelays:
+    - soundName: Crouch
+      delay: 0
+    isStopEvent: 0
+  - eventName: OnLand
+    soundDelays:
+    - soundName: Land
+      delay: 0
+    isStopEvent: 0
+  - eventName: OnUncrouch
+    soundDelays:
+    - soundName: Uncrouch
+      delay: 0
+    isStopEvent: 0
+  - eventName: OnFootstep
+    soundDelays:
+    - soundName: Step1
+      delay: 0
+    isStopEvent: 0
+  - eventName: LaserFX
+    soundDelays:
+    - soundName: LaserFX
+      delay: 0
+    isStopEvent: 0
+--- !u!136 &2077463460289310179
+CapsuleCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7078956528527849312}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 8193
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 2
+  m_Radius: 0.3
+  m_Height: 0.9842318
+  m_Direction: 1
+  m_Center: {x: 0, y: -0.5078811, z: -0.0000000016187389}
 --- !u!1 &7101556446002877826
 GameObject:
   m_ObjectHideFlags: 0
@@ -6499,6 +6610,37 @@ Transform:
   m_Children:
   - {fileID: 1069141850150458735}
   m_Father: {fileID: 1253131772799797721}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &7853052913029891213
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7994899214465677274}
+  m_Layer: 9
+  m_Name: pos
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &7994899214465677274
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7853052913029891213}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0.868, y: 0, z: 0.632}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 3932910944539757287}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &7881552505779461794
 GameObject:

@@ -671,18 +671,6 @@ Transform:
   - {fileID: 231160053}
   m_Father: {fileID: 5765354481304200282}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &513196977 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 4431770150089194889, guid: ddd2e02db61a1744ab92a5661428f26b,
-    type: 3}
-  m_PrefabInstance: {fileID: 1548237420667533742}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 33ad078368b8697408368fcf39a7b407, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!1 &571250274
 GameObject:
   m_ObjectHideFlags: 0
@@ -1750,74 +1738,29 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2461042968300623019, guid: ddd2e02db61a1744ab92a5661428f26b,
         type: 3}
-      propertyPath: climbSpeed
-      value: 10
+      propertyPath: vaultArcCurve.m_Curve.Array.size
+      value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 2461042968300623019, guid: ddd2e02db61a1744ab92a5661428f26b,
         type: 3}
-      propertyPath: maxClimbTime
-      value: 0.75
-      objectReference: {fileID: 0}
-    - target: {fileID: 2461042968300623019, guid: ddd2e02db61a1744ab92a5661428f26b,
-        type: 3}
-      propertyPath: vaultDuration
-      value: 0.4
-      objectReference: {fileID: 0}
-    - target: {fileID: 2461042968300623019, guid: ddd2e02db61a1744ab92a5661428f26b,
-        type: 3}
-      propertyPath: maxClimbHeight
+      propertyPath: vaultArcCurve.m_Curve.Array.data[1].time
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 2461042968300623019, guid: ddd2e02db61a1744ab92a5661428f26b,
         type: 3}
-      propertyPath: maxVaultHeight
-      value: 1.5
-      objectReference: {fileID: 0}
-    - target: {fileID: 2461042968300623019, guid: ddd2e02db61a1744ab92a5661428f26b,
-        type: 3}
-      propertyPath: minVaultHeight
-      value: 0.3
-      objectReference: {fileID: 0}
-    - target: {fileID: 2461042968300623019, guid: ddd2e02db61a1744ab92a5661428f26b,
-        type: 3}
-      propertyPath: vaultArcHeight
-      value: 0.2
-      objectReference: {fileID: 0}
-    - target: {fileID: 2461042968300623019, guid: ddd2e02db61a1744ab92a5661428f26b,
-        type: 3}
-      propertyPath: detectionLength
-      value: 0.7
-      objectReference: {fileID: 0}
-    - target: {fileID: 2461042968300623019, guid: ddd2e02db61a1744ab92a5661428f26b,
-        type: 3}
-      propertyPath: maxWallLookAngle
-      value: 25
-      objectReference: {fileID: 0}
-    - target: {fileID: 2461042968300623019, guid: ddd2e02db61a1744ab92a5661428f26b,
-        type: 3}
-      propertyPath: sphereCastRadius
-      value: 0.25
-      objectReference: {fileID: 0}
-    - target: {fileID: 2461042968300623019, guid: ddd2e02db61a1744ab92a5661428f26b,
-        type: 3}
-      propertyPath: whatIsWall.m_Bits
-      value: 256
-      objectReference: {fileID: 0}
-    - target: {fileID: 2461042968300623019, guid: ddd2e02db61a1744ab92a5661428f26b,
-        type: 3}
-      propertyPath: vaultCheckDistance
+      propertyPath: vaultArcCurve.m_Curve.Array.data[1].value
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 2461042968300623019, guid: ddd2e02db61a1744ab92a5661428f26b,
         type: 3}
-      propertyPath: whatIsVaultable.m_Bits
-      value: 256
+      propertyPath: vaultArcCurve.m_Curve.Array.data[0].inSlope
+      value: 2
       objectReference: {fileID: 0}
-    - target: {fileID: 2724009616093454984, guid: ddd2e02db61a1744ab92a5661428f26b,
+    - target: {fileID: 2461042968300623019, guid: ddd2e02db61a1744ab92a5661428f26b,
         type: 3}
-      propertyPath: cam
-      value: 
-      objectReference: {fileID: 513196977}
+      propertyPath: vaultArcCurve.m_Curve.Array.data[0].outSlope
+      value: 2
+      objectReference: {fileID: 0}
     - target: {fileID: 7078956528527849312, guid: ddd2e02db61a1744ab92a5661428f26b,
         type: 3}
       propertyPath: m_Name
