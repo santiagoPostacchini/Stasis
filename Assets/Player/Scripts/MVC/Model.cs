@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using Player.Camera;
 using Puzzle_Elements.AllInterfaces;
 using UnityEngine;
@@ -28,9 +29,8 @@ namespace Player.Scripts.MVC
         [SerializeField] private float eyeOffset = 0.6f;
         [SerializeField, Range(0.01f, 0.2f)] private float crouchSmoothTime = 0.08f;
 
-        [Header("WallRunning")] public LayerMask whatIsWallrun;
-
-        public LayerMask whatIsGround;
+        [Header("WallRunning")] 
+        public LayerMask whatIsWallrun;
 
         //public float gravityCounterForce;
         [SerializeField] private float wallRunForce;
@@ -51,11 +51,13 @@ namespace Player.Scripts.MVC
         [HideInInspector] public bool wallLeft;
         
         [Header("Vaulting")]
-        [SerializeField] private float vaultCheckDistance;
-        [SerializeField] private float minVaultHeight;
-        [SerializeField] private float maxVaultHeight;
-        [SerializeField] private float vaultDuration;
-        [SerializeField] private float vaultArcHeight;
+        [SerializeField] private float vaultCheckDistance = 1.2f;
+        [SerializeField] private float minVaultHeight = 0.5f;
+        [SerializeField] private float maxVaultHeight = 1.7f;
+        [SerializeField] private float vaultDuration = 0.45f;
+        [SerializeField] private AnimationCurve vaultArcCurve; // Puedes asignar una parábola
+        [SerializeField] private LayerMask whatIsVaultable;
+        [SerializeField] private LayerMask whatIsGround;
 
         [Header("InputKeys")] public KeyCode jumpKey = KeyCode.Space;
         public KeyCode crouchKey = KeyCode.LeftControl;
@@ -67,7 +69,8 @@ namespace Player.Scripts.MVC
         private float _crouchTargetCenterY;
         private float _heightSmoothVelocity;
         private float _centerYSmoothVelocity;
-
+        
+        [Header("Movement References")]
         [SerializeField] private Transform orientation;
         [SerializeField] private Transform cameraTransform;
 
@@ -117,7 +120,9 @@ namespace Player.Scripts.MVC
         {
             _controller.OnUpdate();
             CheckForWall();
-
+            if(!isVaulting)
+                CheckForVault();
+            
             if (wallrunning)
                 WallRunningMovement();
 
@@ -295,18 +300,79 @@ namespace Player.Scripts.MVC
             return !Physics.Raycast(transform.position, Vector3.down, minJumpHeight, whatIsGround);
         }
         
-        public void StartVault()
+        private float _nextVaultAllowed;
+        [SerializeField] private float vaultCooldown = 0.2f;
+        
+        // ReSharper disable Unity.PerformanceAnalysis
+        void CheckForVault()
         {
-            if (isVaulting) return;
+            if (isVaulting || Time.time < _nextVaultAllowed) return;
+            if (_verticalInput <= 0f) return;
+
+            // Usar centro del Capsule para raycastear (mejor intersección)
+            Vector3 rayOrigin = transform.position + Vector3.up * (characterController.height * 0.5f) + characterController.center;
+            if (Physics.Raycast(rayOrigin, orientation.forward, out RaycastHit wallHit, vaultCheckDistance, whatIsVaultable))
+            {
+                float playerFeet = transform.position.y - (characterController.height * 0.5f) + characterController.center.y;
+                float obstacleTop = wallHit.collider.bounds.max.y;
+                float obstacleHeight = obstacleTop - playerFeet;
+
+                if (obstacleHeight >= minVaultHeight && obstacleHeight <= maxVaultHeight)
+                {
+                    // Calculamos el punto adelante de la pared, sobre la superficie del piso real
+                    Vector3 vaultLandingCheck = wallHit.point + orientation.forward * (characterController.radius + 0.3f);
+                    vaultLandingCheck.y = obstacleTop + 0.1f; // Para evitar que el raycast caiga dentro del objeto
+
+                    // Raycast DOWN para encontrar el piso real adelante
+                    if (Physics.Raycast(vaultLandingCheck, Vector3.down, out RaycastHit groundHit, 3f, whatIsGround))
+                    {
+                        Vector3 vaultEndPos = groundHit.point;
+                        vaultEndPos.y += 0.01f; // Pequeño offset para no quedar flotando
+                        StartCoroutine(VaultRoutine(vaultEndPos, obstacleTop));
+                    }
+                }
+            }
+        }
+
+        IEnumerator VaultRoutine(Vector3 vaultEnd, float obstacleTop)
+        {
             isVaulting = true;
             OnVaultStart();
-        }
-        
-        
+            _nextVaultAllowed = Time.time + vaultCooldown;
 
-        public void EndVault()
-        {
-            if (!isVaulting) return;
+            Vector3 start = transform.position;
+            Vector3 end = vaultEnd;
+            float apexY = Mathf.Max(start.y, obstacleTop + 0.5f); // Subís un poco sobre la pared
+            Vector3 apex = new Vector3(
+                (start.x + end.x) * 0.5f,
+                apexY,
+                (start.z + end.z) * 0.5f
+            );
+
+            float elapsed = 0f;
+            float t;
+            _useGravity = false;
+
+            // Desactiva colisiones durante el vault (opcional, sólo si es seguro)
+            characterController.enabled = false;
+
+            while (elapsed < vaultDuration)
+            {
+                t = elapsed / vaultDuration;
+
+                Vector3 lerp1 = Vector3.Lerp(start, apex, t);
+                Vector3 lerp2 = Vector3.Lerp(apex, end, t);
+                Vector3 pos = Vector3.Lerp(lerp1, lerp2, t);
+
+                transform.position = pos;
+                elapsed += Time.deltaTime;
+                yield return null;
+            }
+
+            transform.position = end;
+            characterController.enabled = true;
+
+            _useGravity = true;
             isVaulting = false;
             OnVaultEnd();
         }

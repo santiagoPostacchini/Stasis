@@ -79,7 +79,8 @@ namespace Player.Scripts.MVC
             if (cam)
             {
                 cam.DoFov(70f);
-                cam.DoTilt(10f);
+                int rv = UnityEngine.Random.Range(0, 2) == 0 ? -1 : 1;
+                cam.DoTilt(10f * rv);
             }
         }
 
