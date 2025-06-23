@@ -20,7 +20,10 @@ namespace Player.Camera
                 StopCoroutine(shakeRoutine);
             shakeRoutine = StartCoroutine(ShakeCoroutine(duration, magnitude));
         }
-
+        public void PermanentShake()
+        {
+            Shake(100, 0.1f);
+        }
         private IEnumerator ShakeCoroutine(float duration, float magnitude)
         {
             float elapsed = 0f;
@@ -41,6 +44,15 @@ namespace Player.Camera
             
             transform.localPosition = originalPos;
             shakeRoutine = null;
+        }
+        public void StopShake()
+        {
+            if (shakeRoutine != null)
+            {
+                StopCoroutine(shakeRoutine);
+                shakeRoutine = null;
+                transform.localPosition = originalPos; // Asegurarte de que vuelve a la posición original
+            }
         }
     }
 }

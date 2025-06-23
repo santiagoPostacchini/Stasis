@@ -3,6 +3,7 @@ using System.Collections;
 using Player.Camera;
 using Puzzle_Elements.AllInterfaces;
 using UnityEngine;
+using Managers.Events;
 
 namespace Player.Scripts.MVC
 {
@@ -127,6 +128,7 @@ namespace Player.Scripts.MVC
                 WallRunningMovement();
 
             ApplyGravity();
+            
         }
 
         public void UpdateMoveInput(float vertical, float horizontal)
@@ -136,6 +138,8 @@ namespace Player.Scripts.MVC
             if (horizontal != 0f || vertical != 0f)
             {
                 OnMove();
+              
+
             }
 
             Move();
@@ -214,6 +218,7 @@ namespace Player.Scripts.MVC
             if (characterController.isGrounded && state != MovementState.Crouching && _readyToJump)
             {
                 OnJump();
+                EventManager.TriggerEvent("OnJump", gameObject);
                 _verticalVelocity = jumpForce;
                 _readyToJump = false;
                 Invoke(nameof(ResetJump), jumpCooldown);

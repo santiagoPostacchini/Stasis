@@ -1,5 +1,7 @@
 using Player.Camera;
 using UnityEngine;
+using Managers.Events;
+
 
 namespace Player.Scripts.MVC
 {
@@ -24,6 +26,7 @@ namespace Player.Scripts.MVC
         {
             Debug.Log("Jumping!");
             animator.SetTrigger(_jumpHash);
+            //EventManager.TriggerEvent("Jump", gameObject);
         }
 
         public void OnShotEvent()
@@ -71,6 +74,7 @@ namespace Player.Scripts.MVC
         public void OnMoveEvent()
         {
             //Debug.Log("Moving!");
+           //EventManager.TriggerEvent("OnFootstep", gameObject);
         }
         
         public void OnVaultStartEvent()

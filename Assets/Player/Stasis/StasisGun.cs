@@ -45,7 +45,7 @@ namespace Player.Stasis
                 if (_playerInteractor && _playerInteractor.HasObjectInHand())
                     return;
                 
-                EventManager.TriggerEvent("OnShot", gameObject);
+               
                 TryApplyStasis(_mainCam.transform);
             }
         }
@@ -79,6 +79,7 @@ namespace Player.Stasis
                 GameObject beamInstance = Instantiate(stasisBeamPrefab, stasisOrigin.position, Quaternion.identity);
                 _activeBeam = beamInstance.GetComponent<StasisBeam>();
                 _activeBeam.SetBeam(stasisOrigin.position, hit.point, stasisHit);
+                EventManager.TriggerEvent("Shot", gameObject.transform.parent.gameObject);
             }
         }
         

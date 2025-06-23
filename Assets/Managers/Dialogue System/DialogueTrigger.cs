@@ -12,9 +12,10 @@ namespace Managers.Dialogue_System
 
         private void OnTriggerEnter(Collider other)
         {
-
+            Debug.Log("A");
             if (!alreadyTriggered && other.CompareTag("Player"))
             {
+                Debug.Log("B");
                 alreadyTriggered = true;
 
                 // Convertir UnityEvent a UnityAction
@@ -25,5 +26,6 @@ namespace Managers.Dialogue_System
                 gameObject.SetActive(false);
             }
         }
+        
     }
 }
