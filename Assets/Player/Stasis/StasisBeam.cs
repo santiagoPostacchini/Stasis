@@ -63,7 +63,7 @@ namespace Player.Stasis
                 lightStasis.enabled = false;
             
             
-           // EventManager.TriggerEvent(hit ? successEventName : failEventName, gameObject);
+            EventManager.TriggerEvent(hit ? successEventName : failEventName, gameObject);
             
             yield return new WaitForSeconds(lightOffDelay);
             DisableBeam();

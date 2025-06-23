@@ -22,7 +22,7 @@ public class DestroyedPieceController : MonoBehaviour,IStasis
     public bool isFreezed;
     public bool wasHit = false;
 
-
+    //
     public Material matStasis;
     public readonly string _outlineThicknessName = "_BorderThickness";
     public MaterialPropertyBlock _mpb;
@@ -86,7 +86,7 @@ public class DestroyedPieceController : MonoBehaviour,IStasis
         _rigidbody.isKinematic = false;
         is_dirty = true;
         _rigidbody.AddForce(force, ForceMode.Impulse);
-        VFXController.Instance.spawn_dust_cloud(transform.position);
+        //VFXController.Instance.spawn_dust_cloud(transform.position);
         
     }
 
