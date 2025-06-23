@@ -12,8 +12,8 @@ namespace Managers.Dialogue_System
 
         private void OnTriggerEnter(Collider other)
         {
-        
-            if (!alreadyTriggered && other.CompareTag("DetectorDialogues"))
+
+            if (!alreadyTriggered && other.CompareTag("Player"))
             {
                 alreadyTriggered = true;
 
