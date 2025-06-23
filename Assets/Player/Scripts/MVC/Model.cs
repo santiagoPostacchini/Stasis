@@ -15,6 +15,8 @@ namespace Player.Scripts.MVC
         [SerializeField] private float acceleration = 20f;
         [SerializeField] private float deceleration = 30f;
         [SerializeField] private float airControlMultiplier = 0.4f;
+        [SerializeField] private float terminalVelocity = -50f;
+        [SerializeField] private float minVerticalVelocity = -2f;
 
 
         [Header("Jumping")] [SerializeField] private float jumpForce = 8f;
@@ -233,9 +235,24 @@ namespace Player.Scripts.MVC
         private void ApplyGravity()
         {
             if (!_useGravity) return;
-            _verticalVelocity += gravity * Time.deltaTime;
-        }
 
+            if (characterController.isGrounded)
+            {
+                if (_verticalVelocity < 0)
+                {
+                    _verticalVelocity = minVerticalVelocity;
+                }
+            }
+            else
+            {
+                _verticalVelocity += gravity * Time.deltaTime;
+                if (_verticalVelocity < terminalVelocity)
+                {
+                    _verticalVelocity = terminalVelocity;
+                }
+            }
+        }
+        
         private void StartWallRunning()
         {
             wallrunning = true;
