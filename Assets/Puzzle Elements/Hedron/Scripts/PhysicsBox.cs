@@ -8,6 +8,13 @@ namespace Puzzle_Elements.Hedron.Scripts
 {
     public class PhysicsBox : MonoBehaviour, IStasis, IPlateActivator
     {
+
+        public Material matStasis;
+        private string OutlineThicknessName = "_BorderThickness";
+        private MaterialPropertyBlock _mpb;
+        [SerializeField] private Renderer _renderer;
+
+
         [Header("Components")] [SerializeField]
         private Collider mainCollider;
 
@@ -30,6 +37,17 @@ namespace Puzzle_Elements.Hedron.Scripts
 
         public bool IsFreezed => isFreezed;
 
+        [SerializeField] private bool initFrozen = false;
+        [SerializeField] private ParticleSystem _particleFrozen;
+        private void Start()
+        {
+            _mpb = new MaterialPropertyBlock();
+            _renderer = GetComponent<Renderer>();
+            if (initFrozen)
+            {
+                StatisEffectActivate();
+            }
+        }
         public void Grab()
         {
             if (!isFreezed)
@@ -48,7 +66,7 @@ namespace Puzzle_Elements.Hedron.Scripts
             rb.useGravity = false;
             SetPlayerColliderState(true);
         }
-
+       
         public void Drop()
         {
             transform.parent = null;
@@ -121,6 +139,9 @@ namespace Puzzle_Elements.Hedron.Scripts
                 rb.useGravity = false;
                 rb.isKinematic = true;
                 isFreezed = true;
+                SetColorOutline(Color.green, 1);
+                SetOutlineThickness(1.05f);
+                _particleFrozen?.Play();
             }
         }
 
@@ -150,6 +171,30 @@ namespace Puzzle_Elements.Hedron.Scripts
             isFreezed = false;
             rb.useGravity = true;
             rb.isKinematic = false;
+            SetColorOutline(Color.white, 0.2f);
+            SetOutlineThickness(0f);
+            _particleFrozen?.Stop();
+        }
+
+
+        public void SetOutlineThickness(float thickness)
+        {
+            if (_renderer != null && _mpb != null)
+            {
+                _renderer.GetPropertyBlock(_mpb);
+                _mpb.SetFloat(OutlineThicknessName, thickness);
+                // _mpb.SetColor("_Color", Color.green);
+                _renderer.SetPropertyBlock(_mpb);
+                //Glow(false, 1);
+            }
+        }
+        public void SetColorOutline(Color color, float alpha)
+        {
+            _renderer.GetPropertyBlock(_mpb);
+            //_mpb.SetFloat("_Alpha", alpha);
+
+            _mpb.SetColor("_Color", color);
+            _renderer.SetPropertyBlock(_mpb);
         }
     }
 }
