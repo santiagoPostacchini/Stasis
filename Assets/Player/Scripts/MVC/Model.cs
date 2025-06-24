@@ -110,6 +110,9 @@ namespace Player.Scripts.MVC
         public event Action OnDeath = delegate { };
         public event Action OnVaultStart = delegate { };
         public event Action OnVaultEnd = delegate { };
+        public event Action<float> OnSpeedChange = delegate { };
+
+        public event Action OnClimb = delegate { };
 
         IController _controller;
 
@@ -131,7 +134,7 @@ namespace Player.Scripts.MVC
                 WallRunningMovement();
 
             ApplyGravity();
-            
+            //
         }
 
         public void UpdateMoveInput(float vertical, float horizontal)
@@ -144,6 +147,10 @@ namespace Player.Scripts.MVC
             }
 
             Move();
+            Vector3 flatCurrentVel = new Vector3(_currentVelocity.x, 0f, _currentVelocity.z);
+            float flatSpeed = flatCurrentVel.magnitude; // Velocidad en plano XZ
+            OnSpeedChange(flatSpeed); // ¡Acá notificás la velocidad al Animator!
+
         }
 
         public void UpdateCrouchInput(bool isCrouching)
@@ -178,6 +185,7 @@ namespace Player.Scripts.MVC
                     _beingLaunched = false;
                     _launchVelocity = Vector3.zero;
                 }
+                
                 return;
             }
             
@@ -226,9 +234,10 @@ namespace Player.Scripts.MVC
         {
             if (characterController.isGrounded && _verticalVelocity < 0)
                 _verticalVelocity = -2f;
-
+            
             if (characterController.isGrounded && state != MovementState.Crouching && _readyToJump)
             {
+                Debug.Log("SALTO");
                 OnJump();
                 EventManager.TriggerEvent("OnJump", gameObject);
                 _verticalVelocity = jumpForce;
@@ -274,8 +283,13 @@ namespace Player.Scripts.MVC
             cam.DoFov(80f);
             if (wallLeft) cam.DoTilt(-5f);
             if (wallRight) cam.DoTilt(5f);
+            Climb();
         }
-
+        public void Climb()
+        {
+            OnClimb();
+            EventManager.TriggerEvent("OnClimb", gameObject);
+        }
         private void WallRunningMovement()
         {
             Vector3 wallNormal = wallRight ? _rightWallHit.normal : _leftWallHit.normal;

@@ -16,7 +16,10 @@ namespace Player.Scripts
         private readonly int _throwHash = Animator.StringToHash("Throw");
         private readonly int _shotHash = Animator.StringToHash("Shot");
         private readonly int _idleHash = Animator.StringToHash("Idle");
-        
+        private readonly int _speedHash = Animator.StringToHash("Speed");
+
+        private readonly int _climbHash = Animator.StringToHash("Climb");
+
         private void OnEnable()
         {
             EventManager.Subscribe("OnJump", HandleEvent);
@@ -28,6 +31,9 @@ namespace Player.Scripts
             EventManager.Subscribe("OnObjectThrow", HandleEvent);
             EventManager.Subscribe("OnShot", HandleEvent);
             EventManager.Subscribe("OnIdle", HandleEvent);
+            EventManager.Subscribe("OnClimb", HandleEvent);
+            //EventManager.Subscribe("OnSpeedChange", HandleEvent);
+
         }
 
         private void OnDisable()
@@ -41,6 +47,9 @@ namespace Player.Scripts
             EventManager.Unsubscribe("OnObjectThrow", HandleEvent);
             EventManager.Unsubscribe("OnShot", HandleEvent);
             EventManager.Unsubscribe("OnIdle", HandleEvent);
+            EventManager.Unsubscribe("OnClimb", HandleEvent);
+            //EventManager.Unsubscribe("OnSpeedChange", HandleEvent);
+
         }
 
         private void HandleEvent(string eventName, GameObject sender)
@@ -68,6 +77,9 @@ namespace Player.Scripts
                 case "OnCrouchExit":
                     armAnimator.SetBool(_crouchHash, false);
                     break;
+                case "OnClimb":
+                    armAnimator.SetTrigger(_climbHash);
+                    break;
                 case "OnObjectGrab":
                     armAnimator.SetTrigger(_grabHash);
                     break;
@@ -78,6 +90,10 @@ namespace Player.Scripts
                     armAnimator.SetTrigger(_throwHash);
                     break;
             }
+        }
+        public void UpdateSpeed(float speed)
+        {
+            armAnimator.SetFloat(_speedHash, speed);
         }
     }
 }

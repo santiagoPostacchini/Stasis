@@ -181,7 +181,8 @@ MonoBehaviour:
   originalLayer:
     serializedVersion: 2
     m_Bits: 4096
-  initFrozen: 1
+  initFrozen: 0
+  _particleFrozen: {fileID: 4473172843670530854}
 --- !u!1 &6323934144895143144
 GameObject:
   m_ObjectHideFlags: 0
@@ -209,7 +210,7 @@ Transform:
   m_GameObject: {fileID: 6323934144895143144}
   serializedVersion: 2
   m_LocalRotation: {x: 0.00001278853, y: 0.99312294, z: 0.0000055816254, w: 0.117076635}
-  m_LocalPosition: {x: 0, y: 0, z: -0.098}
+  m_LocalPosition: {x: 0.132, y: 0, z: 0.219}
   m_LocalScale: {x: 0.5, y: 0.5, z: 0.5}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -232,7 +233,7 @@ ParticleSystem:
   emitterVelocityMode: 1
   looping: 1
   prewarm: 1
-  playOnAwake: 1
+  playOnAwake: 0
   useUnscaledTime: 0
   autoRandomSeed: 1
   startDelay:
@@ -1158,7 +1159,7 @@ ParticleSystem:
     m_BurstCount: 0
     m_Bursts: []
   SizeModule:
-    enabled: 0
+    enabled: 1
     curve:
       serializedVersion: 2
       minMaxState: 1
@@ -1169,18 +1170,36 @@ ParticleSystem:
         m_Curve:
         - serializedVersion: 3
           time: 0
-          value: 0
+          value: 0.62424237
           inSlope: 0
+          outSlope: 0
+          tangentMode: 0
+          weightedMode: 0
+          inWeight: 0.33333334
+          outWeight: 0.33333334
+        - serializedVersion: 3
+          time: 0.005941051
+          value: 0.6340444
+          inSlope: 1
           outSlope: 1
           tangentMode: 0
           weightedMode: 0
           inWeight: 0.33333334
           outWeight: 0.33333334
         - serializedVersion: 3
-          time: 1
-          value: 1
+          time: 0.42854014
+          value: 0.9515152
+          inSlope: -0.29322562
+          outSlope: -0.29322562
+          tangentMode: 0
+          weightedMode: 0
+          inWeight: 0.33333334
+          outWeight: 0.33333334
+        - serializedVersion: 3
+          time: 0.96911204
+          value: 0.64848495
           inSlope: 1
-          outSlope: 0
+          outSlope: 1
           tangentMode: 0
           weightedMode: 0
           inWeight: 0.33333334

@@ -1,6 +1,8 @@
 ﻿using Managers.Events;
 using Player.Scripts.Interactor;
 using UnityEngine;
+using Player.Scripts.MVC;
+using System.Collections;
 
 namespace Player.Stasis
 {
@@ -25,11 +27,14 @@ namespace Player.Stasis
         [SerializeField] private bool _canShootStasis;
         [SerializeField] private Transform posShot;
         [SerializeField] private LayerMask _layer;
-    
+
+        [SerializeField] private View _viewPlayer;
+
         void Start()
         {
             _playerInteractor = GetComponent<PlayerInteractor>();
             _mainCam = UnityEngine.Camera.main;
+            _viewPlayer = GetComponentInParent<View>();
         }
 
         void Update()
@@ -68,23 +73,32 @@ namespace Player.Stasis
 
                 if (hitObject.TryGetComponent<IStasis>(out var stasisComponent))
                 {
-                    ApplyStasisEffect(hitObject, stasisComponent);
+
+                    StartCoroutine(waitStasisEffect(hitObject, stasisComponent));
                     stasisHit = true;
                     
                 }
-                Debug.DrawRay(origin, hit.point, Color.cyan, 1f);
                 if (_activeBeam)
                 {
                     Destroy(_activeBeam.gameObject);
                 }
-
-                GameObject beamInstance = Instantiate(stasisBeamPrefab, stasisOrigin.position, Quaternion.identity);
-                _activeBeam = beamInstance.GetComponent<StasisBeam>();
-                _activeBeam.SetBeam(stasisOrigin.position, hit.point, stasisHit);
-                EventManager.TriggerEvent("LaserFX", gameObject);
+                _viewPlayer.Shoot();
+                StartCoroutine(waitShot(hit, stasisHit));
             }
         }
-        
+        IEnumerator waitStasisEffect(GameObject hitObject,IStasis stasisComponent)
+        {
+            yield return new WaitForSeconds(0.3f);
+            ApplyStasisEffect(hitObject, stasisComponent);
+        }
+        IEnumerator waitShot(RaycastHit hit, bool stasisHit)
+        {
+            yield return new WaitForSeconds(0.3f);
+            GameObject beamInstance = Instantiate(stasisBeamPrefab, stasisOrigin.position, Quaternion.identity);
+            _activeBeam = beamInstance.GetComponent<StasisBeam>();
+            _activeBeam.SetBeam(stasisOrigin.position, hit.point, stasisHit);
+            EventManager.TriggerEvent("LaserFX", gameObject);
+        }
         void ApplyStasisEffect(GameObject newObject, IStasis newStasisComponent)
         {
             if (newObject == _firstFrozenObject)

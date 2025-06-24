@@ -27,6 +27,8 @@ namespace Player.Scripts.MVC
             _model.OnGetDamage += _view.OnDamageEvent;
             _model.OnVaultStart += _view.OnVaultStartEvent;
             _model.OnVaultEnd += _view.OnVaultEndEvent;
+            _model.OnSpeedChange += _view.OnSpeedChangeEvent;
+            _model.OnClimb += _view.OnClimbEvent;
         }
         
         public void OnUpdate()

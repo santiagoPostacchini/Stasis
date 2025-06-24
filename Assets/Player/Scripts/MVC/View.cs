@@ -15,20 +15,25 @@ namespace Player.Scripts.MVC
         private readonly int _throwHash = Animator.StringToHash("Throw");
         private readonly int _shotHash = Animator.StringToHash("Shot");
         private readonly int _idleHash = Animator.StringToHash("Idle");
-        
+        private readonly int _climbHash = Animator.StringToHash("Climb");
+
         public Animator animator; //hay que modificar el animator para utilizar estos nuevos valores 
         public AudioSource audioSource;
         public PlayerCam cam;
         
         public Material damageMaterialPostProcess;
-
+        public ArmAnimationHandler armAnimationHandler;
         public void OnJumpEvent()
         {
             Debug.Log("Jumping!");
             animator.SetTrigger(_jumpHash);
             //EventManager.TriggerEvent("Jump", gameObject);
         }
-
+        public void Shoot()
+        {
+            OnShotEvent(); // Animación en cuerpo
+            EventManager.TriggerEvent("OnShot", gameObject); // Evento para brazos
+        }
         public void OnShotEvent()
         {
             Debug.Log("Shooting!");
@@ -52,7 +57,11 @@ namespace Player.Scripts.MVC
         {
             animator.SetTrigger(_idleHash);
         }
-
+        public void GrabObject()
+        {
+            OnGrabEvent();  // Animación del cuerpo
+            EventManager.TriggerEvent("OnObjectGrab", gameObject); // Evento para brazos
+        }
         public void OnGrabEvent()
         {
             Debug.Log("Grabing!");
@@ -107,6 +116,20 @@ namespace Player.Scripts.MVC
         private void GetDamageVFX(float damageAmmount)
         {
             Debug.Log("Damage VFX!");
+        }
+        public void OnSpeedChangeEvent(float speed)
+        {
+            animator.SetFloat("Speed", speed);
+
+            if (armAnimationHandler != null)
+            {
+                armAnimationHandler.UpdateSpeed(speed);
+            }
+        }
+       
+        public void OnClimbEvent()
+        {
+            animator.SetTrigger("Climb");
         }
     }
 }

@@ -3,6 +3,8 @@ using Player.Stasis;
 using Puzzle_Elements.Hedron.Scripts;
 using UI.Scripts;
 using UnityEngine;
+using Player.Scripts.MVC;
+using System.Collections;
 
 namespace Player.Scripts.Interactor
 {
@@ -26,7 +28,7 @@ namespace Player.Scripts.Interactor
         [SerializeField] private float maxHoldDistance = 1.5f;
         [SerializeField] private float holderOffset = 0.05f;
 
-        [SerializeField] private Player player;
+        
 
         private PhysicsBox _objectGrabbable;
 
@@ -47,10 +49,11 @@ namespace Player.Scripts.Interactor
         private Vector3 _localSmoothVel;
         private Quaternion _rotationSmoothQuat;
         private Vector3 _positionSmoothVelocity;
-
-        void Start()
+        [SerializeField] private View _viewPlayer;
+       void Start()
         {
             _rotationSmoothQuat = objectGrabPointTransform.rotation;
+            _viewPlayer = GetComponentInParent<View>();
         }
 
         void Update()
@@ -135,17 +138,25 @@ namespace Player.Scripts.Interactor
         
         private void TryGrabObject(GameObject hitObject)
         {
+            _viewPlayer.GrabObject();
+            StartCoroutine(waitGrab(hitObject));
+            
+        }
+        IEnumerator waitGrab(GameObject hitObject)
+        {
+            yield return new WaitForSeconds(0.5f);
             if (hitObject && hitObject.TryGetComponent(out PhysicsBox physicsObject))
             {
                 objectGrabPointTransform.position = hitObject.transform.position;
                 physicsObject.SetReferences(objectGrabPointTransform);
                 physicsObject.Grab();
+
                 _objectGrabbable = physicsObject;
-                
+
                 EventManager.TriggerEvent("OnObjectGrab", gameObject);
             }
-        }
 
+        }
         private void TryDropObject()
         {
             if (_objectGrabbable && !_objectGrabbable.IsOverlappingAnything)
