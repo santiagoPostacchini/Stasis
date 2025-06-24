@@ -34,8 +34,6 @@ namespace Player.Scripts.MVC
 
         [Header("WallRunning")] 
         public LayerMask whatIsWallrun;
-
-        //public float gravityCounterForce;
         [SerializeField] private float wallRunForce;
         [SerializeField] private float wallJumpUpForce;
         [SerializeField] private float wallJumpSideForce;
@@ -58,7 +56,7 @@ namespace Player.Scripts.MVC
         [SerializeField] private float minVaultHeight = 0.5f;
         [SerializeField] private float maxVaultHeight = 1.7f;
         [SerializeField] private float vaultDuration = 0.45f;
-        [SerializeField] private AnimationCurve vaultArcCurve; // Puedes asignar una parábola
+        [SerializeField] private AnimationCurve vaultArcCurve;
         [SerializeField] private LayerMask whatIsVaultable;
         [SerializeField] private LayerMask whatIsGround;
 
@@ -86,6 +84,9 @@ namespace Player.Scripts.MVC
         [HideInInspector] public CharacterController characterController;
         public PlayerCam cam;
         private Coroutine _currentCrouchRoutine;
+        private bool _beingLaunched;
+        private float _launchTimeLeft;
+        private Vector3 _launchVelocity = Vector3.zero;
 
         public enum MovementState
         {
@@ -140,8 +141,6 @@ namespace Player.Scripts.MVC
             if (horizontal != 0f || vertical != 0f)
             {
                 OnMove();
-              
-
             }
 
             Move();
@@ -170,13 +169,24 @@ namespace Player.Scripts.MVC
 
         private void Move()
         {
+            if (_beingLaunched && _launchTimeLeft > 0f)
+            {
+                characterController.Move(_launchVelocity * Time.deltaTime);
+                _launchTimeLeft -= Time.deltaTime;
+                if (_launchTimeLeft <= 0f)
+                {
+                    _beingLaunched = false;
+                    _launchVelocity = Vector3.zero;
+                }
+                return;
+            }
+            
             if (isVaulting) return;
             _moveDirection = (orientation.forward * _verticalInput + orientation.right * _horizontalInput).normalized;
             float targetSpeed = (state == MovementState.Crouching) ? crouchSpeed : moveSpeed;
             Vector3 desiredVelocity = _moveDirection * targetSpeed;
 
             var flatCurrentVel = new Vector3(_currentVelocity.x, 0f, _currentVelocity.z);
-            //bool isIdle = flatCurrentVel.magnitude <= 0.1f;
 
             float effectiveAcceleration = acceleration;
             float effectiveDeceleration = deceleration;
@@ -356,6 +366,7 @@ namespace Player.Scripts.MVC
             }
         }
 
+        // ReSharper disable Unity.PerformanceAnalysis
         IEnumerator VaultRoutine(Vector3 vaultEnd, float obstacleTop)
         {
             isVaulting = true;
@@ -364,7 +375,7 @@ namespace Player.Scripts.MVC
 
             Vector3 start = transform.position;
             Vector3 end = vaultEnd;
-            float apexY = Mathf.Max(start.y, obstacleTop + 0.5f); // Subís un poco sobre la pared
+            float apexY = Mathf.Max(start.y, obstacleTop + 0.5f);
             Vector3 apex = new Vector3(
                 (start.x + end.x) * 0.5f,
                 apexY,
@@ -374,8 +385,7 @@ namespace Player.Scripts.MVC
             float elapsed = 0f;
             float t;
             _useGravity = false;
-
-            // Desactiva colisiones durante el vault (opcional, sólo si es seguro)
+            
             characterController.enabled = false;
 
             while (elapsed < vaultDuration)
@@ -428,6 +438,7 @@ namespace Player.Scripts.MVC
             state = newState;
         }
 
+        // ReSharper disable Unity.PerformanceAnalysis
         public void StateMachine(float verticalInput, bool jumping)
         {
             if ((wallLeft || wallRight) && verticalInput > 0 && AboveGround() && !exitingWall)
@@ -506,11 +517,12 @@ namespace Player.Scripts.MVC
         {
             OnDeath();
         }
-
-        public void Launch(Vector3 planarVelocity, float verticalVelocity)
+        
+        public void SetLaunchSplinePosition(Vector3 pos)
         {
-            _currentVelocity = new Vector3(planarVelocity.x, _currentVelocity.y, planarVelocity.z);
-            _verticalVelocity = verticalVelocity;
+            characterController.enabled = false;
+            transform.position = pos;
+            characterController.enabled = true;
         }
     }
 }

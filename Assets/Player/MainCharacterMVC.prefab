@@ -5602,6 +5602,7 @@ GameObject:
   - component: {fileID: 791957083154056169}
   - component: {fileID: 2461042968300623019}
   - component: {fileID: 2724009616093454984}
+  - component: {fileID: 2079309982567562057}
   - component: {fileID: 8453556765652367455}
   - component: {fileID: 5296508718869887140}
   - component: {fileID: 2910963557753249867}
@@ -5736,6 +5737,22 @@ MonoBehaviour:
   audioSource: {fileID: 5492705278498545999}
   cam: {fileID: 4431770150089194889}
   damageMaterialPostProcess: {fileID: 0}
+--- !u!114 &2079309982567562057
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7078956528527849312}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d7bf7ef3e2b8c0e43ae3d0f5840cd029, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  defaultMagnetStrength: 12
+  defaultSplineAirControl: 0.7
+  splineBreakInputThreshold: 0.85
+  splineBreakDistance: 4
 --- !u!143 &8453556765652367455
 CharacterController:
   m_ObjectHideFlags: 0
