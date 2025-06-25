@@ -287,6 +287,7 @@ GameObject:
   - component: {fileID: 5945853407347953319}
   - component: {fileID: 5562539413047130707}
   - component: {fileID: 6938461213760939098}
+  - component: {fileID: -3980221443622203718}
   m_Layer: 10
   m_Name: TrailStasisVFX
   m_TagString: Untagged
@@ -5319,7 +5320,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   beamSpeed: 100
-  lightOffDelay: 0.3
+  lightOffDelay: 1.4
   lightStasis: {fileID: 42432725101990728}
   failEventName: StasisFail
   successEventName: StasisSuccess
@@ -5342,3 +5343,26 @@ MonoBehaviour:
   - m_trailRenderer: {fileID: 2289120248479258985}
     m_uvTiling: {x: 0.5, y: 0.2}
     m_move: 0.47901416
+--- !u!114 &-3980221443622203718
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7511541719265762720}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 65a6ed342655d55489ce9d99edb8913d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  soundEventGroups:
+  - eventName: StasisSuccess
+    soundDelays:
+    - soundName: StasisSuccess
+      delay: 0
+    isStopEvent: 0
+  - eventName: StasisFail
+    soundDelays:
+    - soundName: StasisFail
+      delay: 0
+    isStopEvent: 0

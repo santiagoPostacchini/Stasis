@@ -4,6 +4,7 @@ using Player.Camera;
 using Puzzle_Elements.AllInterfaces;
 using UnityEngine;
 using Managers.Events;
+using Audio.Scripts;
 
 namespace Player.Scripts.MVC
 {
@@ -89,6 +90,8 @@ namespace Player.Scripts.MVC
         private Vector3 _launchVelocity = Vector3.zero;
 
         [HideInInspector] private bool isMoving = false;
+        private AudioEventListener _audioEventListener;
+
         public enum MovementState
         {
             Moving,
@@ -117,9 +120,11 @@ namespace Player.Scripts.MVC
 
         IController _controller;
 
+
         private void Start()
         {
             characterController = GetComponent<CharacterController>();
+            _audioEventListener = GetComponent<AudioEventListener>();
             _controller = new Controller(this, GetComponent<View>(), crouchKey, jumpKey);
             UpdateCameraHeight();
         }
@@ -137,22 +142,36 @@ namespace Player.Scripts.MVC
             ApplyGravity();
             //
         }
-
         public void UpdateMoveInput(float vertical, float horizontal)
         {
             _horizontalInput = horizontal;
             _verticalInput = vertical;
-            if (horizontal != 0f || vertical != 0f)
+
+            bool hasInput = horizontal != 0f || vertical != 0f;
+            bool shouldPlayStep = hasInput && state == MovementState.Moving;
+
+            if (shouldPlayStep)
             {
-                OnMove();
-                
+                if (!isMoving)
+                {
+                    EventManager.TriggerEvent("Step1", gameObject); // Solo se activa una vez
+                    isMoving = true;
+                }
+            }
+            else
+            {
+                if (isMoving)
+                {
+                    _audioEventListener.StopSound("Step1"); // Se detiene si deja de moverse o no está en el suelo
+                    isMoving = false;
+                }
             }
 
             Move();
-            Vector3 flatCurrentVel = new Vector3(_currentVelocity.x, 0f, _currentVelocity.z);
-            float flatSpeed = flatCurrentVel.magnitude; // Velocidad en plano XZ
-            OnSpeedChange(flatSpeed); // ¡Acá notificás la velocidad al Animator!
 
+            Vector3 flatCurrentVel = new Vector3(_currentVelocity.x, 0f, _currentVelocity.z);
+            float flatSpeed = flatCurrentVel.magnitude;
+            OnSpeedChange(flatSpeed);
         }
 
         public void UpdateCrouchInput(bool isCrouching)

@@ -77,6 +77,7 @@ namespace Player.Stasis
                     StartCoroutine(waitStasisEffect(hitObject, stasisComponent));
                     stasisHit = true;
                     
+                    
                 }
                 if (_activeBeam)
                 {

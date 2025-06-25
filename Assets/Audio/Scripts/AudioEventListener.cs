@@ -113,24 +113,19 @@ namespace Audio.Scripts
                 }
             }
         }
-        //public void SetStopEventFlag(string eventName, bool shouldStop)
-        //{
-        //    if (_groups.ContainsKey(eventName))
-        //    {
-        //        var group = _groups[eventName];
-        //        group.isStopEvent = shouldStop;
-        //        _groups[eventName] = group;
+        public void StopSound(string soundName)
+        {
+            var s = AudioManager.Instance.GetSfx(soundName);
+            if (s == null) return;
 
-        //        for (int i = 0; i < soundEventGroups.Length; i++)
-        //        {
-        //            if (soundEventGroups[i].eventName == eventName)
-        //            {
-        //                soundEventGroups[i].isStopEvent = shouldStop;
-        //                break;
-        //            }
-        //        }
-        //    }
-        //}
+            // Si el sonido que se está reproduciendo es el mismo, lo detenemos
+            if (_audioSource.isPlaying && _audioSource.clip == s.clip)
+            {
+                _audioSource.Stop();
+                _audioSource.clip = null;
+                _audioSource.loop = false;
+            }
+        }
         public void SetStopEventFlag(string eventName, bool shouldStop, bool stopImmediately = false)
         {
             if (_groups.ContainsKey(eventName))

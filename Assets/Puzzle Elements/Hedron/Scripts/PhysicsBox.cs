@@ -136,7 +136,7 @@ namespace Puzzle_Elements.Hedron.Scripts
         {
             if (!isFreezed)
             {
-                _audioEventListener.SetStopEventFlag("ObjInStasis", false);
+               // _audioEventListener.SetStopEventFlag("ObjInStasis", false);
                 EventManager.TriggerEvent("ObjInStasis", gameObject);
                 SaveObjectState();
                 rb.velocity = Vector3.zero;
@@ -179,7 +179,8 @@ namespace Puzzle_Elements.Hedron.Scripts
             SetColorOutline(Color.white, 0.2f);
             SetOutlineThickness(0f);
             _particleFrozen?.Stop();
-            _audioEventListener.SetStopEventFlag("ObjInStasis", true, true);
+            //_audioEventListener.SetStopEventFlag("ObjInStasis", true, true);
+            _audioEventListener.StopSound("ObjInStasis");
         }
 
 
