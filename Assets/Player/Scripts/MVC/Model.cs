@@ -92,6 +92,9 @@ namespace Player.Scripts.MVC
         [HideInInspector] private bool isMoving = false;
         private AudioEventListener _audioEventListener;
 
+
+
+
         public enum MovementState
         {
             Moving,
@@ -536,18 +539,20 @@ namespace Player.Scripts.MVC
             );
         }
 
-        public void TakeDamage(float dmg)
+        public void TakeDamage(Transform t)
         {
-            _currentLife -= dmg;
 
-            OnGetDamage(_currentLife / _baseLife);
+            transform.position = t.position;
+            //_currentLife -= dmg;
 
-            if (_currentLife <= 0)
-            {
-                Death();
-            }
+            //OnGetDamage(_currentLife / _baseLife);
+
+            //if (_currentLife <= 0)
+            //{
+            //    Death();
+            //}
         }
-
+       
         void Death()
         {
             OnDeath();

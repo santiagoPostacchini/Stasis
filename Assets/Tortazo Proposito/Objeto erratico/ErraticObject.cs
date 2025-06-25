@@ -1,5 +1,4 @@
 using UnityEngine;
-using System.Collections.Generic;
 
 [RequireComponent(typeof(Rigidbody))]
 public class ErraticObject : MonoBehaviour
@@ -20,9 +19,6 @@ public class ErraticObject : MonoBehaviour
     public float fallSpeedMultiplier = 2.5f;
     public Transform pos;
 
-
-
-
     public bool isFreezed;
     private bool isFalling = false;
 
@@ -32,8 +28,6 @@ public class ErraticObject : MonoBehaviour
     public Rigidbody rb;
 
     private Vector3 lastDirection;
-    private Vector3? fallTarget = null;
-
     private Vector3 currentRandomOffset;
 
     private void Start()
@@ -47,7 +41,7 @@ public class ErraticObject : MonoBehaviour
             return;
         }
 
-
+        currentTargetIndex = 0;
         ChooseNewTarget();
     }
 
@@ -55,22 +49,19 @@ public class ErraticObject : MonoBehaviour
     {
         if (isFreezed) return;
 
-        
-        else
-        {
-            MoveTowardsCurrentTarget();
+        timer += Time.fixedDeltaTime;
 
-            if (timer >= switchTime)
-            {
-                ChooseNewTarget();
-                timer = 0f;
-            }
+        MoveTowardsCurrentTarget();
+
+        if (timer >= switchTime)
+        {
+            SwitchTarget();
+            timer = 0f;
         }
 
         ApplyContinuousRotation();
     }
 
-    
     private void MoveTowardsCurrentTarget()
     {
         Vector3 targetPosition = GetTargetWithRandomness();
@@ -94,14 +85,6 @@ public class ErraticObject : MonoBehaviour
 
     private void ChooseNewTarget()
     {
-        int newIndex;
-        do
-        {
-            newIndex = Random.Range(0, waypoints.Length);
-        } while (newIndex == currentTargetIndex);
-
-        currentTargetIndex = newIndex;
-
         currentRandomOffset = new Vector3(
             Random.Range(-randomness, randomness),
             Random.Range(-randomness, randomness),
@@ -109,6 +92,9 @@ public class ErraticObject : MonoBehaviour
         );
     }
 
-
-
+    private void SwitchTarget()
+    {
+        currentTargetIndex = (currentTargetIndex + 1) % waypoints.Length;
+        ChooseNewTarget();
+    }
 }

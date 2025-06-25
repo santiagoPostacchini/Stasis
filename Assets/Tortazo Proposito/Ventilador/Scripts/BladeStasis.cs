@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Player.Stasis;
+using Player.Scripts.MVC;
 public class BladeStasis : MonoBehaviour,IStasis
 {
     
@@ -10,8 +11,9 @@ public class BladeStasis : MonoBehaviour,IStasis
 
     public BladeStasis[] otherBlades;
     public RotateObject father;
-   
-    
+
+    [SerializeField] private Transform posPlayerAfterHit;
+
     // Start is called before the first frame update
     void Start()
     {
@@ -46,7 +48,7 @@ public class BladeStasis : MonoBehaviour,IStasis
         if (IsFreezed == true) return false;
         return true;
     }
-
+    
     public void StatisEffectActivate()
     {
         FreezeObject();
@@ -71,9 +73,19 @@ public class BladeStasis : MonoBehaviour,IStasis
         }
     }
 
+    private void OnTriggerEnter(Collider other)
+    {
+        Model player = other.GetComponent<Model>();
+        if (player != null)
+        {
+            if (!IsFreezed)
+            {
+                player.TakeDamage(posPlayerAfterHit);
+            }
+        }
+    }
 
-   
-    private void UnfreezeObject()
+        private void UnfreezeObject()
     {
         if (!_isFreezed) return;
         _isFreezed = false;
