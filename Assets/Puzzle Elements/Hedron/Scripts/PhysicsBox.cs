@@ -3,6 +3,7 @@ using Managers.Game;
 using Player.Stasis;
 using Puzzle_Elements.AllInterfaces;
 using UnityEngine;
+using Audio.Scripts;
 
 namespace Puzzle_Elements.Hedron.Scripts
 {
@@ -39,10 +40,14 @@ namespace Puzzle_Elements.Hedron.Scripts
 
         [SerializeField] private bool initFrozen = false;
         [SerializeField] private ParticleSystem _particleFrozen;
+
+
+        private AudioEventListener _audioEventListener;
         private void Start()
         {
             _mpb = new MaterialPropertyBlock();
             _renderer = GetComponent<Renderer>();
+            _audioEventListener = GetComponent<AudioEventListener>();
             if (initFrozen)
             {
                 StatisEffectActivate();
@@ -120,19 +125,19 @@ namespace Puzzle_Elements.Hedron.Scripts
 
         public void StatisEffectActivate()
         {
-            EventManager.TriggerEvent("StasisStart", gameObject);
             FreezeObject();
         }
 
         public void StatisEffectDeactivate()
         {
-            EventManager.TriggerEvent("StasisEnd", gameObject);
             UnfreezeObject();
         }
         private void FreezeObject()
         {
             if (!isFreezed)
             {
+                _audioEventListener.SetStopEventFlag("ObjInStasis", false);
+                EventManager.TriggerEvent("ObjInStasis", gameObject);
                 SaveObjectState();
                 rb.velocity = Vector3.zero;
                 rb.angularVelocity = Vector3.zero;
@@ -174,6 +179,7 @@ namespace Puzzle_Elements.Hedron.Scripts
             SetColorOutline(Color.white, 0.2f);
             SetOutlineThickness(0f);
             _particleFrozen?.Stop();
+            _audioEventListener.SetStopEventFlag("ObjInStasis", true, true);
         }
 
 

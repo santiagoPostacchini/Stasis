@@ -82,6 +82,7 @@ namespace Player.Scripts.MVC
 
         public void OnMoveEvent()
         {
+           
             //Debug.Log("Moving!");
            //EventManager.TriggerEvent("OnFootstep", gameObject);
         }

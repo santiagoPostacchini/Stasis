@@ -88,6 +88,7 @@ namespace Player.Scripts.MVC
         private float _launchTimeLeft;
         private Vector3 _launchVelocity = Vector3.zero;
 
+        [HideInInspector] private bool isMoving = false;
         public enum MovementState
         {
             Moving,
@@ -144,6 +145,7 @@ namespace Player.Scripts.MVC
             if (horizontal != 0f || vertical != 0f)
             {
                 OnMove();
+                
             }
 
             Move();

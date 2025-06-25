@@ -113,6 +113,54 @@ namespace Audio.Scripts
                 }
             }
         }
+        //public void SetStopEventFlag(string eventName, bool shouldStop)
+        //{
+        //    if (_groups.ContainsKey(eventName))
+        //    {
+        //        var group = _groups[eventName];
+        //        group.isStopEvent = shouldStop;
+        //        _groups[eventName] = group;
+
+        //        for (int i = 0; i < soundEventGroups.Length; i++)
+        //        {
+        //            if (soundEventGroups[i].eventName == eventName)
+        //            {
+        //                soundEventGroups[i].isStopEvent = shouldStop;
+        //                break;
+        //            }
+        //        }
+        //    }
+        //}
+        public void SetStopEventFlag(string eventName, bool shouldStop, bool stopImmediately = false)
+        {
+            if (_groups.ContainsKey(eventName))
+            {
+                var group = _groups[eventName];
+                group.isStopEvent = shouldStop;
+                _groups[eventName] = group;
+
+                for (int i = 0; i < soundEventGroups.Length; i++)
+                {
+                    if (soundEventGroups[i].eventName == eventName)
+                    {
+                        soundEventGroups[i].isStopEvent = shouldStop;
+                        break;
+                    }
+                }
+
+                if (shouldStop && stopImmediately)
+                {
+                    if (_audioSource.isPlaying)
+                    {
+                        _audioSource.Stop();
+                    }
+
+                    _audioSource.loop = false;
+                    _audioSource.clip = null;
+                }
+            }
+        }
 
     }
+
 }
