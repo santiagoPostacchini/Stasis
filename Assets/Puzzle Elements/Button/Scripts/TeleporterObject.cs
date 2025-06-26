@@ -9,6 +9,11 @@ public class TeleporterObject : MonoBehaviour
 
     public void Teleport()
     {
+        VFXHedro particlesHedro = objectToTeleport.GetComponent<VFXHedro>();
+        if(particlesHedro != null)
+        {
+            //particlesHedro.DecreaseChildrenScale
+        }
         objectToTeleport.transform.position = pos.position;
     }
 }

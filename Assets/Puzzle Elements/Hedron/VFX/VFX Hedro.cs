@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class VFXCube : MonoBehaviour
+public class VFXHedro : MonoBehaviour
 {
     public ParticleSystem particlesIn;
 
@@ -22,8 +22,8 @@ public class VFXCube : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        if(form != null)
-        originalFormScale = form.gameObject.transform.localScale;
+        if (form != null)
+            originalFormScale = form.gameObject.transform.localScale;
     }
     private void Update()
     {
@@ -46,7 +46,7 @@ public class VFXCube : MonoBehaviour
         {
             child.localScale = minScale;
             Vector3 currentScale = child.localScale;
-            Vector3 targetScale = maxScale; 
+            Vector3 targetScale = maxScale;
             StartCoroutine(ScaleRoutine(child, currentScale, targetScale, duration));
         }
     }
@@ -74,7 +74,7 @@ public class VFXCube : MonoBehaviour
             ParticleSystem ps1 = form.transform.GetChild(0).GetComponent<ParticleSystem>();
             ParticleSystem ps2 = form.transform.GetChild(1).GetComponent<ParticleSystem>();
             ParticleSystem ps3 = form.transform.GetChild(2).GetComponent<ParticleSystem>();
-           
+
             ps1.Play();
             ps2.Play();
             ps3.Play();
@@ -91,7 +91,7 @@ public class VFXCube : MonoBehaviour
             ps2.Stop();
             ps3.Stop();
 
-        } 
+        }
     }
     public IEnumerator ActivateParticlesVFXcubeOFF(Transform t)
     {
@@ -106,7 +106,7 @@ public class VFXCube : MonoBehaviour
                 a.Play();
                 canRotate = true;
                 StartCoroutine(ScaleRoutine(item, maxScale, minScale, 0.75f));
-                
+
             }
             yield return new WaitForSeconds(1f);
             canRotate = false;
@@ -116,16 +116,16 @@ public class VFXCube : MonoBehaviour
                 Destroy(item.gameObject);
             }
         }
-        
+
     }
     public void Rotate()
     {
         if (!canRotate) return;
-        if(transformParticlesOff.Count > 1)
+        if (transformParticlesOff.Count > 1)
         {
             for (int i = 0; i < transformParticlesOff.Count; i++)
             {
-                if(i == 0)
+                if (i == 0)
                 {
                     transformParticlesOff[i].Rotate(Vector3.up * 200 * Time.deltaTime);
                 }
