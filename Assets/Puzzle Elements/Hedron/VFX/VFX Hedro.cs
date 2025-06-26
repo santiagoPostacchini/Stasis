@@ -31,6 +31,7 @@ public class VFXHedro : MonoBehaviour
     }
     public void DecreaseChildrenScale(GameObject parent, float duration = 0.75f)
     {
+        StartCoroutine(ActivateParticlesVFXcubeOFF(transform));
         foreach (Transform child in parent.transform)
         {
             child.localScale = maxScale;
@@ -42,6 +43,7 @@ public class VFXHedro : MonoBehaviour
 
     public void IncreaseChildrenScale(GameObject parent, float duration = 0.75f)
     {
+        
         foreach (Transform child in parent.transform)
         {
             child.localScale = minScale;
