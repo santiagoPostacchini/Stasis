@@ -1,10 +1,9 @@
 using System;
-using System.Collections;
 using Player.Camera;
 using Puzzle_Elements.AllInterfaces;
 using UnityEngine;
-using Managers.Events;
 using Audio.Scripts;
+using Managers.Events;
 
 namespace Player.Scripts.MVC
 {
@@ -51,19 +50,17 @@ namespace Player.Scripts.MVC
         private RaycastHit _rightWallHit;
         [HideInInspector] public bool wallRight;
         [HideInInspector] public bool wallLeft;
-        
-        [Header("Vaulting")]
-        [SerializeField] private float vaultCheckDistance = 1.2f;
-        [SerializeField] private float minVaultHeight = 0.5f;
-        [SerializeField] private float maxVaultHeight = 1.7f;
-        [SerializeField] private float vaultDuration = 0.45f;
-        [SerializeField] private AnimationCurve vaultArcCurve;
-        [SerializeField] private LayerMask whatIsVaultable;
         [SerializeField] private LayerMask whatIsGround;
 
         [Header("InputKeys")] public KeyCode jumpKey = KeyCode.Space;
         public KeyCode crouchKey = KeyCode.LeftControl;
-
+        
+        [Header("Advanced Vaulting")]
+        [SerializeField] private int vaultRayCount = 6;
+        [SerializeField] private float vaultRayForwardDistance = 1.0f;
+        [SerializeField] private int maxVaultRayAllowed = 5;
+        [SerializeField] private LayerMask whatIsVaultable;
+        
         [Header("Life")] private float _currentLife;
         private float _baseLife;
 
@@ -89,12 +86,9 @@ namespace Player.Scripts.MVC
         private float _launchTimeLeft;
         private Vector3 _launchVelocity = Vector3.zero;
 
-        [HideInInspector] private bool isMoving = false;
+        private bool _isMoving;
         private AudioEventListener _audioEventListener;
-
-
-
-
+        
         public enum MovementState
         {
             Moving,
@@ -136,14 +130,12 @@ namespace Player.Scripts.MVC
         {
             _controller.OnUpdate();
             CheckForWall();
-            if(!isVaulting)
-                CheckForVault();
             
             if (wallrunning)
                 WallRunningMovement();
 
             ApplyGravity();
-            //
+            CheckAdvancedVault();
         }
         public void UpdateMoveInput(float vertical, float horizontal)
         {
@@ -155,18 +147,18 @@ namespace Player.Scripts.MVC
 
             if (shouldPlayStep)
             {
-                if (!isMoving)
+                if (!_isMoving)
                 {
                     EventManager.TriggerEvent("Step1", gameObject); // Solo se activa una vez
-                    isMoving = true;
+                    _isMoving = true;
                 }
             }
             else
             {
-                if (isMoving)
+                if (_isMoving)
                 {
                     _audioEventListener.StopSound("Step1"); // Se detiene si deja de moverse o no está en el suelo
-                    isMoving = false;
+                    _isMoving = false;
                 }
             }
 
@@ -263,7 +255,6 @@ namespace Player.Scripts.MVC
             {
                 Debug.Log("SALTO");
                 OnJump();
-                EventManager.TriggerEvent("OnJump", gameObject);
                 _verticalVelocity = jumpForce;
                 _readyToJump = false;
                 Invoke(nameof(ResetJump), jumpCooldown);
@@ -307,12 +298,7 @@ namespace Player.Scripts.MVC
             cam.DoFov(80f);
             if (wallLeft) cam.DoTilt(-5f);
             if (wallRight) cam.DoTilt(5f);
-            Climb();
-        }
-        public void Climb()
-        {
             OnClimb();
-            EventManager.TriggerEvent("OnClimb", gameObject);
         }
         private void WallRunningMovement()
         {
@@ -373,80 +359,6 @@ namespace Player.Scripts.MVC
         private float _nextVaultAllowed;
         [SerializeField] private float vaultCooldown = 0.2f;
         
-        // ReSharper disable Unity.PerformanceAnalysis
-        void CheckForVault()
-        {
-            if (isVaulting || Time.time < _nextVaultAllowed) return;
-            if (_verticalInput <= 0f) return;
-
-            // Usar centro del Capsule para raycastear (mejor intersección)
-            Vector3 rayOrigin = transform.position + Vector3.up * (characterController.height * 0.5f) + characterController.center;
-            if (Physics.Raycast(rayOrigin, orientation.forward, out RaycastHit wallHit, vaultCheckDistance, whatIsVaultable))
-            {
-                float playerFeet = transform.position.y - (characterController.height * 0.5f) + characterController.center.y;
-                float obstacleTop = wallHit.collider.bounds.max.y;
-                float obstacleHeight = obstacleTop - playerFeet;
-
-                if (obstacleHeight >= minVaultHeight && obstacleHeight <= maxVaultHeight)
-                {
-                    // Calculamos el punto adelante de la pared, sobre la superficie del piso real
-                    Vector3 vaultLandingCheck = wallHit.point + orientation.forward * (characterController.radius + 0.3f);
-                    vaultLandingCheck.y = obstacleTop + 0.1f; // Para evitar que el raycast caiga dentro del objeto
-
-                    // Raycast DOWN para encontrar el piso real adelante
-                    if (Physics.Raycast(vaultLandingCheck, Vector3.down, out RaycastHit groundHit, 3f, whatIsGround))
-                    {
-                        Vector3 vaultEndPos = groundHit.point;
-                        vaultEndPos.y += 0.01f; // Pequeño offset para no quedar flotando
-                        StartCoroutine(VaultRoutine(vaultEndPos, obstacleTop));
-                    }
-                }
-            }
-        }
-
-        // ReSharper disable Unity.PerformanceAnalysis
-        IEnumerator VaultRoutine(Vector3 vaultEnd, float obstacleTop)
-        {
-            isVaulting = true;
-            OnVaultStart();
-            _nextVaultAllowed = Time.time + vaultCooldown;
-
-            Vector3 start = transform.position;
-            Vector3 end = vaultEnd;
-            float apexY = Mathf.Max(start.y, obstacleTop + 0.5f);
-            Vector3 apex = new Vector3(
-                (start.x + end.x) * 0.5f,
-                apexY,
-                (start.z + end.z) * 0.5f
-            );
-
-            float elapsed = 0f;
-            float t;
-            _useGravity = false;
-            
-            characterController.enabled = false;
-
-            while (elapsed < vaultDuration)
-            {
-                t = elapsed / vaultDuration;
-
-                Vector3 lerp1 = Vector3.Lerp(start, apex, t);
-                Vector3 lerp2 = Vector3.Lerp(apex, end, t);
-                Vector3 pos = Vector3.Lerp(lerp1, lerp2, t);
-
-                transform.position = pos;
-                elapsed += Time.deltaTime;
-                yield return null;
-            }
-
-            transform.position = end;
-            characterController.enabled = true;
-
-            _useGravity = true;
-            isVaulting = false;
-            OnVaultEnd();
-        }
-
         public void UpdateCrouchPosition()
         {
             characterController.height = Mathf.SmoothDamp(
@@ -563,6 +475,59 @@ namespace Player.Scripts.MVC
             characterController.enabled = false;
             transform.position = pos;
             characterController.enabled = true;
+        }
+        
+        private void CheckAdvancedVault()
+        {
+            if (isVaulting || Time.time < _nextVaultAllowed) return;
+            if (_verticalInput <= 0f) return;
+
+            int hitCount = 0;
+            
+            float lowestPoint = (transform.position.y - 1f) + characterController.stepOffset;
+            float highestPoint = (transform.position.y - 1f) + characterController.height;
+
+            float stepHeight = (highestPoint - lowestPoint) / (vaultRayCount - 1);
+            bool tooHigh = false;
+
+            for (int i = 0; i < vaultRayCount; i++)
+            {
+                float rayHeight = lowestPoint + stepHeight * i;
+                Vector3 origin = new Vector3(transform.position.x, rayHeight, transform.position.z);
+                Vector3 direction = orientation.forward;
+
+                bool hit = Physics.Raycast(origin, direction, vaultRayForwardDistance, whatIsVaultable);
+
+                Color rayColor = hit ? Color.green : Color.red;
+                Debug.DrawRay(origin, direction * vaultRayForwardDistance, rayColor);
+
+                if (hit)
+                {
+                    hitCount++;
+
+                    if (i >= maxVaultRayAllowed)
+                    {
+                        tooHigh = true;
+                    }
+                }
+            }
+
+            if (hitCount > 0 && !tooHigh)
+            {
+                AdvancedVault(hitCount);
+            }
+        }
+        
+        private void AdvancedVault(int force)
+        {
+                Debug.Log($"Vaulting con fuerza: {force}");
+
+                OnJump();
+
+                _verticalVelocity = force;
+
+                _readyToJump = false;
+                Invoke(nameof(ResetJump), jumpCooldown);
         }
     }
 }

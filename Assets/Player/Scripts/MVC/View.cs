@@ -27,11 +27,11 @@ namespace Player.Scripts.MVC
         {
             Debug.Log("Jumping!");
             animator.SetTrigger(_jumpHash);
-            //EventManager.TriggerEvent("Jump", gameObject);
+            EventManager.TriggerEvent("OnJump", gameObject);
         }
         public void Shoot()
         {
-            OnShotEvent(); // Animación en cuerpo
+            OnShotEvent();
             EventManager.TriggerEvent("OnShot", gameObject); // Evento para brazos
         }
         public void OnShotEvent()
@@ -59,7 +59,7 @@ namespace Player.Scripts.MVC
         }
         public void GrabObject()
         {
-            OnGrabEvent();  // Animación del cuerpo
+            OnGrabEvent();  // Animaciï¿½n del cuerpo
             EventManager.TriggerEvent("OnObjectGrab", gameObject); // Evento para brazos
         }
         public void OnGrabEvent()
@@ -122,7 +122,7 @@ namespace Player.Scripts.MVC
         {
             animator.SetFloat("Speed", speed);
 
-            if (armAnimationHandler != null)
+            if (armAnimationHandler)
             {
                 armAnimationHandler.UpdateSpeed(speed);
             }
@@ -131,6 +131,7 @@ namespace Player.Scripts.MVC
         public void OnClimbEvent()
         {
             animator.SetTrigger("Climb");
+            EventManager.TriggerEvent("OnClimb", gameObject);
         }
     }
 }
