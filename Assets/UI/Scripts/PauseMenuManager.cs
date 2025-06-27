@@ -11,14 +11,14 @@ namespace Player.Camera
     {
         public static bool IsGamePaused = false;
         public GameObject pauseMenuUI;
-        public GameObject confirmQuitUI;  // Segundo panel: confirmación
+        public GameObject confirmQuitUI;
 
-        void Awake()
+        private void Awake()
         {
             confirmQuitUI.SetActive(false);
         }
 
-        void Update()
+        private void Update()
         {
             if (Input.GetKeyDown(KeyCode.Escape))
             {
@@ -47,11 +47,8 @@ namespace Player.Camera
             Cursor.visible = true;
         }
 
-        // ------------- Métodos para Quit -------------
-
         public void OnQuitPressed()
         {
-            // Abre el panel de confirmación, cierra el de pausa
             confirmQuitUI.SetActive(true);
             pauseMenuUI.SetActive(false);
         }
@@ -59,19 +56,33 @@ namespace Player.Camera
         public void OnQuitYes()
         {
             #if UNITY_STANDALONE
-                        Application.Quit();
+                Application.Quit();
             #endif
-
             #if UNITY_EDITOR
-                        EditorApplication.isPlaying = false;
+                EditorApplication.isPlaying = false;
             #endif
         }
 
         public void OnQuitNo()
         {
-            // Vuelve al menú de pausa
             confirmQuitUI.SetActive(false);
             pauseMenuUI.SetActive(true);
+        }
+
+        // ----- NUEVO: Reiniciar la escena actual -----
+        public void RestartLevel()
+        {
+            // Aseguramos que el tiempo vuelva a la velocidad normal
+            Time.timeScale = 1f;
+            IsGamePaused = false;
+            // Recargamos la escena actual
+            SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+        }
+
+        private void OnApplicationQuit()
+        {
+            Debug.Log("AplicaciÃ³n cerrÃ¡ndose...");
+            // AquÃ­ podÃ©s guardar datos o limpiar recursos
         }
     }
 }

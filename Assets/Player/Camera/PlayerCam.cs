@@ -5,9 +5,12 @@ namespace Player.Camera
 {
     public class PlayerCam : MonoBehaviour
     {
+        [Header("Sensibilidad")]
         public float sens = 700f;
-        public Transform orientation;
-        public Transform camHolder;
+
+        [Header("Referencias")]
+        public Transform orientation;  // Para girar el cuerpo/player
+        public Transform camHolder;    // Padre de la c√°mara
 
         float xRotation;
         float yRotation;
@@ -19,13 +22,13 @@ namespace Player.Camera
 
         private void Update()
         {
-            // Si presion·s ESC siempre liber·s el cursor (incluso si est·s pausado)
+            // ESC siempre libera el cursor (para abrir men√∫, etc.)
             if (Input.GetKeyDown(KeyCode.Escape))
             {
                 UnlockCursor();
             }
 
-            // Solo bloque·s con clic izquierdo si NO est·s en pausa
+            // Clic izquierdo para volver a bloquear (solo si NO estamos en pausa)
             if (!PauseMenuManager.IsGamePaused &&
                 Input.GetMouseButtonDown(0) &&
                 Cursor.lockState != CursorLockMode.Locked)
@@ -33,7 +36,7 @@ namespace Player.Camera
                 LockCursor();
             }
 
-            // RotaciÛn solo cuando el cursor est· bloqueado
+            // Rotaci√≥n de c√°mara s√≥lo cuando el cursor est√° bloqueado
             if (Cursor.lockState == CursorLockMode.Locked)
             {
                 float mouseX = Input.GetAxisRaw("Mouse X") * Time.deltaTime * sens;
@@ -60,11 +63,13 @@ namespace Player.Camera
             Cursor.visible = true;
         }
 
+        // Ejemplo de efecto de cambio de FOV con DOTween
         public void DoFov(float endValue)
         {
             GetComponent<UnityEngine.Camera>().DOFieldOfView(endValue, 0.25f);
         }
 
+        // Ejemplo de tilt/cabeceo de c√°mara con DOTween
         public void DoTilt(float zTilt)
         {
             transform.DOLocalRotate(new Vector3(0, 0, zTilt), 0.25f);
