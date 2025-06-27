@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.Events;
 using Player.Scripts.MVC;
 using TMPro;
+using Managers.Events;
 
 namespace Puzzle_Elements.Button.Scripts
 {
@@ -17,13 +18,16 @@ namespace Puzzle_Elements.Button.Scripts
         {
             animator.SetTrigger(Click);
             onPressed?.Invoke();
+            EventManager.TriggerEvent("Click", gameObject);
         }
 
-        private void OnTriggerEnter(Collider other)
+       
+        private void OnTriggerStay(Collider other)
         {
             Model player = other.GetComponent<Model>();
-            if(player != null)
+            if (player != null)
             {
+                if(!_textInteract.gameObject.activeSelf)
                 _textInteract.gameObject.SetActive(true);
             }
         }
