@@ -30,11 +30,14 @@ namespace Player.Stasis
 
         [SerializeField] private View _viewPlayer;
 
+        private bool canShoot = false;
+
         void Start()
         {
             _playerInteractor = GetComponent<PlayerInteractor>();
             _mainCam = UnityEngine.Camera.main;
             _viewPlayer = GetComponentInParent<View>();
+            StartCoroutine(waitCanShoot());
         }
 
         void Update()
@@ -49,6 +52,7 @@ namespace Player.Stasis
 
             if (Input.GetMouseButtonDown(0))
             {
+                if (!canShoot) return;
                 if (_playerInteractor && _playerInteractor.HasObjectInHand())
                     return;
                 
@@ -56,7 +60,11 @@ namespace Player.Stasis
                 TryApplyStasis(_mainCam.transform);
             }
         }
-
+        IEnumerator waitCanShoot()
+        {
+            yield return new WaitForSeconds(1.2f);
+            canShoot = true;
+        }
         private void TryApplyStasis(Transform playerCameraTransform)
         {
             if (!_canShootStasis) return;
