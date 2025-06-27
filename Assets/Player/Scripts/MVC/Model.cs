@@ -88,7 +88,7 @@ namespace Player.Scripts.MVC
 
         private bool _isMoving;
         private AudioEventListener _audioEventListener;
-        
+        private bool inVault = false;
         public enum MovementState
         {
             Moving,
@@ -481,7 +481,11 @@ namespace Player.Scripts.MVC
         {
             if (isVaulting || Time.time < _nextVaultAllowed) return;
             if (_verticalInput <= 0f) return;
-
+            if (!inVault)
+            {
+                OnVaultStart();
+                inVault = true;
+            } 
             int hitCount = 0;
             
             float lowestPoint = (transform.position.y - 1f) + characterController.stepOffset;
@@ -489,7 +493,7 @@ namespace Player.Scripts.MVC
 
             float stepHeight = (highestPoint - lowestPoint) / (vaultRayCount - 1);
             bool tooHigh = false;
-
+            
             for (int i = 0; i < vaultRayCount; i++)
             {
                 float rayHeight = lowestPoint + stepHeight * i;
@@ -527,6 +531,7 @@ namespace Player.Scripts.MVC
                 _verticalVelocity = force;
 
                 _readyToJump = false;
+                inVault= false;
                 Invoke(nameof(ResetJump), jumpCooldown);
         }
     }

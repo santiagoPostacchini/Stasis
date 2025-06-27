@@ -16,6 +16,7 @@ namespace Player.Scripts.MVC
         private readonly int _shotHash = Animator.StringToHash("Shot");
         private readonly int _idleHash = Animator.StringToHash("Idle");
         private readonly int _climbHash = Animator.StringToHash("Climb");
+        private readonly int _vaultHash = Animator.StringToHash("Vault");
 
         public Animator animator; //hay que modificar el animator para utilizar estos nuevos valores 
         public AudioSource audioSource;
@@ -86,17 +87,22 @@ namespace Player.Scripts.MVC
             //Debug.Log("Moving!");
            //EventManager.TriggerEvent("OnFootstep", gameObject);
         }
-        
         public void OnVaultStartEvent()
         {
             Debug.Log("Vault Start");
-            if (cam)
-            {
-                cam.DoFov(70f);
-                int rv = UnityEngine.Random.Range(0, 2) == 0 ? -1 : 1;
-                cam.DoTilt(10f * rv);
-            }
+            animator.SetTrigger("Vault");
         }
+        //public void OnVaultStartEvent()
+        //{
+        //    Debug.Log("Vault Start");
+        //    if (cam)
+        //    {
+        //        cam.DoFov(70f);
+        //        int rv = UnityEngine.Random.Range(0, 2) == 0 ? -1 : 1;
+        //        cam.DoTilt(10f * rv);
+
+        //    }
+        //}
 
         public void OnVaultEndEvent()
         {

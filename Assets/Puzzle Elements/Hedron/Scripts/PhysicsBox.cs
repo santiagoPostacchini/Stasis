@@ -50,7 +50,7 @@ namespace Puzzle_Elements.Hedron.Scripts
             _audioEventListener = GetComponent<AudioEventListener>();
             if (initFrozen)
             {
-                StatisEffectActivate();
+                FreezeObject();
             }
         }
         public void Grab()

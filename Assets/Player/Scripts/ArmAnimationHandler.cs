@@ -19,6 +19,8 @@ namespace Player.Scripts
         private readonly int _speedHash = Animator.StringToHash("Speed");
 
         private readonly int _climbHash = Animator.StringToHash("Climb");
+        private readonly int _vaultHash = Animator.StringToHash("Vault");
+
 
         private void OnEnable()
         {
@@ -32,6 +34,7 @@ namespace Player.Scripts
             EventManager.Subscribe("OnShot", HandleEvent);
             EventManager.Subscribe("OnIdle", HandleEvent);
             EventManager.Subscribe("OnClimb", HandleEvent);
+            EventManager.Subscribe("OnVaultStart", HandleEvent);
             //EventManager.Subscribe("OnSpeedChange", HandleEvent);
 
         }
@@ -48,6 +51,7 @@ namespace Player.Scripts
             EventManager.Unsubscribe("OnShot", HandleEvent);
             EventManager.Unsubscribe("OnIdle", HandleEvent);
             EventManager.Unsubscribe("OnClimb", HandleEvent);
+            EventManager.Unsubscribe("OnVaultStart", HandleEvent);
             //EventManager.Unsubscribe("OnSpeedChange", HandleEvent);
 
         }
@@ -79,6 +83,9 @@ namespace Player.Scripts
                     break;
                 case "OnClimb":
                     armAnimator.SetTrigger(_climbHash);
+                    break;
+                case "OnVaultStart":
+                    armAnimator.SetTrigger(_vaultHash);
                     break;
                 case "OnObjectGrab":
                     armAnimator.SetTrigger(_grabHash);
