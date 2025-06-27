@@ -148,7 +148,7 @@ Camera:
     height: 1
   near clip plane: 0.1
   far clip plane: 10
-  field of view: 65
+  field of view: 90
   orthographic: 0
   orthographic size: 5
   m_Depth: 1
@@ -372,7 +372,7 @@ Camera:
   m_GameObject: {fileID: 6813735495089421477}
   m_Enabled: 1
   serializedVersion: 2
-  m_ClearFlags: 2
+  m_ClearFlags: 1
   m_BackGroundColor: {r: 0, g: 0, b: 0, a: 0}
   m_projectionMatrixMode: 1
   m_GateFitMode: 2
@@ -396,7 +396,7 @@ Camera:
     height: 1
   near clip plane: 0.1
   far clip plane: 1000
-  field of view: 65
+  field of view: 90
   orthographic: 0
   orthographic size: 5
   m_Depth: -1
@@ -870,7 +870,7 @@ MonoBehaviour:
   airControlMultiplier: 0.4
   terminalVelocity: -20
   minVerticalVelocity: -2
-  jumpForce: 6
+  jumpForce: 8
   jumpCooldown: 0.4
   gravity: -18
   standHeight: 2
@@ -885,7 +885,7 @@ MonoBehaviour:
   wallRunForce: 5
   wallJumpUpForce: 5
   wallJumpSideForce: 10
-  maxWallRunTime: 0.7
+  maxWallRunTime: 1.5
   exitingWall: 0
   exitWallTime: 0.5
   exitWallTimer: 0
@@ -898,9 +898,9 @@ MonoBehaviour:
     m_Bits: 128
   jumpKey: 32
   crouchKey: 306
-  vaultRayCount: 6
-  vaultRayForwardDistance: 1
-  maxVaultRayAllowed: 5
+  vaultRayCount: 20
+  vaultRayForwardDistance: 2
+  maxVaultRayAllowed: 15
   whatIsVaultable:
     serializedVersion: 2
     m_Bits: 256

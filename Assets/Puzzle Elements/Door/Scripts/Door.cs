@@ -26,6 +26,7 @@ namespace Puzzle_Elements.Door.Scripts
         private Coroutine _currentSequence;
 
         public bool autoClose = true;
+        public bool playerCanOpen;
         public float autoCloseDelay = 1f;
 
         public bool hasTimedClose;
@@ -149,7 +150,8 @@ namespace Puzzle_Elements.Door.Scripts
         private void OnTriggerEnter(Collider other)
         {
             if (!other.CompareTag("Player")) return;
-
+            if (!playerCanOpen) return;
+            
             if (!isOpen && !hasTimedClose)
                 OpenDoor();
         }
