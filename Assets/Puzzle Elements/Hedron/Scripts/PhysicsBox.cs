@@ -38,7 +38,6 @@ namespace Puzzle_Elements.Hedron.Scripts
 
         public bool IsFreezed => isFreezed;
 
-        [SerializeField] private bool initFrozen = false;
         [SerializeField] private ParticleSystem _particleFrozen;
 
 
@@ -48,10 +47,7 @@ namespace Puzzle_Elements.Hedron.Scripts
             _mpb = new MaterialPropertyBlock();
             _renderer = GetComponent<Renderer>();
             _audioEventListener = GetComponent<AudioEventListener>();
-            if (initFrozen)
-            {
-                FreezeObject();
-            }
+       
         }
         public void Grab()
         {
