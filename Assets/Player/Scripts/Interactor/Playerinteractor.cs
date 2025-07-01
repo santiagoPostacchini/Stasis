@@ -102,7 +102,6 @@ namespace Player.Scripts.Interactor
                     _isHoldingThrow = true;
                     holdTime = 0f;
                     throwCharge = 0f;
-                    
                 }
             }
             

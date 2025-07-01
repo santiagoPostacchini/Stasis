@@ -1,4 +1,5 @@
 using Managers.Events;
+using Player.Scripts.MVC;
 using UnityEngine;
 
 namespace Player.Camera
@@ -15,7 +16,7 @@ namespace Player.Camera
         private readonly float _toggleSpeed = 1f;
 
         [SerializeField] private Rigidbody rb; // Ahora usa Rigidbody
-        [SerializeField] private Scripts.Player player; // Referencia al jugador
+        [SerializeField] private Model model; // Referencia al jugador
         private Vector3 _startPos;
 
         private bool _footstepTriggeredThisCycle;
@@ -79,9 +80,9 @@ namespace Player.Camera
         {
             if (_previousBobbingValue < 0 && currentBobbingValue >= 0)
             {
-                if (!_footstepTriggeredThisCycle && player && player.state != Scripts.Player.MovementState.Air)
+                if (!_footstepTriggeredThisCycle && model && model.state != Model.MovementState.Air)
                 {
-                    EventManager.TriggerEvent("OnFootstep", player.gameObject);
+                    EventManager.TriggerEvent("OnFootstep", model.gameObject);
                     _footstepTriggeredThisCycle = true;
                 }
             }

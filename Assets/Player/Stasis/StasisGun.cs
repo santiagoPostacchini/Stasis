@@ -71,8 +71,6 @@ namespace Player.Stasis
             Vector3 origin = playerCameraTransform.position;
             Vector3 direction = playerCameraTransform.forward;
             
-            
-            
             if (Physics.Raycast(origin, direction, out RaycastHit hit, Mathf.Infinity, _layer))
             {
                 bool stasisHit = false;

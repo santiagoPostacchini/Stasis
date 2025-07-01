@@ -11,7 +11,7 @@ namespace Puzzle_Elements.Hedron.Scripts
     {
 
         public Material matStasis;
-        private string OutlineThicknessName = "_BorderThickness";
+        private readonly string OutlineThicknessName = "_BorderThickness";
         private MaterialPropertyBlock _mpb;
         [SerializeField] private Renderer _renderer;
 
@@ -31,8 +31,6 @@ namespace Puzzle_Elements.Hedron.Scripts
         private Vector3 _savedVelocity;
         private Vector3 _savedAngularVelocity;
         private float _savedDrag;
-
-        [SerializeField] private LayerMask originalLayer;
 
         public bool IsOverlappingAnything { get; private set; }
 
@@ -56,10 +54,8 @@ namespace Puzzle_Elements.Hedron.Scripts
                 _savedVelocity = Vector3.zero;
                 _savedAngularVelocity = Vector3.zero;
             }
-
-            originalLayer = gameObject.layer;
+            
             gameObject.layer = _objGrabPointTransform.gameObject.layer;
-
             transform.parent = _objGrabPointTransform;
             transform.localPosition = Vector3.zero;
             transform.localRotation = Quaternion.identity;
@@ -71,7 +67,7 @@ namespace Puzzle_Elements.Hedron.Scripts
         public void Drop()
         {
             transform.parent = null;
-            gameObject.layer = originalLayer;
+            gameObject.layer = LayerMask.NameToLayer("Physics Objects");;
 
             if (!isFreezed)
             {
