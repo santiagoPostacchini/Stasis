@@ -12,11 +12,25 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6d613f08f173d4dd895bb07b3230baa9, type: 3}
   m_Name: Fog
   m_EditorClassIdentifier: 
-  m_Active: 1
+  m_Active: 0
   passMaterial: {fileID: 2100000, guid: abc63c4e407c163459c432a2a762f7b8, type: 2}
   injectionPoint: 450
   requirements: 5
   passIndex: 0
+--- !u!114 &-2258407402418035760
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e32e72b6a3f58a24c9033e2b9275eea0, type: 3}
+  m_Name: ScreenSpaceShadows
+  m_EditorClassIdentifier: 
+  m_Active: 1
+  m_Shader: {fileID: 4800000, guid: 0f854b35a0cf61a429bd5dcfea30eddd, type: 3}
 --- !u!114 &-1878332245247344467
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -72,7 +86,8 @@ MonoBehaviour:
   - {fileID: -1878332245247344467}
   - {fileID: 687950011610827132}
   - {fileID: -8952091591886976926}
-  m_RendererFeatureMap: adc0de57c6d2eee57c094a01e4168c0962c8d09c20c8c383
+  - {fileID: -2258407402418035760}
+  m_RendererFeatureMap: adc0de57c6d2eee57c094a01e4168c0962c8d09c20c8c383d0a3c2dc6e86a8e0
   m_UseNativeRenderPass: 0
   postProcessData: {fileID: 11400000, guid: 41439944d30ece34e96484bdb6645b55, type: 2}
   xrSystemData: {fileID: 11400000, guid: 60e1133243b97e347b653163a8c01b64, type: 2}
