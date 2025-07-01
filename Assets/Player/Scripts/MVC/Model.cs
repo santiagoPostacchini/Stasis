@@ -4,6 +4,7 @@ using Puzzle_Elements.AllInterfaces;
 using UnityEngine;
 using Audio.Scripts;
 using Managers.Events;
+using System.Collections;
 
 namespace Player.Scripts.MVC
 {
@@ -23,7 +24,12 @@ namespace Player.Scripts.MVC
         [SerializeField] private float jumpCooldown = 0.25f;
         [SerializeField] private float gravity = -18f;
         private bool _useGravity = true;
-        private bool _readyToJump = true;
+        [SerializeField]private bool _readyToJump = true;
+
+        [SerializeField] private float coyoteTime = 0.2f;
+        //
+        private float coyoteTimeCounter;
+
 
         [Header("Crouch")] [SerializeField] private float standHeight = 2f;
         [SerializeField] private float crouchHeight = 1f;
@@ -133,9 +139,17 @@ namespace Player.Scripts.MVC
             
             if (wallrunning)
                 WallRunningMovement();
-
+            CoyoteTime();
             ApplyGravity();
             CheckAdvancedVault();
+        }
+
+        private void CoyoteTime()
+        {
+            if (characterController.isGrounded)
+                coyoteTimeCounter = coyoteTime;
+            else
+                coyoteTimeCounter -= Time.deltaTime;
         }
         public void UpdateMoveInput(float vertical, float horizontal)
         {
@@ -250,17 +264,25 @@ namespace Player.Scripts.MVC
         {
             if (characterController.isGrounded && _verticalVelocity < 0)
                 _verticalVelocity = -2f;
-            
-            if (characterController.isGrounded && state != MovementState.Crouching && _readyToJump)
+
+            // Resetear caída si está en el suelo
+            if (characterController.isGrounded && _verticalVelocity < 0)
+                _verticalVelocity = minVerticalVelocity;
+
+            bool canUseCoyoteTime = !characterController.isGrounded && coyoteTimeCounter > 0f;
+
+            if ((characterController.isGrounded || canUseCoyoteTime) && state != MovementState.Crouching && _readyToJump)
             {
-                Debug.Log("SALTO");
+                Debug.Log(canUseCoyoteTime ? "SALTO (COYOTE TIME)" : "SALTO");
                 OnJump();
+
                 _verticalVelocity = jumpForce;
                 _readyToJump = false;
+                coyoteTimeCounter = 0f; // Cancelamos el margen de tiempo
                 Invoke(nameof(ResetJump), jumpCooldown);
             }
         }
-
+        
         private void ResetJump()
         {
             _readyToJump = true;
