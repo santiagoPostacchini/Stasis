@@ -1,5 +1,6 @@
 ﻿using Managers.Events;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace Player.Stasis
 {
@@ -7,66 +8,81 @@ namespace Player.Stasis
     public class StasisObjectEffects : MonoBehaviour
     {
         [Header("Animation Settings")]
-        [Tooltip("Curva de easing para la animación (entrada/salida)")]
         public AnimationCurve animCurve = AnimationCurve.EaseInOut(0, 0, 1, 1);
-        [Tooltip("Velocidad de la progresión (1 = 1 segundo para ir de 0→1)")]
         public float animSpeed = 2f;
 
         [Header("Scale Settings")]
-        [Tooltip("Escala en reposo")]
         public float normalScale = 1f;
-        [Tooltip("Escala al highlight")]
         public float highlightScale = 1.2f;
 
         [Header("Color Settings")]
-        [Tooltip("Color en reposo")]
         public Color normalColor = Color.white;
-        [Tooltip("Color al highlight")]
         public Color highlightColor = Color.cyan;
 
-        [Header("Rotation Settings")]
-        [Tooltip("Velocidad de giro máxima (grados/segundo)")]
-        public float rotationSpeed = 90f;
+        [SerializeField] private float rotationSpeed = 10;
 
         [Header("Eventos de Sonido")]
-        [Tooltip("Evento que dispara el tick al apuntar")]
-        public string tickingStartEvent = "Ticking.PulseStart";
-        [Tooltip("Evento que detiene el tick")]
-        public string tickingStopEvent  = "Ticking.PulseStop";
-        [Tooltip("Evento de selección de objeto staseable")]
-        public string selectEvent       = "SelectStasiable";
+       
+        public string selectEvent = "SelectStasiable";
 
-        private Coroutine _animCoroutine;
-        private bool      _isAiming;
-        private IStasis  _lastLookedStasisObject;
+        [SerializeField] private Image crosshair;
+        [SerializeField] private Sprite crosshairBasic;
+        [SerializeField] private Sprite crosshairStasis;
 
-        public void HandleVisualStasisFeedback(IStasis lookedStasisObject, bool isGrabbing)
+        [SerializeField] private IStasis _lastLookedStasisObject;
+
+        // Nueva variable para tolerancia temporal
+        private float _lastCrosshairChangeTime = -0.2f;
+        private float _changeCooldown = 0.2f; // 200 ms de espera mínima
+
+        private void Update()
         {
-            
-            if (lookedStasisObject != _lastLookedStasisObject)
+            if (crosshair.sprite == crosshairStasis)
             {
-                if (_lastLookedStasisObject != null )
-                {
-                    if (!_lastLookedStasisObject.IsFreezed)
-                    {
-                    }
+                crosshair.rectTransform.Rotate(Vector3.forward * rotationSpeed * Time.deltaTime);
+            }
+            else
+            {
+                crosshair.rectTransform.rotation = Quaternion.Euler(0f, 0f, 0f);
+            }
+        }
 
-                    EventManager.TriggerEvent(tickingStopEvent, gameObject);
-                }
-                
-                if (lookedStasisObject is { IsFreezed: false } && !isGrabbing)
-                {
-                    EventManager.TriggerEvent(tickingStartEvent, gameObject);
-                    EventManager.TriggerEvent(selectEvent,      gameObject);
-                }
-            }
-            
-            if (isGrabbing)
+        public void HandleVisualStasisFeedback(IStasis lookedStasisObject, UnityEngine.Camera cam)
+        {
+            Vector3 origin = cam.transform.position;
+            Vector3 direction = cam.transform.forward;
+            float radius = 0.3f;
+            float maxDistance = 100f;
+
+            bool hitSomething = Physics.SphereCast(origin, radius, direction, out RaycastHit hit, maxDistance);
+            IStasis hitStasis = hitSomething ? hit.collider.GetComponent<IStasis>() : null;
+
+            bool confirmed = lookedStasisObject != null && hitStasis == lookedStasisObject;
+
+            if (confirmed && _lastLookedStasisObject != lookedStasisObject)
             {
-                EventManager.TriggerEvent(tickingStopEvent, gameObject);
+                _lastLookedStasisObject = lookedStasisObject;
+                crosshair.sprite = crosshairStasis;
+                EventManager.TriggerEvent(selectEvent, gameObject);
             }
-            
-            _lastLookedStasisObject = lookedStasisObject;
+
+            if (!confirmed && _lastLookedStasisObject != null)
+            {
+                if (_lastCrosshairChangeTime < 0f)
+                    _lastCrosshairChangeTime = Time.time;
+
+                if (Time.time - _lastCrosshairChangeTime >= _changeCooldown)
+                {
+                    _lastLookedStasisObject = null;
+                    _lastCrosshairChangeTime = -1f;
+                    crosshair.sprite = crosshairBasic;
+                    Debug.Log("Crosshair reseteado a Básico");
+                }
+            }
+
+            // ▶ Si sigue apuntando, cancelar cooldown de reseteo
+            if (confirmed)
+                _lastCrosshairChangeTime = -1f;
         }
     }
 }

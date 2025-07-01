@@ -22,7 +22,7 @@ namespace Player.Stasis
         private Coroutine _beamCoroutine;
 
         private PlayerInteractor _playerInteractor;
-        private UnityEngine.Camera _mainCam;
+        [HideInInspector]public UnityEngine.Camera _mainCam;
 
         [SerializeField] private bool _canShootStasis;
         [SerializeField] private Transform posShot;

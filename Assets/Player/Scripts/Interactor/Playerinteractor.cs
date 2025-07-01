@@ -45,6 +45,7 @@ namespace Player.Scripts.Interactor
         
         [Header("FX Settings")]
         [SerializeField] private StasisObjectEffects stasisEffects;
+        [SerializeField] private StasisGun stasisGun;
         
         private Vector3 _localSmoothVel;
         private Quaternion _rotationSmoothQuat;
@@ -65,9 +66,18 @@ namespace Player.Scripts.Interactor
                 hitObject = hit.collider.gameObject;
                 
             }
-            if (Physics.Raycast(transform.position, transform.forward, out RaycastHit hit1))
+            if (Physics.Raycast(stasisGun._mainCam.transform.position, stasisGun._mainCam.transform.forward, out RaycastHit hit1))
             {
-                hit1.collider.GetComponent<IStasis>();
+                var objectStasis = hit1.collider.GetComponent<IStasis>();
+                if(objectStasis != null)
+                {
+                    stasisEffects.HandleVisualStasisFeedback(objectStasis,stasisGun._mainCam);
+                }
+                else
+                {
+                    stasisEffects.HandleVisualStasisFeedback(null,stasisGun._mainCam);
+                }
+                
 
             }
             
