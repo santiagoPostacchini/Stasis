@@ -113,7 +113,7 @@ namespace Player.Scripts.MVC
         public event Action<bool> OnCrouch = delegate { };
         public event Action OnJump = delegate { };
         public event Action OnMove = delegate { };
-        public event Action<float> OnGetDamage = delegate { };
+        public event Action OnGetDamage = delegate { };
         public event Action OnDeath = delegate { };
         public event Action OnVaultStart = delegate { };
         public event Action OnVaultEnd = delegate { };
@@ -137,8 +137,11 @@ namespace Player.Scripts.MVC
 
         private void Update()
         {
-            
 
+            if (Input.GetKeyDown(KeyCode.L))
+            {
+                TakeDamage(transform);
+            }
             _controller.OnUpdate();
             CheckForWall();
             
@@ -482,6 +485,7 @@ namespace Player.Scripts.MVC
         {
 
             transform.position = t.position;
+            OnGetDamage();
             //_currentLife -= dmg;
 
             //OnGetDamage(_currentLife / _baseLife);

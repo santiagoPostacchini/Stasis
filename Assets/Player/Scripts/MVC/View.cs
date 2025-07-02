@@ -24,6 +24,13 @@ namespace Player.Scripts.MVC
         
         public Material damageMaterialPostProcess;
         public ArmAnimationHandler armAnimationHandler;
+
+
+        [SerializeField] private HurtEffect hurtEffect;
+        private void Start()
+        {
+            hurtEffect = GetComponentInChildren<HurtEffect>();
+        }
         public void OnJumpEvent()
         {
             Debug.Log("Jumping!");
@@ -114,13 +121,15 @@ namespace Player.Scripts.MVC
             }
         }
 
-        public void OnDamageEvent(float damage)
+        public void OnDamageEvent()
         {
             Debug.Log("Damaged");
-            GetDamageVFX(damage);
+            hurtEffect.ShowHurtEffect();
+            EventManager.TriggerEvent("Hit", gameObject);
+            GetDamageVFX();
         }
 
-        private void GetDamageVFX(float damageAmmount)
+        private void GetDamageVFX()
         {
             Debug.Log("Damage VFX!");
         }
