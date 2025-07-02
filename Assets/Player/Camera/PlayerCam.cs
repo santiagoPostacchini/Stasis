@@ -14,12 +14,10 @@ namespace Player.Camera
 
         float xRotation;
         float yRotation;
-
         private void Start()
         {
             LockCursor();
         }
-
         private void Update()
         {
             // ESC siempre libera el cursor (para abrir menú, etc.)

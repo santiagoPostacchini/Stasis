@@ -30,8 +30,13 @@ public class DestroyedPieceController : MonoBehaviour,IStasis
     public MeshCollider meshCollider;
     public MeshCollider meshColliderTrigger;
     // Start is called before the first frame update
+
+    public bool alreadyColision= false;
+
+    public int ID;
     void Start()
     {
+        ID = Random.Range(1, 10000);
         _renderer = GetComponent<Renderer>();
         _mpb = new MaterialPropertyBlock();
 

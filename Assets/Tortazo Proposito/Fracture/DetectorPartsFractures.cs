@@ -12,8 +12,9 @@ public class DetectorPartsFractures : MonoBehaviour
     [SerializeField] private Vector3 boxCenterOffset = new Vector3(0f, 0f, 2f);
     [SerializeField] private LayerMask detectionLayer;
 
-    private Collider[] hits = new Collider[10];
+    [SerializeField]private Collider[] hits = new Collider[40];
     private HashSet<DestroyedPieceController> alreadyDetected = new HashSet<DestroyedPieceController>();
+    private HashSet<int> alreadyDetectedID = new HashSet<int>();
 
     void Update()
     {
@@ -23,10 +24,13 @@ public class DetectorPartsFractures : MonoBehaviour
         for (int i = 0; i < count; i++)
         {
             DestroyedPieceController part = hits[i].GetComponent<DestroyedPieceController>();
-            if (part != null && !alreadyDetected.Contains(part))
+            if (part != null && !alreadyDetectedID.Contains(part.ID))
             {
+                if (part.is_connected) return;
                 ChooseGod(part);
-                alreadyDetected.Add(part); // Solo se llama una vez
+                alreadyDetectedID.Add(part.ID); // Solo se llama una vez
+                part.alreadyColision = true;
+                
             }
         }
     }
@@ -34,9 +38,7 @@ public class DetectorPartsFractures : MonoBehaviour
     public void ChooseGod(DestroyedPieceController part)
     {
         int randomValue = Random.Range(0, 2);
-        int a = Random.Range(0, 6); // 0 es falso
-        if (a < 2) return;
-
+        
         if (randomValue == 0)
         {
             diosa1.TryStasis(part.transform, part);
