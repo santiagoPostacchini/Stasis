@@ -1,4 +1,5 @@
 using UnityEngine;
+using Player.Scripts.MVC;
 
 [RequireComponent(typeof(Rigidbody))]
 public class ErraticObject : MonoBehaviour
@@ -31,7 +32,7 @@ public class ErraticObject : MonoBehaviour
     private Vector3 currentRandomOffset;
 
     private Quaternion originalRotation;
-    [SerializeField] private bool canRotate;
+
     private void Start()
     {
         rb = GetComponent<Rigidbody>();
@@ -42,21 +43,13 @@ public class ErraticObject : MonoBehaviour
             enabled = false;
             return;
         }
-
+        rb.mass = 400;
+        rb.angularDrag = 200;
+        rb.drag = 40;
         currentTargetIndex = 0;
         ChooseNewTarget();
     }
-    private void LateUpdate()
-    {
-        if (!canRotate)
-        {
-            if (Quaternion.Angle(transform.rotation, originalRotation) > 0.1f)
-            {
-                transform.rotation = originalRotation;
-            }
-        }
-       
-    }
+    
     private void FixedUpdate()
     {
         if (isFreezed) return;
@@ -109,4 +102,5 @@ public class ErraticObject : MonoBehaviour
         currentTargetIndex = (currentTargetIndex + 1) % waypoints.Length;
         ChooseNewTarget();
     }
+    
 }

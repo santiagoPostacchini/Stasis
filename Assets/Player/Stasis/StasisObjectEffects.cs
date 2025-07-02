@@ -47,7 +47,7 @@ namespace Player.Stasis
             }
         }
 
-        public void HandleVisualStasisFeedback(IStasis lookedStasisObject, UnityEngine.Camera cam)
+        public void HandleVisualStasisFeedback(IStasis lookedStasisObject, UnityEngine.Camera cam, RaycastHit hit1)
         {
             Vector3 origin = cam.transform.position;
             Vector3 direction = cam.transform.forward;
@@ -57,9 +57,11 @@ namespace Player.Stasis
             bool hitSomething = Physics.SphereCast(origin, radius, direction, out RaycastHit hit, maxDistance);
             IStasis hitStasis = hitSomething ? hit.collider.GetComponent<IStasis>() : null;
 
+            bool objectConnected = CheckObjectStasisConnected(hit1);
+
             bool confirmed = lookedStasisObject != null && hitStasis == lookedStasisObject;
 
-            if (confirmed && _lastLookedStasisObject != lookedStasisObject)
+            if (confirmed && _lastLookedStasisObject != lookedStasisObject && !objectConnected)
             {
                 _lastLookedStasisObject = lookedStasisObject;
                 crosshair.sprite = crosshairStasis;
@@ -79,10 +81,25 @@ namespace Player.Stasis
                     Debug.Log("Crosshair reseteado a Básico");
                 }
             }
-
             // ▶ Si sigue apuntando, cancelar cooldown de reseteo
             if (confirmed)
                 _lastCrosshairChangeTime = -1f;
+        }
+
+        private bool CheckObjectStasisConnected(RaycastHit hit)
+        {
+            
+
+            DestroyedPieceController piece = hit.collider.gameObject.GetComponent<DestroyedPieceController>();
+            if (piece == null) return false;
+            if (piece.is_connected)
+            {
+                crosshair.sprite = crosshairBasic;
+                return true;
+            }
+            Debug.Log("No esta conectado");
+            return false;
+
         }
     }
 }

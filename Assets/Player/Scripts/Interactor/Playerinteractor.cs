@@ -71,11 +71,11 @@ namespace Player.Scripts.Interactor
                 var objectStasis = hit1.collider.GetComponent<IStasis>();
                 if(objectStasis != null)
                 {
-                    stasisEffects.HandleVisualStasisFeedback(objectStasis,stasisGun._mainCam);
+                    stasisEffects.HandleVisualStasisFeedback(objectStasis,stasisGun._mainCam,hit1);
                 }
                 else
                 {
-                    stasisEffects.HandleVisualStasisFeedback(null,stasisGun._mainCam);
+                    stasisEffects.HandleVisualStasisFeedback(null,stasisGun._mainCam,hit1);
                 }
                 
 

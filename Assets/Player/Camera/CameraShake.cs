@@ -22,7 +22,7 @@ namespace Player.Camera
         }
         public void PermanentShake()
         {
-            Shake(100, 0.1f);
+            Shake(20, 0.05f);
         }
         private IEnumerator ShakeCoroutine(float duration, float magnitude)
         {
