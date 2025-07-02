@@ -130,10 +130,15 @@ namespace Player.Scripts.MVC
             _audioEventListener = GetComponent<AudioEventListener>();
             _controller = new Controller(this, GetComponent<View>(), crouchKey, jumpKey);
             UpdateCameraHeight();
+
+
+            
         }
 
         private void Update()
         {
+            
+
             _controller.OnUpdate();
             CheckForWall();
             

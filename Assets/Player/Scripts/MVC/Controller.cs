@@ -35,7 +35,10 @@ namespace Player.Scripts.MVC
         {
             _h = Input.GetAxis("Horizontal");
             _v = Input.GetAxis("Vertical");
+
             
+            
+
             if (_model.isVaulting)
             {
                 StateHandler();

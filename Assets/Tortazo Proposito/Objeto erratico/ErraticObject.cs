@@ -30,10 +30,12 @@ public class ErraticObject : MonoBehaviour
     private Vector3 lastDirection;
     private Vector3 currentRandomOffset;
 
+    private Quaternion originalRotation;
+    [SerializeField] private bool canRotate;
     private void Start()
     {
         rb = GetComponent<Rigidbody>();
-
+        originalRotation = transform.rotation;
         if (waypoints.Length < 2)
         {
             Debug.LogError("Necesitás al menos 2 puntos para el movimiento errático.");
@@ -44,7 +46,17 @@ public class ErraticObject : MonoBehaviour
         currentTargetIndex = 0;
         ChooseNewTarget();
     }
-
+    private void LateUpdate()
+    {
+        if (!canRotate)
+        {
+            if (Quaternion.Angle(transform.rotation, originalRotation) > 0.1f)
+            {
+                transform.rotation = originalRotation;
+            }
+        }
+       
+    }
     private void FixedUpdate()
     {
         if (isFreezed) return;
