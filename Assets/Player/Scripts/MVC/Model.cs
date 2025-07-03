@@ -123,7 +123,9 @@ namespace Player.Scripts.MVC
 
         IController _controller;
 
-
+        public bool iAmCrouching;
+        [SerializeField]private bool _wantsToGetUp = false;
+        [SerializeField] private Transform posHead;
         private void Start()
         {
             characterController = GetComponent<CharacterController>();
@@ -137,7 +139,11 @@ namespace Player.Scripts.MVC
 
         private void Update()
         {
-
+            if (iAmCrouching && _wantsToGetUp && CanGetUp())
+            {
+                Debug.Log("Me levante");
+                UpdateCrouchInput(false);
+            }
             if (Input.GetKeyDown(KeyCode.L))
             {
                 TakeDamage(transform);
@@ -197,16 +203,40 @@ namespace Player.Scripts.MVC
             {
                 _crouchTargetHeight = crouchHeight;
                 _crouchTargetCenterY = crouchCenterY;
+                iAmCrouching = true;
+                _wantsToGetUp = false;
             }
             else
             {
-                _crouchTargetHeight = standHeight;
-                _crouchTargetCenterY = standCenterY;
+                _wantsToGetUp = true;
+                if (CanGetUp())
+                {
+                    GetUp();
+                }
+                
             }
 
             OnCrouch(isCrouching);
         }
+        public bool CanGetUp()
+        {
+            if (!iAmCrouching) return false;
+            Ray ray = new Ray(posHead.position, Vector3.up);
+            RaycastHit hit;
 
+            if (Physics.Raycast(ray, out hit, 1))
+            {
+                return false;
+            }
+            return true;
+        }
+        private void GetUp()
+        {
+            _crouchTargetHeight = standHeight;
+            _crouchTargetCenterY = standCenterY;
+            iAmCrouching = false;
+            _wantsToGetUp = false;
+        }
         public void UpdateJumpInput()
         {
             Jump();

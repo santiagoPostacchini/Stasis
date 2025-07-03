@@ -56,6 +56,7 @@ namespace Player.Scripts.MVC
 
             if (Input.GetKeyUp(_crouchKey))
             {
+                if (!_model.CanGetUp()) return;
                 _model.UpdateCrouchInput(false);
             }
 
@@ -73,7 +74,7 @@ namespace Player.Scripts.MVC
         {
             if (_model.isVaulting)
                 _model.StateUpdater(Model.MovementState.Vaulting);
-            else if (Input.GetKey(KeyCode.LeftControl))
+            else if (Input.GetKey(KeyCode.LeftControl) || _model.iAmCrouching)
                 _model.StateUpdater(Model.MovementState.Crouching);
             else if (_model.characterController.isGrounded)
                 _model.StateUpdater(Model.MovementState.Moving);
