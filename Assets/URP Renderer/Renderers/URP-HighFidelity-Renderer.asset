@@ -1,22 +1,5 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!114 &-8952091591886976926
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 6d613f08f173d4dd895bb07b3230baa9, type: 3}
-  m_Name: Fog
-  m_EditorClassIdentifier: 
-  m_Active: 1
-  passMaterial: {fileID: 2100000, guid: abc63c4e407c163459c432a2a762f7b8, type: 2}
-  injectionPoint: 450
-  requirements: 5
-  passIndex: 0
 --- !u!114 &-2258407402418035760
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -31,6 +14,24 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_Active: 1
   m_Shader: {fileID: 4800000, guid: 0f854b35a0cf61a429bd5dcfea30eddd, type: 3}
+--- !u!114 &-1882512511585877087
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d69a19d29ef66464ea0afc7cd84fd6c2, type: 3}
+  m_Name: VolumetricFogRendererFeature
+  m_EditorClassIdentifier: 
+  m_Active: 1
+  downsampleDepthShader: {fileID: 4800000, guid: cffeaeec0396a2c4dad475266cc8dfeb,
+    type: 3}
+  volumetricFogShader: {fileID: 4800000, guid: 08f816187f9af0244a95556ee0cab83f, type: 3}
+  downsampleDepthMaterial: {fileID: 0}
+  volumetricFogMaterial: {fileID: 0}
 --- !u!114 &-1878332245247344467
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -85,10 +86,9 @@ MonoBehaviour:
   m_RendererFeatures:
   - {fileID: -1878332245247344467}
   - {fileID: 687950011610827132}
-  - {fileID: -8952091591886976926}
   - {fileID: -2258407402418035760}
   - {fileID: 900595692870403741}
-  m_RendererFeatureMap: adc0de57c6d2eee57c094a01e4168c0962c8d09c20c8c383d0a3c2dc6e86a8e09d86c9d7028f7f0c
+  m_RendererFeatureMap: adc0de57c6d2eee57c094a01e4168c09d0a3c2dc6e86a8e09d86c9d7028f7f0c
   m_UseNativeRenderPass: 0
   postProcessData: {fileID: 11400000, guid: 41439944d30ece34e96484bdb6645b55, type: 2}
   xrSystemData: {fileID: 11400000, guid: 60e1133243b97e347b653163a8c01b64, type: 2}
@@ -164,7 +164,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 6d613f08f173d4dd895bb07b3230baa9, type: 3}
-  m_Name: FullScreenPassRendererFeature
+  m_Name: Hurt
   m_EditorClassIdentifier: 
   m_Active: 1
   passMaterial: {fileID: 2100000, guid: 04405a87cce1efa449ccb6edc4a11c2e, type: 2}
