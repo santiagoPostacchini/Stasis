@@ -36,15 +36,15 @@ namespace Player.Scripts.MVC
             _h = Input.GetAxis("Horizontal");
             _v = Input.GetAxis("Vertical");
 
-            
-            
 
+
+            CheckMovement();
             if (_model.isVaulting)
             {
                 StateHandler();
                 return;
             }
-
+            
             _model.StateMachine(_v, Input.GetKey(_jumpKey));
             
             _model.UpdateMoveInput(_v, _h);
@@ -69,14 +69,23 @@ namespace Player.Scripts.MVC
             
             StateHandler();
         }
-        
+        private void CheckMovement()
+        {
+            AnimatorStateInfo stateInfo = _view.animator.GetCurrentAnimatorStateInfo(0); // 0 = layer base
+
+            if (stateInfo.IsName("FP_Character|Running") && _model.iAmCrouching)
+            {
+                Debug.Log("FP_Character|Running");
+                _model.CrouchTrue();
+            }
+        }
         private void StateHandler()
         {
             if (_model.isVaulting)
                 _model.StateUpdater(Model.MovementState.Vaulting);
             else if (Input.GetKey(KeyCode.LeftControl) || _model.iAmCrouching)
                 _model.StateUpdater(Model.MovementState.Crouching);
-            else if (_model.characterController.isGrounded)
+            else if (_model.characterController.isGrounded && !_model.iAmCrouching)
                 _model.StateUpdater(Model.MovementState.Moving);
             else if ((_model.wallLeft || _model.wallRight) && _v > 0 && _model.AboveGround() && !_model.exitingWall)
                 _model.StateUpdater(Model.MovementState.Wallrunning);

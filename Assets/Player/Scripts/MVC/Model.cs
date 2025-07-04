@@ -123,9 +123,13 @@ namespace Player.Scripts.MVC
 
         IController _controller;
 
+
+
+
         public bool iAmCrouching;
-        [SerializeField]private bool _wantsToGetUp = false;
         [SerializeField] private Transform posHead;
+
+        [SerializeField]private HeadPlayer headPlayer;
         private void Start()
         {
             characterController = GetComponent<CharacterController>();
@@ -139,10 +143,9 @@ namespace Player.Scripts.MVC
 
         private void Update()
         {
-            if (iAmCrouching && _wantsToGetUp && CanGetUp())
+            if (state != MovementState.Crouching && iAmCrouching)
             {
-                Debug.Log("Me levante");
-                UpdateCrouchInput(false);
+                OnCrouch(true);
             }
             if (Input.GetKeyDown(KeyCode.L))
             {
@@ -157,13 +160,17 @@ namespace Player.Scripts.MVC
             ApplyGravity();
             CheckAdvancedVault();
         }
-
+        
         private void CoyoteTime()
         {
             if (characterController.isGrounded)
                 coyoteTimeCounter = coyoteTime;
             else
                 coyoteTimeCounter -= Time.deltaTime;
+        }
+        public void CrouchTrue()
+        {
+            OnCrouch(true);
         }
         public void UpdateMoveInput(float vertical, float horizontal)
         {
@@ -172,7 +179,7 @@ namespace Player.Scripts.MVC
 
             bool hasInput = horizontal != 0f || vertical != 0f;
             bool shouldPlayStep = hasInput && state == MovementState.Moving;
-
+           
             if (shouldPlayStep)
             {
                 if (!_isMoving)
@@ -204,11 +211,11 @@ namespace Player.Scripts.MVC
                 _crouchTargetHeight = crouchHeight;
                 _crouchTargetCenterY = crouchCenterY;
                 iAmCrouching = true;
-                _wantsToGetUp = false;
+                headPlayer.gameObject.SetActive(true);
+
             }
             else
             {
-                _wantsToGetUp = true;
                 if (CanGetUp())
                 {
                     GetUp();
@@ -216,7 +223,15 @@ namespace Player.Scripts.MVC
                 
             }
 
+            //if(isCrouching == false)
+            //{
+            //    if(headPlayer._objectUpPlayer != null)
+            //    {
+            //        return;
+            //    }
+            //}
             OnCrouch(isCrouching);
+            Debug.Log("iscrouching " + isCrouching);
         }
         public bool CanGetUp()
         {
@@ -224,7 +239,7 @@ namespace Player.Scripts.MVC
             Ray ray = new Ray(posHead.position, Vector3.up);
             RaycastHit hit;
 
-            if (Physics.Raycast(ray, out hit, 1))
+            if (Physics.Raycast(ray, out hit, 2))
             {
                 return false;
             }
@@ -235,7 +250,7 @@ namespace Player.Scripts.MVC
             _crouchTargetHeight = standHeight;
             _crouchTargetCenterY = standCenterY;
             iAmCrouching = false;
-            _wantsToGetUp = false;
+            headPlayer.gameObject.SetActive(false);
         }
         public void UpdateJumpInput()
         {
