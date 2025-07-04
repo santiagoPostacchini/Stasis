@@ -14,6 +14,7 @@ namespace Player.Scripts.MVC
 
         public Controller(Model model, View view, KeyCode crouchKey, KeyCode jumpKey)
         {
+            
             _model = model;
             _view = view;
             
@@ -35,10 +36,7 @@ namespace Player.Scripts.MVC
         {
             _h = Input.GetAxis("Horizontal");
             _v = Input.GetAxis("Vertical");
-
-
-
-            CheckMovement();
+            
             if (_model.isVaulting)
             {
                 StateHandler();
@@ -56,7 +54,6 @@ namespace Player.Scripts.MVC
 
             if (Input.GetKeyUp(_crouchKey))
             {
-                if (!_model.CanGetUp()) return;
                 _model.UpdateCrouchInput(false);
             }
 
@@ -69,23 +66,19 @@ namespace Player.Scripts.MVC
             
             StateHandler();
         }
-        private void CheckMovement()
+        
+        public bool IsCrouchPressed()
         {
-            AnimatorStateInfo stateInfo = _view.animator.GetCurrentAnimatorStateInfo(0); // 0 = layer base
-
-            if (stateInfo.IsName("FP_Character|Running") && _model.iAmCrouching)
-            {
-                Debug.Log("FP_Character|Running");
-                _model.CrouchTrue();
-            }
+            return Input.GetKey(_crouchKey);
         }
+        
         private void StateHandler()
         {
             if (_model.isVaulting)
                 _model.StateUpdater(Model.MovementState.Vaulting);
-            else if (Input.GetKey(KeyCode.LeftControl) || _model.iAmCrouching)
+            else if (_model.crouching)
                 _model.StateUpdater(Model.MovementState.Crouching);
-            else if (_model.characterController.isGrounded && !_model.iAmCrouching)
+            else if (_model.characterController.isGrounded && !_model.crouching)
                 _model.StateUpdater(Model.MovementState.Moving);
             else if ((_model.wallLeft || _model.wallRight) && _v > 0 && _model.AboveGround() && !_model.exitingWall)
                 _model.StateUpdater(Model.MovementState.Wallrunning);

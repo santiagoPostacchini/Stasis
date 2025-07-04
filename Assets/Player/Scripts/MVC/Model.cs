@@ -4,7 +4,6 @@ using Puzzle_Elements.AllInterfaces;
 using UnityEngine;
 using Audio.Scripts;
 using Managers.Events;
-using System.Collections;
 
 namespace Player.Scripts.MVC
 {
@@ -24,12 +23,10 @@ namespace Player.Scripts.MVC
         [SerializeField] private float jumpCooldown = 0.25f;
         [SerializeField] private float gravity = -18f;
         private bool _useGravity = true;
-        [SerializeField]private bool _readyToJump = true;
-
+        [SerializeField] private bool readyToJump = true;
         [SerializeField] private float coyoteTime = 0.2f;
-        //
-        private float coyoteTimeCounter;
-
+        
+        private float _coyoteTimeCounter;
 
         [Header("Crouch")] [SerializeField] private float standHeight = 2f;
         [SerializeField] private float crouchHeight = 1f;
@@ -37,6 +34,8 @@ namespace Player.Scripts.MVC
         [SerializeField] private float crouchCenterY = 0.5f;
         [SerializeField] private float eyeOffset = 0.6f;
         [SerializeField, Range(0.01f, 0.2f)] private float crouchSmoothTime = 0.08f;
+        [HideInInspector] public bool crouching;
+        [SerializeField] private LayerMask whatIsSolid;
 
         [Header("WallRunning")] 
         public LayerMask whatIsWallrun;
@@ -94,7 +93,7 @@ namespace Player.Scripts.MVC
 
         private bool _isMoving;
         private AudioEventListener _audioEventListener;
-        private bool inVault = false;
+        private bool _inVault;
         public enum MovementState
         {
             Moving,
@@ -122,40 +121,23 @@ namespace Player.Scripts.MVC
         public event Action OnClimb = delegate { };
 
         IController _controller;
-
-
-
-
-        public bool iAmCrouching;
-        [SerializeField] private Transform posHead;
-
-        [SerializeField]private HeadPlayer headPlayer;
+        
         private void Start()
         {
             characterController = GetComponent<CharacterController>();
             _audioEventListener = GetComponent<AudioEventListener>();
             _controller = new Controller(this, GetComponent<View>(), crouchKey, jumpKey);
             UpdateCameraHeight();
-
-
-            
         }
 
         private void Update()
         {
-            if (state != MovementState.Crouching && iAmCrouching)
-            {
-                OnCrouch(true);
-            }
-            if (Input.GetKeyDown(KeyCode.L))
-            {
-                TakeDamage(transform);
-            }
             _controller.OnUpdate();
             CheckForWall();
             
             if (wallrunning)
                 WallRunningMovement();
+            
             CoyoteTime();
             ApplyGravity();
             CheckAdvancedVault();
@@ -164,14 +146,11 @@ namespace Player.Scripts.MVC
         private void CoyoteTime()
         {
             if (characterController.isGrounded)
-                coyoteTimeCounter = coyoteTime;
+                _coyoteTimeCounter = coyoteTime;
             else
-                coyoteTimeCounter -= Time.deltaTime;
+                _coyoteTimeCounter -= Time.deltaTime;
         }
-        public void CrouchTrue()
-        {
-            OnCrouch(true);
-        }
+        
         public void UpdateMoveInput(float vertical, float horizontal)
         {
             _horizontalInput = horizontal;
@@ -184,7 +163,7 @@ namespace Player.Scripts.MVC
             {
                 if (!_isMoving)
                 {
-                    EventManager.TriggerEvent("Step1", gameObject); // Solo se activa una vez
+                    EventManager.TriggerEvent("Step1", gameObject); // PONGAN ESTO EN VIEW
                     _isMoving = true;
                 }
             }
@@ -192,7 +171,7 @@ namespace Player.Scripts.MVC
             {
                 if (_isMoving)
                 {
-                    _audioEventListener.StopSound("Step1"); // Se detiene si deja de moverse o no está en el suelo
+                    _audioEventListener.StopSound("Step1"); // PONGAN ESTO EN VIEW
                     _isMoving = false;
                 }
             }
@@ -203,55 +182,50 @@ namespace Player.Scripts.MVC
             float flatSpeed = flatCurrentVel.magnitude;
             OnSpeedChange(flatSpeed);
         }
-
+        
         public void UpdateCrouchInput(bool isCrouching)
         {
+            crouching = isCrouching;
+            
             if (isCrouching)
             {
                 _crouchTargetHeight = crouchHeight;
                 _crouchTargetCenterY = crouchCenterY;
-                iAmCrouching = true;
-                headPlayer.gameObject.SetActive(true);
-
             }
             else
             {
-                if (CanGetUp())
+                if (CanStandUp())
                 {
-                    GetUp();
+                    _crouchTargetHeight = standHeight;
+                    _crouchTargetCenterY = standCenterY;
                 }
-                
+                else
+                {
+                    crouching = true;
+                    _crouchTargetHeight = crouchHeight;
+                    _crouchTargetCenterY = crouchCenterY;
+                }
             }
 
-            //if(isCrouching == false)
-            //{
-            //    if(headPlayer._objectUpPlayer != null)
-            //    {
-            //        return;
-            //    }
-            //}
-            OnCrouch(isCrouching);
-            Debug.Log("iscrouching " + isCrouching);
+            
+            OnCrouch(crouching);
         }
-        public bool CanGetUp()
+        
+        private bool CanStandUp()
         {
-            if (!iAmCrouching) return false;
-            Ray ray = new Ray(posHead.position, Vector3.up);
-            RaycastHit hit;
-
-            if (Physics.Raycast(ray, out hit, 2))
-            {
-                return false;
-            }
-            return true;
+            // Calcular la posición desde donde hacer el raycast
+            Vector3 rayOrigin = transform.position + Vector3.up * (crouchHeight * 0.5f);
+    
+            // Calcular la distancia necesaria para levantarse completamente
+            float rayDistance = (standHeight - crouchHeight) + 0.1f; // Un pequeño margen de seguridad
+            
+            bool hitSomething = Physics.Raycast(rayOrigin, Vector3.up, rayDistance, whatIsSolid);
+            
+            Debug.DrawRay(rayOrigin, Vector3.up * rayDistance, hitSomething ? Color.red : Color.green);
+            
+            return !hitSomething;
         }
-        private void GetUp()
-        {
-            _crouchTargetHeight = standHeight;
-            _crouchTargetCenterY = standCenterY;
-            iAmCrouching = false;
-            headPlayer.gameObject.SetActive(false);
-        }
+        
         public void UpdateJumpInput()
         {
             Jump();
@@ -274,7 +248,7 @@ namespace Player.Scripts.MVC
             
             if (isVaulting) return;
             _moveDirection = (orientation.forward * _verticalInput + orientation.right * _horizontalInput).normalized;
-            float targetSpeed = (state == MovementState.Crouching) ? crouchSpeed : moveSpeed;
+            float targetSpeed = (crouching) ? crouchSpeed : moveSpeed;
             Vector3 desiredVelocity = _moveDirection * targetSpeed;
 
             var flatCurrentVel = new Vector3(_currentVelocity.x, 0f, _currentVelocity.z);
@@ -322,23 +296,23 @@ namespace Player.Scripts.MVC
             if (characterController.isGrounded && _verticalVelocity < 0)
                 _verticalVelocity = minVerticalVelocity;
 
-            bool canUseCoyoteTime = !characterController.isGrounded && coyoteTimeCounter > 0f;
+            bool canUseCoyoteTime = !characterController.isGrounded && _coyoteTimeCounter > 0f;
 
-            if ((characterController.isGrounded || canUseCoyoteTime) && state != MovementState.Crouching && _readyToJump)
+            if ((characterController.isGrounded || canUseCoyoteTime) && state != MovementState.Crouching && readyToJump)
             {
                 Debug.Log(canUseCoyoteTime ? "SALTO (COYOTE TIME)" : "SALTO");
                 OnJump();
 
                 _verticalVelocity = jumpForce;
-                _readyToJump = false;
-                coyoteTimeCounter = 0f; // Cancelamos el margen de tiempo
+                readyToJump = false;
+                _coyoteTimeCounter = 0f; // Cancelamos el margen de tiempo
                 Invoke(nameof(ResetJump), jumpCooldown);
             }
         }
         
         private void ResetJump()
         {
-            _readyToJump = true;
+            readyToJump = true;
         }
 
         private void ApplyGravity()
@@ -436,6 +410,24 @@ namespace Player.Scripts.MVC
         
         public void UpdateCrouchPosition()
         {
+            if (crouching)
+            {
+                if (!_controller.IsCrouchPressed() && !CanStandUp())
+                {
+                    _crouchTargetHeight = crouchHeight;
+                    _crouchTargetCenterY = crouchCenterY;
+                }
+                
+                else if (!_controller.IsCrouchPressed() && CanStandUp())
+                {
+                    crouching = false;
+                    _crouchTargetHeight = standHeight;
+                    _crouchTargetCenterY = standCenterY;
+                    OnCrouch(crouching);
+                }
+            }
+
+            
             characterController.height = Mathf.SmoothDamp(
                 characterController.height,
                 _crouchTargetHeight,
@@ -557,10 +549,10 @@ namespace Player.Scripts.MVC
         {
             if (isVaulting || Time.time < _nextVaultAllowed) return;
             if (_verticalInput <= 0f) return;
-            if (!inVault)
+            if (!_inVault)
             {
                 OnVaultStart();
-                inVault = true;
+                _inVault = true;
             } 
             int hitCount = 0;
             
@@ -606,8 +598,8 @@ namespace Player.Scripts.MVC
 
                 _verticalVelocity = force;
 
-                _readyToJump = false;
-                inVault= false;
+                readyToJump = false;
+                _inVault= false;
                 Invoke(nameof(ResetJump), jumpCooldown);
         }
     }
