@@ -25,7 +25,7 @@ namespace Puzzle_Elements.Hedron.Scripts
         private Transform _objGrabPointTransform;
         private Vector3 _velocity;
 
-        public bool isFreezed;
+        private bool _isFreezed;
         
         private bool _savedKinematic;
         private Vector3 _savedVelocity;
@@ -34,7 +34,7 @@ namespace Puzzle_Elements.Hedron.Scripts
 
         public bool IsOverlappingAnything { get; private set; }
 
-        public bool IsFreezed => isFreezed;
+        public bool IsFreezed => _isFreezed;
 
         [SerializeField] private ParticleSystem _particleFrozen;
 
@@ -49,7 +49,7 @@ namespace Puzzle_Elements.Hedron.Scripts
         }
         public void Grab()
         {
-            if (!isFreezed)
+            if (!_isFreezed)
             {
                 _savedVelocity = Vector3.zero;
                 _savedAngularVelocity = Vector3.zero;
@@ -69,7 +69,7 @@ namespace Puzzle_Elements.Hedron.Scripts
             transform.parent = null;
             gameObject.layer = LayerMask.NameToLayer("Physics Objects");;
 
-            if (!isFreezed)
+            if (!_isFreezed)
             {
                 rb.isKinematic = false;
                 rb.useGravity = true;
@@ -86,7 +86,7 @@ namespace Puzzle_Elements.Hedron.Scripts
         public void Throw(float force)
         {
             Drop();
-            if (!isFreezed)
+            if (!_isFreezed)
             {
                 Vector3 throwVelocity = _objGrabPointTransform.forward * (force / rb.mass);
                 rb.AddForce(throwVelocity);
@@ -126,7 +126,7 @@ namespace Puzzle_Elements.Hedron.Scripts
         }
         private void FreezeObject()
         {
-            if (!isFreezed)
+            if (!_isFreezed)
             {
                // _audioEventListener.SetStopEventFlag("ObjInStasis", false);
                 EventManager.TriggerEvent("ObjInStasis", gameObject);
@@ -135,7 +135,7 @@ namespace Puzzle_Elements.Hedron.Scripts
                 rb.angularVelocity = Vector3.zero;
                 rb.useGravity = false;
                 rb.isKinematic = true;
-                isFreezed = true;
+                _isFreezed = true;
                 SetColorOutline(Color.green, 1);
                 SetOutlineThickness(1.05f);
                 _particleFrozen?.Play();
@@ -163,9 +163,9 @@ namespace Puzzle_Elements.Hedron.Scripts
 
         private void UnfreezeObject()
         {
-            if (!isFreezed) return;
+            if (!_isFreezed) return;
             RestoreObjectState();
-            isFreezed = false;
+            _isFreezed = false;
             rb.useGravity = true;
             rb.isKinematic = false;
             SetColorOutline(Color.white, 0.2f);

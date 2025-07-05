@@ -20,6 +20,7 @@ namespace Puzzle_Elements.Pressure_Plate.Scripts
             if (IsFreezed) return;
             if (other.gameObject.GetComponent<IPlateActivator>() != null)
             {
+                if(pressed) return;
                 pressed = true;
                 UpdateAnimator(pressed);
                 foreach (var group in plateGroup)
@@ -34,6 +35,7 @@ namespace Puzzle_Elements.Pressure_Plate.Scripts
             if (IsFreezed) return;
             if (other.gameObject.GetComponent<IPlateActivator>() != null)
             {
+                if(!pressed) return;
                 pressed = false;
                 UpdateAnimator(pressed);
                 foreach (var group in plateGroup)

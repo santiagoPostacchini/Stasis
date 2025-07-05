@@ -168,13 +168,21 @@ namespace Player.Scripts.Interactor
         }
         private void TryDropObject()
         {
-            if (_objectGrabbable && !_objectGrabbable.IsOverlappingAnything)
+            if (_objectGrabbable)
             {
-                ThrowUISlider.Instance?.SetFill(0);
-                _objectGrabbable.Drop();
-                _objectGrabbable = null;
+                if (!_objectGrabbable.IsFreezed)
+                {
+                    ThrowUISlider.Instance?.SetFill(0);
+                    _objectGrabbable.Drop();
+                    _objectGrabbable = null;
                 
-                EventManager.TriggerEvent("OnObjectDrop", gameObject);
+                    EventManager.TriggerEvent("OnObjectDrop", gameObject);
+                } else if (!_objectGrabbable.IsOverlappingAnything)
+                {
+                    _objectGrabbable.Drop();
+                    _objectGrabbable = null;
+                    EventManager.TriggerEvent("OnObjectDrop", gameObject);
+                }
             }
         }
 

@@ -7,6 +7,9 @@ namespace Player.Scripts.MVC
 {
     public class View : MonoBehaviour
     {
+        private static readonly int Vault = Animator.StringToHash("Vault");
+        private static readonly int Speed = Animator.StringToHash("Speed");
+        private static readonly int Climb = Animator.StringToHash("Climb");
         private readonly int _jumpHash = Animator.StringToHash("Jump");
         private readonly int _crouchHash = Animator.StringToHash("Crouch");
         private readonly int _landHash = Animator.StringToHash("Land");
@@ -97,28 +100,7 @@ namespace Player.Scripts.MVC
         public void OnVaultStartEvent()
         {
             Debug.Log("Vault Start");
-            animator.SetTrigger("Vault");
-        }
-        //public void OnVaultStartEvent()
-        //{
-        //    Debug.Log("Vault Start");
-        //    if (cam)
-        //    {
-        //        cam.DoFov(70f);
-        //        int rv = UnityEngine.Random.Range(0, 2) == 0 ? -1 : 1;
-        //        cam.DoTilt(10f * rv);
-
-        //    }
-        //}
-
-        public void OnVaultEndEvent()
-        {
-            Debug.Log("Vault End");
-            if (cam)
-            {
-                cam.DoFov(65f);
-                cam.DoTilt(0f);
-            }
+            animator.SetTrigger(Vault);
         }
 
         public void OnDamageEvent()
@@ -135,7 +117,7 @@ namespace Player.Scripts.MVC
         }
         public void OnSpeedChangeEvent(float speed)
         {
-            animator.SetFloat("Speed", speed);
+            animator.SetFloat(Speed, speed);
 
             if (armAnimationHandler)
             {
@@ -145,7 +127,7 @@ namespace Player.Scripts.MVC
        
         public void OnClimbEvent()
         {
-            animator.SetTrigger("Climb");
+            animator.SetTrigger(Climb);
             EventManager.TriggerEvent("OnClimb", gameObject);
         }
     }

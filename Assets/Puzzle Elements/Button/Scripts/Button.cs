@@ -13,30 +13,29 @@ namespace Puzzle_Elements.Button.Scripts
 
         [SerializeField] private Animator animator;
         public UnityEvent onPressed;
-        [SerializeField] private TextMeshProUGUI _textInteract;
+        [SerializeField] private TextMeshProUGUI textInteract;
         public void Interact()
         {
             animator.SetTrigger(Click);
             onPressed?.Invoke();
             EventManager.TriggerEvent("Click", gameObject);
         }
-
-       
+        
         private void OnTriggerStay(Collider other)
         {
             Model player = other.GetComponent<Model>();
-            if (player != null)
+            if (player)
             {
-                if(!_textInteract.gameObject.activeSelf)
-                _textInteract.gameObject.SetActive(true);
+                if(!textInteract.gameObject.activeSelf)
+                textInteract.gameObject.SetActive(true);
             }
         }
         private void OnTriggerExit(Collider other)
         {
             Model player = other.GetComponent<Model>();
-            if (player != null)
+            if (player)
             {
-                _textInteract.gameObject.SetActive(false);
+                textInteract.gameObject.SetActive(false);
             }
 
         }

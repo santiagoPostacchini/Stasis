@@ -113,6 +113,7 @@ Transform:
   - {fileID: 1600367617710189905}
   - {fileID: 984461523259279814}
   - {fileID: 9063154295482764996}
+  - {fileID: 5335460211007417505}
   m_Father: {fileID: 1130070986401860620}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!20 &7908105322052371829
@@ -183,13 +184,13 @@ MonoBehaviour:
   m_RequiresOpaqueTextureOption: 2
   m_CameraType: 1
   m_Cameras: []
-  m_RendererIndex: 1
+  m_RendererIndex: 0
   m_VolumeLayerMask:
     serializedVersion: 2
-    m_Bits: 0
+    m_Bits: 64
   m_VolumeTrigger: {fileID: 0}
   m_VolumeFrameworkUpdateModeOption: 2
-  m_RenderPostProcessing: 0
+  m_RenderPostProcessing: 1
   m_Antialiasing: 0
   m_AntialiasingQuality: 2
   m_StopNaN: 0
@@ -224,9 +225,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   amplitude: 0.001
   frecuency: 15
-  camera: {fileID: 6629404503899682385}
+  camera: {fileID: 6187621002274601392}
   rb: {fileID: 299192002097884002}
-  player: {fileID: 0}
+  model: {fileID: 7002724833284534715}
 --- !u!1 &3694983717687289394
 GameObject:
   m_ObjectHideFlags: 0
@@ -252,7 +253,7 @@ Transform:
   m_GameObject: {fileID: 3694983717687289394}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.868, y: 0, z: 0.632}
+  m_LocalPosition: {x: 0.615, y: -0.199, z: 0.672}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -339,6 +340,7 @@ GameObject:
   - component: {fileID: 5084310610050477695}
   - component: {fileID: 24604737983196258}
   - component: {fileID: 1850982822038112043}
+  - component: {fileID: 4833171856919905694}
   m_Layer: 9
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -394,8 +396,8 @@ Camera:
     y: 0
     width: 1
     height: 1
-  near clip plane: 0.1
-  far clip plane: 1000
+  near clip plane: 0.01
+  far clip plane: 200
   field of view: 90
   orthographic: 0
   orthographic size: 5
@@ -508,6 +510,7 @@ MonoBehaviour:
   headDropStartDist: 0.9
   maxHeadDrop: 1
   stasisEffects: {fileID: 5871012401166296526}
+  stasisGun: {fileID: 2037689045398725499}
   _viewPlayer: {fileID: 0}
 --- !u!114 &2762362048058114373
 MonoBehaviour:
@@ -532,7 +535,7 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 64
   m_VolumeTrigger: {fileID: 0}
-  m_VolumeFrameworkUpdateModeOption: 2
+  m_VolumeFrameworkUpdateModeOption: 0
   m_RenderPostProcessing: 1
   m_Antialiasing: 1
   m_AntialiasingQuality: 2
@@ -596,9 +599,10 @@ MonoBehaviour:
   normalColor: {r: 1, g: 1, b: 1, a: 1}
   highlightColor: {r: 0.42352942, g: 1, b: 0, a: 0.8509804}
   rotationSpeed: 90
-  tickingStartEvent: Ticking.PulseStart
-  tickingStopEvent: Ticking.PulseStop
   selectEvent: SelectStasiable
+  crosshair: {fileID: 0}
+  crosshairBasic: {fileID: 21300000, guid: 7321d9742213dbc4c858e6e0e3e98e34, type: 3}
+  crosshairStasis: {fileID: 21300000, guid: 6566f47a5efa0de4481d70e36655f5a5, type: 3}
 --- !u!114 &2037689045398725499
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -614,12 +618,13 @@ MonoBehaviour:
   stasisOrigin: {fileID: 876134684257566666}
   stasisBeamPrefab: {fileID: 7511541719265762720, guid: c1dc9d25ab9e7ad4b94fb39f47e19e8b,
     type: 3}
+  _mainCam: {fileID: 0}
   _canShootStasis: 1
   posShot: {fileID: 876134684257566666}
   _layer:
     serializedVersion: 2
     m_Bits: 4481
-  _viewPlayer: {fileID: 0}
+  _viewPlayer: {fileID: 5339497140201166219}
 --- !u!82 &5084310610050477695
 AudioSource:
   m_ObjectHideFlags: 0
@@ -746,6 +751,24 @@ MonoBehaviour:
     - soundName: LaserFX
       delay: 0
     isStopEvent: 0
+  - eventName: SelectStasiable
+    soundDelays:
+    - soundName: SelectStasiable
+      delay: 0
+    isStopEvent: 0
+--- !u!114 &4833171856919905694
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6813735495089421477}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9e0af7fd289c0e240ac71891a11f9f69, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  hurtMaterial: {fileID: 2100000, guid: 04405a87cce1efa449ccb6edc4a11c2e, type: 2}
 --- !u!1 &7722626555423525560
 GameObject:
   m_ObjectHideFlags: 0
@@ -863,33 +886,39 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   moveSpeed: 8
-  crouchSpeed: 2
+  crouchSpeed: 5
   wallRunSpeed: 2.5
   acceleration: 200
-  deceleration: 70
+  deceleration: 400
   airControlMultiplier: 0.4
   terminalVelocity: -20
   minVerticalVelocity: -2
   jumpForce: 8
-  jumpCooldown: 0.4
+  jumpCooldown: 0.3
   gravity: -18
+  readyToJump: 1
+  coyoteTime: 0.4
   standHeight: 2
   crouchHeight: 1
   standCenterY: 0
   crouchCenterY: 0.5
   eyeOffset: 0.6
   crouchSmoothTime: 0.08
+  crouching: 0
+  whatIsSolid:
+    serializedVersion: 2
+    m_Bits: 4480
   whatIsWallrun:
     serializedVersion: 2
     m_Bits: 16384
   wallRunForce: 5
   wallJumpUpForce: 5
   wallJumpSideForce: 10
-  maxWallRunTime: 1.5
+  maxWallRunTime: 2
   exitingWall: 0
   exitWallTime: 0.5
   exitWallTimer: 0
-  wallCheckDistance: 0.5
+  wallCheckDistance: 1
   minJumpHeight: 1.5
   wallRight: 0
   wallLeft: 0
@@ -900,7 +929,7 @@ MonoBehaviour:
   crouchKey: 306
   vaultRayCount: 20
   vaultRayForwardDistance: 2
-  maxVaultRayAllowed: 15
+  maxVaultRayAllowed: 19
   whatIsVaultable:
     serializedVersion: 2
     m_Bits: 256
@@ -911,7 +940,7 @@ MonoBehaviour:
   state: 0
   wallrunning: 0
   isVaulting: 0
-  vaultCooldown: 0.2
+  vaultCooldown: 0.1
 --- !u!114 &5339497140201166219
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -927,8 +956,10 @@ MonoBehaviour:
   animator: {fileID: 7371979857852433208}
   audioSource: {fileID: 8613371158993005344}
   cam: {fileID: 2763140667297755505}
-  damageMaterialPostProcess: {fileID: 0}
+  damageMaterialPostProcess: {fileID: 2100000, guid: 04405a87cce1efa449ccb6edc4a11c2e,
+    type: 2}
   armAnimationHandler: {fileID: 0}
+  hurtEffect: {fileID: 4833171856919905694}
 --- !u!143 &8076402835921071007
 CharacterController:
   m_ObjectHideFlags: 0
@@ -1159,6 +1190,11 @@ MonoBehaviour:
     - soundName: LaserFX
       delay: 0
     isStopEvent: 0
+  - eventName: Hit
+    soundDelays:
+    - soundName: Hit
+      delay: 0
+    isStopEvent: 0
 --- !u!136 &5085900565496444458
 CapsuleCollider:
   m_ObjectHideFlags: 0
@@ -1182,6 +1218,37 @@ CapsuleCollider:
   m_Height: 0.9842318
   m_Direction: 1
   m_Center: {x: 0, y: -0.5078811, z: -0.0000000016187389}
+--- !u!1 &8422461068035238992
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5335460211007417505}
+  m_Layer: 9
+  m_Name: ImplosionParticles
+  m_TagString: Untagged
+  m_Icon: {fileID: -5938655980376293919, guid: 0000000000000000d000000000000000, type: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5335460211007417505
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8422461068035238992}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0.635, y: -0.301, z: 0.715}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 6187621002274601392}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &730493498256895533
 PrefabInstance:
   m_ObjectHideFlags: 0

@@ -344,9 +344,9 @@ namespace Player.Scripts.MVC
 
             _wallRunTimer = maxWallRunTime;
 
-            cam.DoFov(80f);
-            if (wallLeft) cam.DoTilt(-5f);
-            if (wallRight) cam.DoTilt(5f);
+            cam.DoFov(100f);
+            if (wallLeft) cam.DoTilt(-15f);
+            if (wallRight) cam.DoTilt(15f);
             OnClimb();
         }
         private void WallRunningMovement()
@@ -367,7 +367,7 @@ namespace Player.Scripts.MVC
             _useGravity = true;
             wallrunning = false;
             _wallRunTimer = maxWallRunTime;
-            cam.DoFov(65f);
+            cam.DoFov(90f);
             cam.DoTilt(0f);
         }
 
@@ -549,6 +549,8 @@ namespace Player.Scripts.MVC
         {
             if (isVaulting || Time.time < _nextVaultAllowed) return;
             if (_verticalInput <= 0f) return;
+            if(crouching) return;
+            
             if (!_inVault)
             {
                 OnVaultStart();
