@@ -1,5 +1,5 @@
 using UnityEngine;
-using Player.Scripts.MVC;
+using System.Collections;
 
 [RequireComponent(typeof(Rigidbody))]
 public class ErraticObject : MonoBehaviour
@@ -31,25 +31,38 @@ public class ErraticObject : MonoBehaviour
     private Vector3 lastDirection;
     private Vector3 currentRandomOffset;
 
-    private Quaternion originalRotation;
+    [SerializeField] private float angleStep = 90f;
+    [SerializeField] private float angleThreshold = 1f;
+    [SerializeField] private float pauseDuration = 1f;
+
+    private bool isPaused = false;
+    private Quaternion lastRotation;
+    private float totalRotation = 0f;
+    private float nextStopAngle = 90f; // primer corte
 
     private void Start()
     {
         rb = GetComponent<Rigidbody>();
-        originalRotation = transform.rotation;
+
         if (waypoints.Length < 2)
         {
             Debug.LogError("Necesitás al menos 2 puntos para el movimiento errático.");
             enabled = false;
             return;
         }
+
         rb.mass = 400;
         rb.angularDrag = 200;
         rb.drag = 40;
+
         currentTargetIndex = 0;
         ChooseNewTarget();
+
+        lastRotation = rb.rotation;
+        totalRotation = 0f;
+        nextStopAngle = angleStep;
     }
-    
+
     private void FixedUpdate()
     {
         if (isFreezed) return;
@@ -79,8 +92,32 @@ public class ErraticObject : MonoBehaviour
 
     private void ApplyContinuousRotation()
     {
-        Quaternion deltaRotation = Quaternion.Euler(rotationAxis * rotationSpeed * Time.fixedDeltaTime);
+        if (isPaused) return;
+
+        // Aplicar rotación
+        Quaternion deltaRotation = Quaternion.Euler(rotationAxis.normalized * rotationSpeed * Time.fixedDeltaTime);
         rb.MoveRotation(rb.rotation * deltaRotation);
+
+        // Calcular cuánto rotó en este frame
+        float angleThisFrame = Quaternion.Angle(lastRotation, rb.rotation);
+        totalRotation += angleThisFrame;
+        lastRotation = rb.rotation;
+
+        // ¿Pasamos el ángulo de corte?
+        if (totalRotation >= nextStopAngle - angleThreshold)
+        {
+            StartCoroutine(PauseRotation());
+
+            // Preparamos el próximo ángulo de corte (180°, 270°, etc.)
+            nextStopAngle += angleStep;
+        }
+    }
+
+    private IEnumerator PauseRotation()
+    {
+        isPaused = true;
+        yield return new WaitForSeconds(pauseDuration);
+        isPaused = false;
     }
 
     private Vector3 GetTargetWithRandomness()
@@ -102,5 +139,4 @@ public class ErraticObject : MonoBehaviour
         currentTargetIndex = (currentTargetIndex + 1) % waypoints.Length;
         ChooseNewTarget();
     }
-    
 }

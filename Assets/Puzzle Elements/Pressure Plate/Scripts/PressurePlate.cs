@@ -10,11 +10,14 @@ namespace Puzzle_Elements.Pressure_Plate.Scripts
         [Header("Plate Settings")]
         [SerializeField] private PressurePlateGroup[] plateGroup;
         [SerializeField] private Animator animator;
+        [SerializeField] private ParticleSystem _particles;
 
         public bool pressed;
         public bool canBeFreezed;
         public bool IsFreezed { get; private set; }
-        
+        private void Start()
+        {
+        }
         private void OnTriggerEnter(Collider other)
         {
             if (IsFreezed) return;
@@ -60,6 +63,15 @@ namespace Puzzle_Elements.Pressure_Plate.Scripts
         void UpdateAnimator(bool value)
         {
             animator.SetBool(Pressed, value);
+
+            if (value)
+            {
+                _particles?.Play();
+            }
+            else
+            {
+                _particles?.Stop();
+            } 
         }
     }
 }
