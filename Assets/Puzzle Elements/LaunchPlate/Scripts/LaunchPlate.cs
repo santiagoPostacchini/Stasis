@@ -57,13 +57,19 @@ namespace Puzzle_Elements.LaunchPlate.Scripts
             if (!_canLaunch) return;
 
             bool isPlayer = other.CompareTag("Player") || other.GetComponent<Model>();
-            var trajectory = isPlayer ? _playerTrajectory : _objectTrajectory;
+            bool objectInPlayerHands = other.GetComponentInParent<Model>() != null;
+            var trajectory = (isPlayer || objectInPlayerHands) ? _playerTrajectory : _objectTrajectory;
             if (trajectory.Count == 0) return;
 
             if (isPlayer)
             {
                 var model = other.GetComponent<Model>() ?? other.GetComponentInParent<Model>();
                 StartCoroutine(LaunchCharacterSplineRoutine(other.transform, trajectory, model));
+            }
+            else if(objectInPlayerHands)
+            {
+                var model = other.GetComponentInParent<Model>();
+                StartCoroutine(LaunchCharacterSplineRoutine(model.transform, trajectory, model));
             }
             else
             {
