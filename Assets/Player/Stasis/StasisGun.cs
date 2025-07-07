@@ -24,35 +24,27 @@ namespace Player.Stasis
         private PlayerInteractor _playerInteractor;
         [HideInInspector]public UnityEngine.Camera _mainCam;
 
-        [SerializeField] private bool _canShootStasis;
+        public bool _canShootStasis = false;
         [SerializeField] private Transform posShot;
         [SerializeField] private LayerMask _layer;
 
         [SerializeField] private View _viewPlayer;
 
-        private bool canShoot = false;
 
         void Start()
         {
             _playerInteractor = GetComponent<PlayerInteractor>();
             _mainCam = UnityEngine.Camera.main;
             _viewPlayer = GetComponentInParent<View>();
-            StartCoroutine(waitCanShoot());
         }
 
         void Update()
         {
-            if (Input.GetKeyDown(KeyCode.F))
-            {
-                _canShootStasis = !_canShootStasis;
-            }
-            
             if (!_canShootStasis)
                 return;
 
             if (Input.GetMouseButtonDown(0))
             {
-                if (!canShoot) return;
                 if (_playerInteractor && _playerInteractor.HasObjectInHand())
                     return;
                 
@@ -60,17 +52,18 @@ namespace Player.Stasis
                 TryApplyStasis(_mainCam.transform);
             }
         }
-        IEnumerator waitCanShoot()
+        IEnumerator waitCanShoot(float a)
         {
-            yield return new WaitForSeconds(1.2f);
-            canShoot = true;
+            yield return new WaitForSeconds(a);
+            _canShootStasis = true;
         }
         private void TryApplyStasis(Transform playerCameraTransform)
         {
             if (!_canShootStasis) return;
+            _canShootStasis = false;
             Vector3 origin = playerCameraTransform.position;
             Vector3 direction = playerCameraTransform.forward;
-            
+            StartCoroutine(waitCanShoot(1.2f));
             if (Physics.Raycast(origin, direction, out RaycastHit hit, Mathf.Infinity, _layer))
             {
                 bool stasisHit = false;
@@ -81,7 +74,9 @@ namespace Player.Stasis
                 {
 
                     StartCoroutine(waitStasisEffect(hitObject, stasisComponent));
+                    
                     stasisHit = true;
+
                     
                     
                 }
@@ -91,6 +86,7 @@ namespace Player.Stasis
                 }
                 _viewPlayer.Shoot();
                 StartCoroutine(waitShot(hit, stasisHit));
+
             }
         }
         IEnumerator waitStasisEffect(GameObject hitObject,IStasis stasisComponent)
