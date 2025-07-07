@@ -14,12 +14,14 @@ namespace Player.Camera
 
         float xRotation;
         float yRotation;
+        public bool canRotateCamera = false;
         private void Start()
         {
             LockCursor();
         }
         private void Update()
         {
+            if (!canRotateCamera) return;
             // ESC siempre libera el cursor (para abrir menú, etc.)
             if (Input.GetKeyDown(KeyCode.Escape))
             {
@@ -48,7 +50,10 @@ namespace Player.Camera
                 orientation.rotation = Quaternion.Euler(0, yRotation, 0);
             }
         }
-
+        public void CanRotateCamera()
+        {
+            canRotateCamera = true;
+        }
         private void LockCursor()
         {
             Cursor.lockState = CursorLockMode.Locked;

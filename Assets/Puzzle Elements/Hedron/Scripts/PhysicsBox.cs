@@ -68,6 +68,7 @@ namespace Puzzle_Elements.Hedron.Scripts
        
         public void Drop()
         {
+            Debug.Log("Drop");
             transform.parent = null;
             gameObject.layer = LayerMask.NameToLayer("Physics Objects");;
 
@@ -80,6 +81,7 @@ namespace Puzzle_Elements.Hedron.Scripts
             {
                 float speed = _savedVelocity.magnitude;
                 _savedVelocity = -_objGrabPointTransform.forward * speed;
+                Debug.Log("Saved velocity es " + _savedVelocity);
             }
 
             SetPlayerColliderState(false);

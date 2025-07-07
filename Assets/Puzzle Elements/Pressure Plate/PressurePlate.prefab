@@ -101,7 +101,6 @@ MonoBehaviour:
   plateGroup:
   - {fileID: 0}
   animator: {fileID: 7523901383807143407}
-  _material: {fileID: 2100000, guid: a688b2ee7ae82ba44ba36028a7f2453c, type: 2}
   _particles: {fileID: 3733484662500980473}
   pressed: 0
   canBeFreezed: 0
@@ -382,8 +381,13 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 933911840398773184, guid: c340136ca4e4bd54ba1e0fd3b436cef8,
         type: 3}
+      propertyPath: lengthInSec
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 933911840398773184, guid: c340136ca4e4bd54ba1e0fd3b436cef8,
+        type: 3}
       propertyPath: InitialModule.startLifetime.scalar
-      value: 6
+      value: 3
       objectReference: {fileID: 0}
     - target: {fileID: 933911840398773184, guid: c340136ca4e4bd54ba1e0fd3b436cef8,
         type: 3}
