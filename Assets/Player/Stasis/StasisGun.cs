@@ -30,6 +30,7 @@ namespace Player.Stasis
 
         [SerializeField] private View _viewPlayer;
 
+        [SerializeField] private float _cooldown;
 
         void Start()
         {
@@ -63,7 +64,7 @@ namespace Player.Stasis
             _canShootStasis = false;
             Vector3 origin = playerCameraTransform.position;
             Vector3 direction = playerCameraTransform.forward;
-            StartCoroutine(waitCanShoot(1.2f));
+            StartCoroutine(waitCanShoot(_cooldown));
             if (Physics.Raycast(origin, direction, out RaycastHit hit, Mathf.Infinity, _layer))
             {
                 bool stasisHit = false;
