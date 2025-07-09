@@ -9,23 +9,27 @@ namespace Puzzle_Elements.LaunchPlate.Scripts
     [RequireComponent(typeof(Collider))]
     public class LaunchPlate : MonoBehaviour
     {
-        [Header("Player Path")] [SerializeField]
-        private Transform playerTrajectoryParent;
-
+        [Header("Player Path")]
+        [SerializeField] private Transform playerTrajectoryParent;
         private readonly List<Transform> _playerTrajectory = new();
 
-        [Header("Object Path")] [SerializeField]
-        private Transform objectTrajectoryParent;
-
+        [Header("Object Path")]
+        [SerializeField] private Transform objectTrajectoryParent;
         private readonly List<Transform> _objectTrajectory = new();
 
-        [Header("Physics")] [SerializeField] private float timeToNextNode = 0.5f;
+        [Header("Line Renderers")]
+        [SerializeField] private LineRenderer playerLineRenderer;
+        [SerializeField] private LineRenderer objectLineRenderer;
+
+        [Header("Physics")]
+        [SerializeField] private float timeToNextNode = 0.5f;
         [SerializeField] private float pointReachThreshold = 0.2f;
-        
+
         [Header("Spline Launch")]
         [SerializeField] private float totalLaunchTime = 1.5f;
 
-        [Header("Cooldown")] [SerializeField] private float cooldown = 0.5f;
+        [Header("Cooldown")]
+        [SerializeField] private float cooldown = 0.5f;
 
         private bool _canLaunch = true;
 
@@ -36,12 +40,18 @@ namespace Puzzle_Elements.LaunchPlate.Scripts
 
             BuildPath(playerTrajectoryParent, _playerTrajectory);
             BuildPath(objectTrajectoryParent, _objectTrajectory);
+
+            DrawLineRenderer(_playerTrajectory, playerLineRenderer, Color.cyan);
+            DrawLineRenderer(_objectTrajectory, objectLineRenderer, Color.yellow);
         }
 
         private void OnValidate()
         {
             BuildPath(playerTrajectoryParent, _playerTrajectory);
             BuildPath(objectTrajectoryParent, _objectTrajectory);
+
+            DrawLineRenderer(_playerTrajectory, playerLineRenderer, Color.cyan);
+            DrawLineRenderer(_objectTrajectory, objectLineRenderer, Color.yellow);
         }
 
         private static void BuildPath(Transform parent, List<Transform> path)
@@ -61,19 +71,16 @@ namespace Puzzle_Elements.LaunchPlate.Scripts
             var trajectory = (isPlayer || objectInPlayerHands) ? _playerTrajectory : _objectTrajectory;
             if (trajectory.Count == 0) return;
 
-            if (isPlayer|| objectInPlayerHands)
+            if (isPlayer || objectInPlayerHands)
             {
                 var model = other.GetComponent<Model>() ?? other.GetComponentInParent<Model>();
                 StartCoroutine(LaunchCharacterSplineRoutine(other.transform, trajectory, model));
             }
             else
             {
-
                 Rigidbody rb = other.attachedRigidbody ?? other.GetComponent<Rigidbody>();
                 if (!rb) return;
-
                 StartCoroutine(LaunchRigidbodyRoutine(rb, trajectory));
-
             }
         }
 
@@ -85,12 +92,11 @@ namespace Puzzle_Elements.LaunchPlate.Scripts
 
             float duration = totalLaunchTime;
             float elapsed = 0f;
-            
+
             List<Vector3> points = new List<Vector3>();
             points.Add(path[0].position + (path[0].position - path[1].position));
             for (int i = 0; i < numNodes; i++) points.Add(path[i].position);
-            points.Add(path[numNodes - 1].position +
-                       (path[numNodes - 1].position - path[numNodes - 2].position));
+            points.Add(path[numNodes - 1].position + (path[numNodes - 1].position - path[numNodes - 2].position));
 
             while (elapsed < duration)
             {
@@ -98,29 +104,25 @@ namespace Puzzle_Elements.LaunchPlate.Scripts
                 float scaledT = t * (numNodes - 1);
                 int seg = Mathf.FloorToInt(scaledT);
                 float segT = scaledT - seg;
-                
+
                 seg = Mathf.Clamp(seg, 0, numNodes - 2);
-                
+
                 Vector3 p0 = points[seg];
                 Vector3 p1 = points[seg + 1];
                 Vector3 p2 = points[seg + 2];
                 Vector3 p3 = points[seg + 3];
 
                 Vector3 pos = CatmullRom.CatmullRomCalc(p0, p1, p2, p3, segT);
-                
+
                 if (model)
-                {
                     model.SetLaunchSplinePosition(pos);
-                }
                 else
-                {
                     tr.position = pos;
-                }
 
                 elapsed += Time.deltaTime;
                 yield return null;
             }
-            
+
             if (model)
                 model.SetLaunchSplinePosition(path[numNodes - 1].position);
             else
@@ -177,8 +179,37 @@ namespace Puzzle_Elements.LaunchPlate.Scripts
             result.y = vy;
             return result;
         }
-        
-        #if UNITY_EDITOR
+
+        private void DrawLineRenderer(List<Transform> path, LineRenderer lr, Color color)
+        {
+            if (path.Count < 2 || lr == null) return;
+
+            List<Vector3> points = new List<Vector3>();
+            points.Add(path[0].position + (path[0].position - path[1].position));
+            for (int i = 0; i < path.Count; i++)
+                points.Add(path[i].position);
+            points.Add(path[^1].position + (path[^1].position - path[^2].position));
+
+            const int stepsPerSegment = 16;
+            List<Vector3> linePoints = new List<Vector3>();
+
+            for (int i = 0; i < points.Count - 3; i++)
+            {
+                for (int j = 0; j <= stepsPerSegment; j++)
+                {
+                    float t = j / (float)stepsPerSegment;
+                    Vector3 pos = CatmullRom.CatmullRomCalc(points[i], points[i + 1], points[i + 2], points[i + 3], t);
+                    linePoints.Add(pos);
+                }
+            }
+
+            lr.positionCount = linePoints.Count;
+            lr.SetPositions(linePoints.ToArray());
+            lr.startColor = color;
+            lr.endColor = color;
+        }
+
+#if UNITY_EDITOR
         private void OnDrawGizmos()
         {
             if (playerTrajectoryParent && playerTrajectoryParent.childCount >= 2)
@@ -205,6 +236,6 @@ namespace Puzzle_Elements.LaunchPlate.Scripts
                 }
             }
         }
-    #endif
+#endif
     }
 }
