@@ -46,7 +46,7 @@ public class ErraticObject : MonoBehaviour
 
         if (waypoints.Length < 2)
         {
-            Debug.LogError("Necesitás al menos 2 puntos para el movimiento errático.");
+            Debug.LogError("Necesitï¿½s al menos 2 puntos para el movimiento errï¿½tico.");
             enabled = false;
             return;
         }
@@ -86,7 +86,7 @@ public class ErraticObject : MonoBehaviour
         Vector3 moveDirection = (targetPosition - rb.position).normalized;
         lastDirection = moveDirection;
 
-        Vector3 movement = moveDirection * speed * Time.fixedDeltaTime;
+        Vector3 movement = moveDirection * (speed * Time.fixedDeltaTime);
         rb.MovePosition(rb.position + movement);
     }
 
@@ -94,21 +94,21 @@ public class ErraticObject : MonoBehaviour
     {
         if (isPaused) return;
 
-        // Aplicar rotación
-        Quaternion deltaRotation = Quaternion.Euler(rotationAxis.normalized * rotationSpeed * Time.fixedDeltaTime);
+        // Aplicar rotaciï¿½n
+        Quaternion deltaRotation = Quaternion.Euler(rotationAxis.normalized * (rotationSpeed * Time.fixedDeltaTime));
         rb.MoveRotation(rb.rotation * deltaRotation);
 
-        // Calcular cuánto rotó en este frame
+        // Calcular cuï¿½nto rotï¿½ en este frame
         float angleThisFrame = Quaternion.Angle(lastRotation, rb.rotation);
         totalRotation += angleThisFrame;
         lastRotation = rb.rotation;
 
-        // ¿Pasamos el ángulo de corte?
+        // ï¿½Pasamos el ï¿½ngulo de corte?
         if (totalRotation >= nextStopAngle - angleThreshold)
         {
             StartCoroutine(PauseRotation());
 
-            // Preparamos el próximo ángulo de corte (180°, 270°, etc.)
+            // Preparamos el prï¿½ximo ï¿½ngulo de corte (180ï¿½, 270ï¿½, etc.)
             nextStopAngle += angleStep;
         }
     }
