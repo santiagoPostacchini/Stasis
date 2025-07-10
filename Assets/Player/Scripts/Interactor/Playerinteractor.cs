@@ -69,19 +69,12 @@ namespace Player.Scripts.Interactor
             if (Physics.Raycast(transform.position, transform.forward, out RaycastHit hit, pickUpRange))
             {
                 hitObject = hit.collider.gameObject;
-                
             }
+            
             if (Physics.Raycast(stasisGun.mainCam.transform.position, stasisGun.mainCam.transform.forward, out RaycastHit hit1))
             {
                 var objectStasis = hit1.collider.GetComponent<IStasis>();
-                if(objectStasis != null)
-                {
-                    stasisEffects.HandleVisualStasisFeedback(objectStasis,stasisGun.mainCam,hit1);
-                }
-                else
-                {
-                    stasisEffects.HandleVisualStasisFeedback(null,stasisGun.mainCam,hit1);
-                }
+                stasisEffects.HandleVisualStasisFeedback(objectStasis ?? null, stasisGun.mainCam, hit1);
             }
             
             if (Input.GetKeyDown(KeyCode.E))
@@ -151,10 +144,11 @@ namespace Player.Scripts.Interactor
         private void TryGrabObject(GameObject hitObject)
         {
             OnGrabItem();
-            StartCoroutine(waitGrab(hitObject));
+            StartCoroutine(WaitGrab(hitObject));
             
         }
-        IEnumerator waitGrab(GameObject hitObject)
+
+        private IEnumerator WaitGrab(GameObject hitObject)
         {
             yield return new WaitForSeconds(0.2f);
             if (hitObject && hitObject.TryGetComponent(out PhysicsBox physicsObject))
