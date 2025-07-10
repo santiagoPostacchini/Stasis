@@ -23,10 +23,9 @@ namespace Player.Scripts.MVC
 
             _model.OnCrouch += _view.OnCrouchEvent;
             _model.OnJump += _view.OnJumpEvent;
-            _model.OnLand += _view.OnLandEvent;
-            _model.OnMove += _view.OnMoveEvent;
             _model.OnGetDamage += _view.OnDamageEvent;
             _model.OnVaultStart += _view.OnVaultStartEvent;
+            _model.OnVaultEnd += _view.OnVaultEndEvent;
             _model.OnSpeedChange += _view.OnSpeedChangeEvent;
             _model.OnClimb += _view.OnClimbEvent;
         }

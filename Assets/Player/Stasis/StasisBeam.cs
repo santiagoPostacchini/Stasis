@@ -62,19 +62,18 @@ namespace Player.Stasis
             if (lightStasis)
                 lightStasis.enabled = false;
 
-            StartCoroutine(waitSoundCheckHit(hit));
+            StartCoroutine(WaitSoundCheckHit(hit));
             
             yield return new WaitForSeconds(lightOffDelay);
             DisableBeam();
         }
-        IEnumerator waitSoundCheckHit(bool hit)
+
+        private IEnumerator WaitSoundCheckHit(bool hit)
         {
             yield return new WaitForSeconds(0.1f);
             EventManager.TriggerEvent(hit ? successEventName : failEventName, gameObject);
             yield return new WaitForSeconds(lightOffDelay);
             DisableBeam();
-
-
         }
         private void DisableBeam()
         {

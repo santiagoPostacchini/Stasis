@@ -26,8 +26,8 @@ namespace Puzzle_Elements.Button.Scripts
             Model player = other.GetComponent<Model>();
             if (player)
             {
-                if(!textInteract.gameObject.activeSelf)
-                textInteract.gameObject.SetActive(true);
+                if (!textInteract.gameObject.activeSelf)
+                    textInteract.gameObject.SetActive(true);
             }
         }
         private void OnTriggerExit(Collider other)

@@ -1,4 +1,6 @@
 using System;
+using System.Collections;
+using System.Collections.Generic;
 using Player.Camera;
 using Puzzle_Elements.AllInterfaces;
 using UnityEngine;
@@ -65,6 +67,8 @@ namespace Player.Scripts.MVC
         [SerializeField] private float vaultRayForwardDistance = 1.0f;
         [SerializeField] private int maxVaultRayAllowed = 5;
         [SerializeField] private LayerMask whatIsVaultable;
+        [SerializeField] private float vaultCooldown = 0.2f;
+        private float _nextVaultAllowed;
         
         [Header("Life")] private float _currentLife;
         private float _baseLife;
@@ -108,12 +112,12 @@ namespace Player.Scripts.MVC
         public bool wallrunning;
         public bool isVaulting;
 
-        public event Action OnLand = delegate { };
+        //public event Action OnLand = delegate { };
         public event Action<bool> OnCrouch = delegate { };
         public event Action OnJump = delegate { };
-        public event Action OnMove = delegate { };
+        //public event Action OnMove = delegate { };
         public event Action OnGetDamage = delegate { };
-        public event Action OnDeath = delegate { };
+        //public event Action OnDeath = delegate { };
         public event Action OnVaultStart = delegate { };
         public event Action OnVaultEnd = delegate { };
         public event Action<float> OnSpeedChange = delegate { };
@@ -251,8 +255,6 @@ namespace Player.Scripts.MVC
             float targetSpeed = (crouching) ? crouchSpeed : moveSpeed;
             Vector3 desiredVelocity = _moveDirection * targetSpeed;
 
-            var flatCurrentVel = new Vector3(_currentVelocity.x, 0f, _currentVelocity.z);
-
             float effectiveAcceleration = acceleration;
             float effectiveDeceleration = deceleration;
             if (!characterController.isGrounded)
@@ -261,7 +263,7 @@ namespace Player.Scripts.MVC
                 effectiveDeceleration *= airControlMultiplier;
             }
 
-            flatCurrentVel = new Vector3(_currentVelocity.x, 0f, _currentVelocity.z);
+            var flatCurrentVel = new Vector3(_currentVelocity.x, 0f, _currentVelocity.z);
             var flatDesiredVel = new Vector3(desiredVelocity.x, 0f, desiredVelocity.z);
 
             if (_moveDirection.magnitude > 0.1f)
@@ -405,8 +407,6 @@ namespace Player.Scripts.MVC
             return !Physics.Raycast(transform.position, Vector3.down, minJumpHeight, whatIsGround);
         }
         
-        private float _nextVaultAllowed;
-        [SerializeField] private float vaultCooldown = 0.2f;
         
         public void UpdateCrouchPosition()
         {
@@ -533,10 +533,10 @@ namespace Player.Scripts.MVC
             //}
         }
        
-        void Death()
+        /*void Death()
         {
             OnDeath();
-        }
+        }*/
         
         public void SetLaunchSplinePosition(Vector3 pos)
         {
@@ -545,6 +545,7 @@ namespace Player.Scripts.MVC
             characterController.enabled = true;
         }
         
+        // ReSharper disable Unity.PerformanceAnalysis
         private void CheckAdvancedVault()
         {
             if (isVaulting || Time.time < _nextVaultAllowed) return;
@@ -553,7 +554,6 @@ namespace Player.Scripts.MVC
             
             if (!_inVault)
             {
-                OnVaultStart();
                 _inVault = true;
             } 
             int hitCount = 0;
@@ -588,20 +588,21 @@ namespace Player.Scripts.MVC
 
             if (hitCount > 0 && !tooHigh)
             {
-                AdvancedVault(hitCount);
+                if(hitCount > maxVaultRayAllowed/3)
+                    OnVaultStart();
+                StartCoroutine(AdvancedVault(++hitCount));
             }
         }
         
-        private void AdvancedVault(int force)
+        // ReSharper disable Unity.PerformanceAnalysis
+        private IEnumerator AdvancedVault(int force)
         {
                 Debug.Log($"Vaulting con fuerza: {force}");
-
-                OnJump();
-
                 _verticalVelocity = force;
-
+                yield return new WaitForSeconds(0.2f);
+                OnVaultEnd();
                 readyToJump = false;
-                _inVault= false;
+                _inVault = false;
                 Invoke(nameof(ResetJump), jumpCooldown);
         }
     }

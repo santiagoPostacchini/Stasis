@@ -2,14 +2,12 @@ using Player.Camera;
 using UnityEngine;
 using Managers.Events;
 
-
 namespace Player.Scripts.MVC
 {
     public class View : MonoBehaviour
     {
-        private static readonly int Vault = Animator.StringToHash("Vault");
-        private static readonly int Speed = Animator.StringToHash("Speed");
-        private static readonly int Climb = Animator.StringToHash("Climb");
+        private readonly int _speedHash = Animator.StringToHash("Speed");
+        private readonly int _climbHash = Animator.StringToHash("Climb");
         private readonly int _jumpHash = Animator.StringToHash("Jump");
         private readonly int _crouchHash = Animator.StringToHash("Crouch");
         private readonly int _landHash = Animator.StringToHash("Land");
@@ -17,12 +15,9 @@ namespace Player.Scripts.MVC
         private readonly int _dropHash = Animator.StringToHash("Drop");
         private readonly int _throwHash = Animator.StringToHash("Throw");
         private readonly int _shotHash = Animator.StringToHash("Shot");
-        private readonly int _idleHash = Animator.StringToHash("Idle");
-        private readonly int _climbHash = Animator.StringToHash("Climb");
         private readonly int _vaultHash = Animator.StringToHash("Vault");
 
-        public Animator animator; //hay que modificar el animator para utilizar estos nuevos valores 
-        public AudioSource audioSource;
+        public Animator animator;
         public PlayerCam cam;
         
         public Material damageMaterialPostProcess;
@@ -34,21 +29,19 @@ namespace Player.Scripts.MVC
         {
             hurtEffect = GetComponentInChildren<HurtEffect>();
         }
+        
         public void OnJumpEvent()
         {
             Debug.Log("Jumping!");
             animator.SetTrigger(_jumpHash);
             EventManager.TriggerEvent("OnJump", gameObject);
         }
-        public void Shoot()
-        {
-            OnShotEvent();
-            EventManager.TriggerEvent("OnShot", gameObject); // Evento para brazos
-        }
+        
         public void OnShotEvent()
         {
             Debug.Log("Shooting!");
             animator.SetTrigger(_shotHash);
+            EventManager.TriggerEvent("OnShot", gameObject);
         }
 
         public void OnLandEvent()
@@ -63,20 +56,12 @@ namespace Player.Scripts.MVC
             Debug.Log(txt);
             animator.SetBool(_crouchHash, isCrouching);
         }
-
-        public void OnIdleEvent()
-        {
-            animator.SetTrigger(_idleHash);
-        }
-        public void GrabObject()
-        {
-            OnGrabEvent();  // Animaci�n del cuerpo
-            EventManager.TriggerEvent("OnObjectGrab", gameObject); // Evento para brazos
-        }
+        
         public void OnGrabEvent()
         {
             Debug.Log("Grabing!");
             animator.SetTrigger(_grabHash);
+            EventManager.TriggerEvent("OnObjectGrab", gameObject);
         } 
         
         public void OnDropEvent()
@@ -90,17 +75,19 @@ namespace Player.Scripts.MVC
             Debug.Log("Throwing!");
             animator.SetTrigger(_throwHash);
         }
-
-        public void OnMoveEvent()
-        {
-           
-            //Debug.Log("Moving!");
-           //EventManager.TriggerEvent("OnFootstep", gameObject);
-        }
+        
         public void OnVaultStartEvent()
         {
             Debug.Log("Vault Start");
-            animator.SetTrigger(Vault);
+            animator.SetTrigger(_vaultHash);
+            var rand = Random.Range(0, 2) * 2 - 1;
+            cam.DoTilt(10f * rand);
+        }
+        
+        public void OnVaultEndEvent()
+        {
+            Debug.Log("Vault End");
+            cam.DoTilt(0f);
         }
 
         public void OnDamageEvent()
@@ -117,7 +104,7 @@ namespace Player.Scripts.MVC
         }
         public void OnSpeedChangeEvent(float speed)
         {
-            animator.SetFloat(Speed, speed);
+            animator.SetFloat(_speedHash, speed);
 
             if (armAnimationHandler)
             {
@@ -127,7 +114,7 @@ namespace Player.Scripts.MVC
        
         public void OnClimbEvent()
         {
-            animator.SetTrigger(Climb);
+            animator.SetTrigger(_climbHash);
             EventManager.TriggerEvent("OnClimb", gameObject);
         }
     }

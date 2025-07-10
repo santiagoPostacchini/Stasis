@@ -22,6 +22,6 @@ public class FirstMovementCameraPlayer : MonoBehaviour
     }
     public void CanShootStasis()
     {
-        _stasisGun._canShootStasis = true;
+        _stasisGun.canShootStasis = true;
     }
 }

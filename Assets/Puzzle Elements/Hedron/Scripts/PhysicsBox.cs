@@ -9,9 +9,9 @@ namespace Puzzle_Elements.Hedron.Scripts
 {
     public class PhysicsBox : MonoBehaviour, IStasis, IPlateActivator
     {
-
+        private static readonly int Color1 = Shader.PropertyToID("_Color");
         public Material matStasis;
-        private readonly string OutlineThicknessName = "_BorderThickness";
+        private readonly string _outlineThicknessName = "_BorderThickness";
         private MaterialPropertyBlock _mpb;
         [SerializeField] private Renderer _renderer;
 
@@ -36,7 +36,7 @@ namespace Puzzle_Elements.Hedron.Scripts
 
         public bool IsFreezed => _isFreezed;
 
-        [SerializeField] private ParticleSystem _particleFrozen;
+        [SerializeField] private ParticleSystem particleFrozen;
 
 
         private AudioEventListener _audioEventListener;
@@ -70,7 +70,7 @@ namespace Puzzle_Elements.Hedron.Scripts
         {
             Debug.Log("Drop");
             transform.parent = null;
-            gameObject.layer = LayerMask.NameToLayer("Physics Objects");;
+            gameObject.layer = LayerMask.NameToLayer("Physics Objects");
 
             if (!_isFreezed)
             {
@@ -142,7 +142,7 @@ namespace Puzzle_Elements.Hedron.Scripts
                 _isFreezed = true;
                 SetColorOutline(Color.green, 1);
                 SetOutlineThickness(1.05f);
-                _particleFrozen?.Play();
+                particleFrozen?.Play();
             }
         }
 
@@ -174,7 +174,7 @@ namespace Puzzle_Elements.Hedron.Scripts
             rb.isKinematic = false;
             SetColorOutline(Color.white, 0.2f);
             SetOutlineThickness(0f);
-            _particleFrozen?.Stop();
+            particleFrozen?.Stop();
             //_audioEventListener.SetStopEventFlag("ObjInStasis", true, true);
             _audioEventListener.StopSound("ObjInStasis");
         }
@@ -182,10 +182,10 @@ namespace Puzzle_Elements.Hedron.Scripts
 
         public void SetOutlineThickness(float thickness)
         {
-            if (_renderer != null && _mpb != null)
+            if (_renderer && _mpb != null)
             {
                 _renderer.GetPropertyBlock(_mpb);
-                _mpb.SetFloat(OutlineThicknessName, thickness);
+                _mpb.SetFloat(_outlineThicknessName, thickness);
                 // _mpb.SetColor("_Color", Color.green);
                 _renderer.SetPropertyBlock(_mpb);
                 //Glow(false, 1);
@@ -196,7 +196,7 @@ namespace Puzzle_Elements.Hedron.Scripts
             _renderer.GetPropertyBlock(_mpb);
             //_mpb.SetFloat("_Alpha", alpha);
 
-            _mpb.SetColor("_Color", color);
+            _mpb.SetColor(Color1, color);
             _renderer.SetPropertyBlock(_mpb);
         }
     }

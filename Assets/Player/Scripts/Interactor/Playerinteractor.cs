@@ -1,3 +1,4 @@
+using System;
 using Managers.Events;
 using Player.Stasis;
 using Puzzle_Elements.Hedron.Scripts;
@@ -50,11 +51,15 @@ namespace Player.Scripts.Interactor
         private Vector3 _localSmoothVel;
         private Quaternion _rotationSmoothQuat;
         private Vector3 _positionSmoothVelocity;
-        [SerializeField] private View _viewPlayer;
+        private View _view;
+        
+        public event Action OnGrabItem = delegate { };
+        
        void Start()
         {
             _rotationSmoothQuat = objectGrabPointTransform.rotation;
-            _viewPlayer = GetComponentInParent<View>();
+            _view = GetComponentInParent<View>();
+            OnGrabItem += _view.OnGrabEvent;
         }
 
         void Update()
@@ -66,19 +71,17 @@ namespace Player.Scripts.Interactor
                 hitObject = hit.collider.gameObject;
                 
             }
-            if (Physics.Raycast(stasisGun._mainCam.transform.position, stasisGun._mainCam.transform.forward, out RaycastHit hit1))
+            if (Physics.Raycast(stasisGun.mainCam.transform.position, stasisGun.mainCam.transform.forward, out RaycastHit hit1))
             {
                 var objectStasis = hit1.collider.GetComponent<IStasis>();
                 if(objectStasis != null)
                 {
-                    stasisEffects.HandleVisualStasisFeedback(objectStasis,stasisGun._mainCam,hit1);
+                    stasisEffects.HandleVisualStasisFeedback(objectStasis,stasisGun.mainCam,hit1);
                 }
                 else
                 {
-                    stasisEffects.HandleVisualStasisFeedback(null,stasisGun._mainCam,hit1);
+                    stasisEffects.HandleVisualStasisFeedback(null,stasisGun.mainCam,hit1);
                 }
-                
-
             }
             
             if (Input.GetKeyDown(KeyCode.E))
@@ -147,13 +150,13 @@ namespace Player.Scripts.Interactor
         
         private void TryGrabObject(GameObject hitObject)
         {
-            _viewPlayer.GrabObject();
+            OnGrabItem();
             StartCoroutine(waitGrab(hitObject));
             
         }
         IEnumerator waitGrab(GameObject hitObject)
         {
-            yield return new WaitForSeconds(0.5f);
+            yield return new WaitForSeconds(0.2f);
             if (hitObject && hitObject.TryGetComponent(out PhysicsBox physicsObject))
             {
                 objectGrabPointTransform.position = hitObject.transform.position;

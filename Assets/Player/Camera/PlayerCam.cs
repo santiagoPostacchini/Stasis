@@ -35,8 +35,7 @@ namespace Player.Camera
             {
                 LockCursor();
             }
-
-            // Rotación de cámara sólo cuando el cursor está bloqueado
+            
             if (Cursor.lockState == CursorLockMode.Locked)
             {
                 float mouseX = Input.GetAxisRaw("Mouse X") * Time.deltaTime * sens;
@@ -44,7 +43,7 @@ namespace Player.Camera
 
                 yRotation += mouseX;
                 xRotation -= mouseY;
-                xRotation = Mathf.Clamp(xRotation, -75f, 75f);
+                xRotation = Mathf.Clamp(xRotation, -90f, 90f);
 
                 camHolder.rotation = Quaternion.Euler(xRotation, yRotation, 0);
                 orientation.rotation = Quaternion.Euler(0, yRotation, 0);
@@ -65,14 +64,12 @@ namespace Player.Camera
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
         }
-
-        // Ejemplo de efecto de cambio de FOV con DOTween
+        
         public void DoFov(float endValue)
         {
             GetComponent<UnityEngine.Camera>().DOFieldOfView(endValue, 0.25f);
         }
-
-        // Ejemplo de tilt/cabeceo de cámara con DOTween
+        
         public void DoTilt(float zTilt)
         {
             transform.DOLocalRotate(new Vector3(0, 0, zTilt), 0.25f);

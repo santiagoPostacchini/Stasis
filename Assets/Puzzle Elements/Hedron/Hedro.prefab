@@ -143,7 +143,7 @@ Rigidbody:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1410952592698481589}
   serializedVersion: 4
-  m_Mass: 15
+  m_Mass: 30
   m_Drag: 0
   m_AngularDrag: 0.05
   m_CenterOfMass: {x: 0, y: 0, z: 0}
@@ -179,12 +179,7 @@ MonoBehaviour:
   mainCollider: {fileID: 8254887600969419534}
   playerCollider: {fileID: 2509437268334227207}
   rb: {fileID: 7904837832302133731}
-  isFreezed: 0
-  originalLayer:
-    serializedVersion: 2
-    m_Bits: 4096
-  initFrozen: 1
-  _particleFrozen: {fileID: 4473172843670530854}
+  particleFrozen: {fileID: 0}
 --- !u!82 &8387434314372414841
 AudioSource:
   m_ObjectHideFlags: 0

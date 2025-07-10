@@ -1,5 +1,6 @@
 using Puzzle_Elements.AllInterfaces;
 using UnityEngine;
+using System.Collections.Generic;
 
 namespace Puzzle_Elements.Pressure_Plate.Scripts
 {
@@ -15,20 +16,27 @@ namespace Puzzle_Elements.Pressure_Plate.Scripts
         public bool pressed;
         public bool canBeFreezed;
         public bool IsFreezed { get; private set; }
-        private void Start()
-        {
-        }
+        
+        private List<GameObject> objectsOnPlate = new List<GameObject>();
+
         private void OnTriggerEnter(Collider other)
         {
             if (IsFreezed) return;
             if (other.gameObject.GetComponent<IPlateActivator>() != null)
             {
-                if(pressed) return;
-                pressed = true;
-                UpdateAnimator(pressed);
-                foreach (var group in plateGroup)
+                if (!objectsOnPlate.Contains(other.gameObject))
                 {
-                    group.NotifyPlateStateChanged();
+                    objectsOnPlate.Add(other.gameObject);
+                }
+                
+                if (!pressed)
+                {
+                    pressed = true;
+                    UpdateAnimator(pressed);
+                    foreach (var group in plateGroup)
+                    {
+                        group.NotifyPlateStateChanged();
+                    }
                 }
             }
         }
@@ -38,12 +46,16 @@ namespace Puzzle_Elements.Pressure_Plate.Scripts
             if (IsFreezed) return;
             if (other.gameObject.GetComponent<IPlateActivator>() != null)
             {
-                if(!pressed) return;
-                pressed = false;
-                UpdateAnimator(pressed);
-                foreach (var group in plateGroup)
+                objectsOnPlate.Remove(other.gameObject);
+                
+                if (objectsOnPlate.Count == 0 && pressed)
                 {
-                    group.NotifyPlateStateChanged();
+                    pressed = false;
+                    UpdateAnimator(pressed);
+                    foreach (var group in plateGroup)
+                    {
+                        group.NotifyPlateStateChanged();
+                    }
                 }
             }
         }
