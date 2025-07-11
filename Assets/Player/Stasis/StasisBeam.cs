@@ -51,6 +51,9 @@ namespace Player.Stasis
                 if (Physics.Raycast(transform.position, direction, out var info, step))
                 {
                     transform.position = info.point;
+
+
+
                     break;
                 }
                 
@@ -69,6 +72,7 @@ namespace Player.Stasis
         private IEnumerator WaitSoundCheckHit(bool hit)
         {
             yield return new WaitForSeconds(0.1f);
+
             EventManager.TriggerEvent(hit ? successEventName : failEventName, gameObject);
             yield return new WaitForSeconds(lightOffDelay);
             DisableBeam();

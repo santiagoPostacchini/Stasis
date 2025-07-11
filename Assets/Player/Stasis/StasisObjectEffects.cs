@@ -24,6 +24,8 @@ namespace Player.Stasis
         private float _lastCrosshairChangeTime;
         private readonly float _changeCooldown = 0.15f; // Cooldown para cambios
         private bool _isCurrentlyLookingAtStasis;
+
+        public GameObject objectStaseable;
         
         private void Update()
         {
@@ -39,17 +41,27 @@ namespace Player.Stasis
 
         public void HandleVisualStasisFeedback(IStasis lookedStasisObject, UnityEngine.Camera cam, RaycastHit hit1)
         {
-            //Vector3 origin = cam.transform.position;
-            //Vector3 direction = cam.transform.forward;
-            //float radius = 0.05f;
-            //float maxDistance = 100f;
+            Vector3 origin = cam.transform.position;
+            Vector3 direction = cam.transform.forward;
+            float radius = 0.05f;
+            float maxDistance = 100f;
 
-            //bool hitSomething = Physics.SphereCast(origin, radius, direction, out RaycastHit hit, maxDistance);
-            //IStasis hitStasis = hitSomething ? hit.collider.GetComponent<IStasis>() : null;
+            bool hitSomething = Physics.SphereCast(origin, radius, direction, out RaycastHit hit, maxDistance);
+            IStasis hitStasis = hitSomething ? hit.collider.GetComponent<IStasis>() : null;
+            
+
+            if(hitStasis != null)
+            {
+                objectStaseable = hit.collider.gameObject;
+            }
+            else
+            {
+                objectStaseable = null;
+            }
 
             bool objectConnected = CheckObjectStasisConnected(hit1);
 
-            bool confirmed = lookedStasisObject != null;
+            bool confirmed = lookedStasisObject != null || objectStaseable != null;
 
             bool canChangeState = Time.time - _lastCrosshairChangeTime >= _changeCooldown;
             
@@ -65,8 +77,15 @@ namespace Player.Stasis
                     Debug.Log("CONFIRMED " + lookedStasisObject);
                 }
             }
+            else if (objectConnected && _isCurrentlyLookingAtStasis)
+            {
+                _isCurrentlyLookingAtStasis = false;
+                crosshair.sprite = crosshairBasic;
+                crosshair.color = normalColor;
+                _lastCrosshairChangeTime = Time.time;
+            }
 
-            if (!confirmed && _isCurrentlyLookingAtStasis && canChangeState)
+            else if (!confirmed && _isCurrentlyLookingAtStasis && canChangeState)
             {
                 _isCurrentlyLookingAtStasis = false;
                 crosshair.sprite = crosshairBasic;

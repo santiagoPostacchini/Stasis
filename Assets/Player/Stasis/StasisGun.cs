@@ -76,10 +76,26 @@ namespace Player.Stasis
 
                 if (hitObject.TryGetComponent<IStasis>(out var stasisComponent))
                 {
+                    DestroyedPieceController piece = hitObject.GetComponent<DestroyedPieceController>();
+                    if(piece != null)
+                    {
+                        if (piece.is_connected)
+                        {
+                            stasisHit = false;
+                        }
+                        else
+                        {
+                            stasisHit = true;
+                        }
+                    }
+                    else
+                    {
+                        stasisHit = true;
+                    }
 
                     StartCoroutine(WaitStasisEffect(hitObject, stasisComponent));
                     
-                    stasisHit = true;
+                    
                 }
                 if (_activeBeam)
                 {
