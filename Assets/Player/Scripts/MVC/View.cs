@@ -37,6 +37,8 @@ namespace Player.Scripts.MVC
         private bool cinematicFinishedUp = false;            // Para saber si ya miró hacia arriba
         public bool InCinematic = true;
         public bool cinematicFinish = false;
+
+        [SerializeField] private CinematicBars _cinematicBars;
         private void Start()
         {
             hurtEffect = GetComponentInChildren<HurtEffect>();
@@ -144,7 +146,13 @@ namespace Player.Scripts.MVC
                 originalRotation = cam.camHolder.rotation;
                 originalRotationSaved = true;
             }
-
+            if(_cinematicBars != null)
+            {
+                if (!_cinematicBars.isActive)
+                {
+                    _cinematicBars.Show(300, 0.3f);
+                }
+            }
             if (!cinematicFinishedUp)
             {
                 // Rotar hacia arriba (hacia cinematicPosB)
@@ -170,6 +178,10 @@ namespace Player.Scripts.MVC
                 if (angleRemaining < 0.5f)
                 {
                     cinematicFinish = true;  // Cinemática terminada
+                    if (_cinematicBars != null)
+                    {
+                        _cinematicBars.Hide(0.3f);
+                    }
                     Debug.Log("CINEMATICA TERMINADA");
                     
                 }

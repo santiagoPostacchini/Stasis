@@ -36,34 +36,36 @@ namespace Player.Stasis
                 crosshair.rectTransform.rotation = Quaternion.Euler(0f, 0f, 0f);
             }
         }
-        
+
         public void HandleVisualStasisFeedback(IStasis lookedStasisObject, UnityEngine.Camera cam, RaycastHit hit1)
         {
-            Vector3 origin = cam.transform.position;
-            Vector3 direction = cam.transform.forward;
-            float radius = 0.05f;
-            float maxDistance = 100f;
+            //Vector3 origin = cam.transform.position;
+            //Vector3 direction = cam.transform.forward;
+            //float radius = 0.05f;
+            //float maxDistance = 100f;
 
-            bool hitSomething = Physics.SphereCast(origin, radius, direction, out RaycastHit hit, maxDistance);
-            IStasis hitStasis = hitSomething ? hit.collider.GetComponent<IStasis>() : null;
+            //bool hitSomething = Physics.SphereCast(origin, radius, direction, out RaycastHit hit, maxDistance);
+            //IStasis hitStasis = hitSomething ? hit.collider.GetComponent<IStasis>() : null;
 
             bool objectConnected = CheckObjectStasisConnected(hit1);
-            bool confirmed = lookedStasisObject != null && hitStasis == lookedStasisObject;
 
-            // Verificar si podemos cambiar el estado (cooldown)
+            bool confirmed = lookedStasisObject != null;
+
             bool canChangeState = Time.time - _lastCrosshairChangeTime >= _changeCooldown;
             
             if (confirmed && !objectConnected && canChangeState)
             {
+                
                 if (!_isCurrentlyLookingAtStasis)
                 {
                     _isCurrentlyLookingAtStasis = true;
                     crosshair.sprite = crosshairStasis;
                     crosshair.color = highlightColor;
                     _lastCrosshairChangeTime = Time.time;
+                    Debug.Log("CONFIRMED " + lookedStasisObject);
                 }
             }
-            
+
             if (!confirmed && _isCurrentlyLookingAtStasis && canChangeState)
             {
                 _isCurrentlyLookingAtStasis = false;
@@ -71,26 +73,15 @@ namespace Player.Stasis
                 crosshair.color = normalColor;
                 _lastCrosshairChangeTime = Time.time;
                 Debug.Log("Crosshair reseteado a Básico");
+                Debug.Log("NO CONFIRMED " + lookedStasisObject);
             }
         }
-        
-        // ReSharper disable Unity.PerformanceAnalysis
+
         private bool CheckObjectStasisConnected(RaycastHit hit)
         {
-            DestroyedPieceController piece = hit.collider.gameObject.GetComponent<DestroyedPieceController>();
+            DestroyedPieceController piece = hit.collider.GetComponentInParent<DestroyedPieceController>();
             if (!piece) return false;
-            if (piece.is_connected)
-            {
-                if (Time.time - _lastCrosshairChangeTime >= _changeCooldown)
-                {
-                    crosshair.sprite = crosshairBasic;
-                    crosshair.color = normalColor;
-                    _isCurrentlyLookingAtStasis = false;
-                    _lastCrosshairChangeTime = Time.time;
-                }
-                return true;
-            }
-            return false;
+            return piece.is_connected;
         }
     }
 }
