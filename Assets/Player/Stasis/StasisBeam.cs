@@ -64,8 +64,6 @@ namespace Player.Stasis
 
             StartCoroutine(WaitSoundCheckHit(hit));
             
-            yield return new WaitForSeconds(lightOffDelay);
-            DisableBeam();
         }
 
         private IEnumerator WaitSoundCheckHit(bool hit)
