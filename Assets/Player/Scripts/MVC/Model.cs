@@ -6,13 +6,14 @@ using Puzzle_Elements.AllInterfaces;
 using UnityEngine;
 using Audio.Scripts;
 using Managers.Events;
+using Unity.VisualScripting;
 
 namespace Player.Scripts.MVC
 {
     public class Model : MonoBehaviour, IPlateActivator
     {
         [Header("Movement")] [SerializeField] private float moveSpeed = 7f;
-        [SerializeField] private float crouchSpeed = 3f;
+        public float crouchSpeed = 3f;
         [SerializeField] private float wallRunSpeed = 3f;
         [SerializeField] private float acceleration = 20f;
         [SerializeField] private float deceleration = 30f;
@@ -20,6 +21,7 @@ namespace Player.Scripts.MVC
         [SerializeField] private float terminalVelocity = -50f;
         [SerializeField] private float minVerticalVelocity = -2f;
         public bool canMove = false;
+        public float FlatSpeed { get; private set; }
 
 
         [Header("Jumping")] [SerializeField] private float jumpForce = 8f;
@@ -31,7 +33,8 @@ namespace Player.Scripts.MVC
         
         private float _coyoteTimeCounter;
 
-        [Header("Crouch")] [SerializeField] private float standHeight = 2f;
+        [Header("Crouch")] 
+        [SerializeField] private float standHeight = 2f;
         [SerializeField] private float crouchHeight = 1f;
         [SerializeField] private float standCenterY;
         [SerializeField] private float crouchCenterY = 0.5f;
@@ -39,6 +42,15 @@ namespace Player.Scripts.MVC
         [SerializeField, Range(0.01f, 0.2f)] private float crouchSmoothTime = 0.08f;
         [HideInInspector] public bool crouching;
         [SerializeField] private LayerMask whatIsSolid;
+
+        [Header("Sliding")] 
+        public float maxSlideTime;
+        public float slideSpeed;
+        private float _slideTimer;
+        private Vector3 _slideDirection;
+        private Vector3 _currentSlideVelocity;
+        private float _slideInitialForce = 1.2f;
+        private bool _slideBoosted;
 
         [Header("WallRunning")] 
         public LayerMask whatIsWallrun;
@@ -105,13 +117,15 @@ namespace Player.Scripts.MVC
             Crouching,
             Air,
             Wallrunning,
-            Vaulting
+            Vaulting,
+            Sliding
         }
 
         public MovementState state = MovementState.Moving;
 
         public bool wallrunning;
         public bool isVaulting;
+        public bool isSliding;
 
         //public event Action OnLand = delegate { };
         public event Action<bool> OnCrouch = delegate { };
@@ -124,6 +138,8 @@ namespace Player.Scripts.MVC
         public event Action<float> OnSpeedChange = delegate { };
 
         public event Action OnClimb = delegate { };
+        public event Action OnSlideStart = delegate { };
+        public event Action OnSlideEnd = delegate { };
 
         IController _controller;
         
@@ -142,6 +158,9 @@ namespace Player.Scripts.MVC
             
             if (wallrunning)
                 WallRunningMovement();
+            
+            if(isSliding)
+                SlidingMovement();
             
             CoyoteTime();
             ApplyGravity();
@@ -185,12 +204,15 @@ namespace Player.Scripts.MVC
 
             Vector3 flatCurrentVel = new Vector3(_currentVelocity.x, 0f, _currentVelocity.z);
             float flatSpeed = flatCurrentVel.magnitude;
+            FlatSpeed = flatSpeed;
+
             OnSpeedChange(flatSpeed);
         }
         
         public void UpdateCrouchInput(bool isCrouching)
         {
-            crouching = isCrouching;
+            if(!isSliding)
+                crouching = isCrouching;
             
             if (isCrouching)
             {
@@ -211,7 +233,6 @@ namespace Player.Scripts.MVC
                     _crouchTargetCenterY = crouchCenterY;
                 }
             }
-
             
             OnCrouch(crouching);
         }
@@ -233,7 +254,8 @@ namespace Player.Scripts.MVC
         
         public void UpdateJumpInput()
         {
-            Jump();
+            if(CanStandUp())
+                Jump();
         }
 
         private void Move()
@@ -305,7 +327,7 @@ namespace Player.Scripts.MVC
             {
                 Debug.Log(canUseCoyoteTime ? "SALTO (COYOTE TIME)" : "SALTO");
                 OnJump();
-
+                
                 _verticalVelocity = jumpForce;
                 readyToJump = false;
                 _coyoteTimeCounter = 0f; // Cancelamos el margen de tiempo
@@ -352,6 +374,7 @@ namespace Player.Scripts.MVC
             if (wallRight) cam.DoTilt(15f);
             OnClimb();
         }
+        
         private void WallRunningMovement()
         {
             Vector3 wallNormal = wallRight ? _rightWallHit.normal : _leftWallHit.normal;
@@ -408,7 +431,6 @@ namespace Player.Scripts.MVC
             return !Physics.Raycast(transform.position, Vector3.down, minJumpHeight, whatIsGround);
         }
         
-        
         public void UpdateCrouchPosition()
         {
             if (crouching)
@@ -427,7 +449,6 @@ namespace Player.Scripts.MVC
                     OnCrouch(crouching);
                 }
             }
-
             
             characterController.height = Mathf.SmoothDamp(
                 characterController.height,
@@ -449,8 +470,7 @@ namespace Player.Scripts.MVC
 
             UpdateCameraHeight();
         }
-
-
+        
         public void StateUpdater(MovementState newState)
         {
             state = newState;
@@ -521,7 +541,6 @@ namespace Player.Scripts.MVC
 
         public void TakeDamage(Transform t)
         {
-
             transform.position = t.position;
             OnGetDamage();
             //_currentLife -= dmg;
@@ -564,6 +583,7 @@ namespace Player.Scripts.MVC
 
             float stepHeight = (highestPoint - lowestPoint) / (vaultRayCount - 1);
             bool tooHigh = false;
+            bool inGround = true;
             
             for (int i = 0; i < vaultRayCount; i++)
             {
@@ -575,7 +595,13 @@ namespace Player.Scripts.MVC
 
                 Color rayColor = hit ? Color.green : Color.red;
                 Debug.DrawRay(origin, direction * vaultRayForwardDistance, rayColor);
-
+                
+                if (i == 0 && !hit)
+                {
+                    inGround = false;
+                    break;
+                }
+                
                 if (hit)
                 {
                     hitCount++;
@@ -587,7 +613,7 @@ namespace Player.Scripts.MVC
                 }
             }
 
-            if (hitCount > 0 && !tooHigh)
+            if (hitCount > 0 && !tooHigh && inGround)
             {
                 if(hitCount > maxVaultRayAllowed/3)
                     OnVaultStart();
@@ -605,6 +631,76 @@ namespace Player.Scripts.MVC
                 readyToJump = false;
                 _inVault = false;
                 Invoke(nameof(ResetJump), jumpCooldown);
+        }
+        
+        // ReSharper disable Unity.PerformanceAnalysis
+        public void StartSlide()
+        {
+            isSliding = true;
+            
+            _slideTimer = maxSlideTime;
+            
+            OnSlideStart();
+        }
+
+        private void SlidingMovement()
+        {
+            // Dirección del input horizontal/vertical
+            Vector3 inputDirection = orientation.forward * _verticalInput + orientation.right * _horizontalInput;
+            Vector3 slideDirection = inputDirection.normalized;
+
+            // Velocidad objetivo
+            Vector3 targetSlideVelocity = slideDirection * slideSpeed;
+
+            // Elegir aceleración según si hay input o no
+            float effectiveAccel = acceleration;
+            float effectiveDecel = deceleration;
+
+            if (!characterController.isGrounded)
+            {
+                effectiveAccel *= airControlMultiplier;
+                effectiveDecel *= airControlMultiplier;
+            }
+
+            // Determinar si se está moviendo activamente o solo deslizando por inercia
+            if (inputDirection.magnitude > 0.1f)
+            {
+                _currentSlideVelocity = Vector3.MoveTowards(
+                    _currentSlideVelocity,
+                    targetSlideVelocity,
+                    effectiveAccel * Time.deltaTime
+                );
+            }
+            else
+            {
+                _currentSlideVelocity = Vector3.MoveTowards(
+                    _currentSlideVelocity,
+                    Vector3.zero,
+                    effectiveDecel * Time.deltaTime
+                );
+            }
+
+            // Aplicar movimiento solo si está en el suelo
+            if (characterController.isGrounded)
+            {
+                characterController.Move(_currentSlideVelocity * Time.deltaTime);
+            }
+
+            // Timer del slide
+            _slideTimer -= Time.deltaTime;
+
+            if (_slideTimer <= 0 || _currentSlideVelocity.magnitude <= 0.1f)
+            {
+                StopSlide();
+            }
+        }
+        
+        // ReSharper disable Unity.PerformanceAnalysis
+        public void StopSlide()
+        {
+            isSliding = false;
+            
+            OnSlideEnd();
         }
     }
 }

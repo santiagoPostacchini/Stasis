@@ -1,7 +1,6 @@
 using Player.Camera;
 using UnityEngine;
 using Managers.Events;
-using System.Collections;
 namespace Player.Scripts.MVC
 {
     public class View : MonoBehaviour
@@ -16,14 +15,12 @@ namespace Player.Scripts.MVC
         private readonly int _throwHash = Animator.StringToHash("Throw");
         private readonly int _shotHash = Animator.StringToHash("Shot");
         private readonly int _vaultHash = Animator.StringToHash("Vault");
-
-
+        
         public Animator animator;
         public PlayerCam cam;
         
         public Material damageMaterialPostProcess;
         public ArmAnimationHandler armAnimationHandler;
-
 
         [SerializeField] private HurtEffect hurtEffect;
 
@@ -31,23 +28,25 @@ namespace Player.Scripts.MVC
         [SerializeField] private Transform cinematicPosB;   // Punto para mirar hacia arriba
         public float cinematicRotationSpeed = 2f;
 
-        private Quaternion originalRotation;                 // Guarda rotación original (hacia abajo)
-        private bool originalRotationSaved = false;
+        private Quaternion _originalRotation;                 // Guarda rotaciï¿½n original (hacia abajo)
+        private bool _originalRotationSaved;
 
-        private bool cinematicFinishedUp = false;            // Para saber si ya miró hacia arriba
-        public bool InCinematic = true;
-        public bool cinematicFinish = false;
+        private bool _cinematicFinishedUp;            // Para saber si ya mirï¿½ hacia arriba
+        public bool inCinematic = true;
+        public bool cinematicFinish;
 
-        [SerializeField] private CinematicBars _cinematicBars;
+        [SerializeField] private CinematicBars cinematicBars;
+        
         private void Start()
         {
             hurtEffect = GetComponentInChildren<HurtEffect>();
             StartCinematic();
         }
-        public void StartCinematic()
+
+        private void StartCinematic()
         {
             cinematicFinish = false;
-            InCinematic = true;
+            inCinematic = true;
         }
         public void OnJumpEvent()
         {
@@ -136,24 +135,37 @@ namespace Player.Scripts.MVC
             animator.SetTrigger(_climbHash);
             EventManager.TriggerEvent("OnClimb", gameObject);
         }
+
+        public void OnSlideStart()
+        {
+            cam.DoTilt(5f);
+            cam.DoFov(105f);
+        }
+
+        public void OnSlideEnd()
+        {
+            cam.DoTilt(0f);
+            cam.DoFov(90f);
+        }
+        
         public void CinematicInitial()
         {
             if (cinematicFinish) return;
 
-            // Guardar rotación original una sola vez (al inicio de la cinemática)
-            if (!originalRotationSaved)
+            // Guardar rotaciï¿½n original una sola vez (al inicio de la cinemï¿½tica)
+            if (!_originalRotationSaved)
             {
-                originalRotation = cam.camHolder.rotation;
-                originalRotationSaved = true;
+                _originalRotation = cam.camHolder.rotation;
+                _originalRotationSaved = true;
             }
-            if(_cinematicBars != null)
+            if(cinematicBars)
             {
-                if (!_cinematicBars.isActive)
+                if (!cinematicBars.isActive)
                 {
-                    _cinematicBars.Show(300, 0.3f);
+                    cinematicBars.Show(300, 0.3f);
                 }
             }
-            if (!cinematicFinishedUp)
+            if (!_cinematicFinishedUp)
             {
                 // Rotar hacia arriba (hacia cinematicPosB)
                 Vector3 dirUp = cinematicPosB.position - cam.camHolder.position;
@@ -165,22 +177,22 @@ namespace Player.Scripts.MVC
                     float angleRemaining = Quaternion.Angle(cam.camHolder.rotation, rotacionDeseada);
                     if (angleRemaining < 0.5f)
                     {
-                        cinematicFinishedUp = true; // Ya terminó de mirar hacia arriba
+                        _cinematicFinishedUp = true; // Ya terminï¿½ de mirar hacia arriba
                     }
                 }
             }
             else
             {
-                // Volver a rotación original (hacia abajo)
-                cam.camHolder.rotation = Quaternion.RotateTowards(cam.camHolder.rotation, originalRotation, cinematicRotationSpeed * Time.deltaTime * 40f);
+                // Volver a rotaciï¿½n original (hacia abajo)
+                cam.camHolder.rotation = Quaternion.RotateTowards(cam.camHolder.rotation, _originalRotation, cinematicRotationSpeed * Time.deltaTime * 40f);
 
-                float angleRemaining = Quaternion.Angle(cam.camHolder.rotation, originalRotation);
+                float angleRemaining = Quaternion.Angle(cam.camHolder.rotation, _originalRotation);
                 if (angleRemaining < 0.5f)
                 {
-                    cinematicFinish = true;  // Cinemática terminada
-                    if (_cinematicBars != null)
+                    cinematicFinish = true;  // Cinemï¿½tica terminada
+                    if (cinematicBars)
                     {
-                        _cinematicBars.Hide(0.3f);
+                        cinematicBars.Hide(0.3f);
                     }
                     Debug.Log("CINEMATICA TERMINADA");
                     

@@ -28,19 +28,19 @@ namespace Player.Scripts.MVC
             _model.OnVaultEnd += _view.OnVaultEndEvent;
             _model.OnSpeedChange += _view.OnSpeedChangeEvent;
             _model.OnClimb += _view.OnClimbEvent;
+            _model.OnSlideStart += _view.OnSlideStart;
+            _model.OnSlideEnd += _view.OnSlideEnd;
         }
         
         public void OnUpdate()
         {
             InCinematic();
-
-
+            
             if (_model.canMove)
             {
                 _h = Input.GetAxis("Horizontal");
                 _v = Input.GetAxis("Vertical");
             }
-           
             
             if (_model.isVaulting)
             {
@@ -54,12 +54,32 @@ namespace Player.Scripts.MVC
             
             if (Input.GetKeyDown(_crouchKey))
             {
-                _model.UpdateCrouchInput(true);
+                if (_model.FlatSpeed < _model.crouchSpeed)
+                {
+                    _model.UpdateCrouchInput(true);
+                }
+                else if(!_model.isSliding && !_model.crouching)
+                {
+                    _model.StartSlide();
+                    _model.UpdateCrouchInput(true);
+                }
+            }
+
+            if (Input.GetKey(_crouchKey))
+            {
+                if (!_model.isSliding)
+                {
+                    _model.UpdateCrouchInput(true);
+                }
             }
 
             if (Input.GetKeyUp(_crouchKey))
             {
                 _model.UpdateCrouchInput(false);
+                if (_model.isSliding)
+                {
+                    _model.StopSlide();
+                }
             }
 
             _model.UpdateCrouchPosition();
@@ -73,7 +93,7 @@ namespace Player.Scripts.MVC
         }
         private void InCinematic()
         {
-            if (_view.InCinematic)
+            if (_view.inCinematic)
             {
                 if (!_view.cinematicFinish)
                 {
@@ -83,7 +103,7 @@ namespace Player.Scripts.MVC
                 {
                     _view.cam.CanRotateCamera();
                     _model.canMove = true;
-                    _view.InCinematic = false;
+                    _view.inCinematic = false;
                 }
             }
         }
@@ -96,7 +116,9 @@ namespace Player.Scripts.MVC
         {
             if (_model.isVaulting)
                 _model.StateUpdater(Model.MovementState.Vaulting);
-            else if (_model.crouching)
+            else if (_model.isSliding)
+                _model.StateUpdater(Model.MovementState.Sliding);
+            else if (_model.crouching && _model.FlatSpeed < _model.crouchSpeed)
                 _model.StateUpdater(Model.MovementState.Crouching);
             else if (_model.characterController.isGrounded && !_model.crouching)
                 _model.StateUpdater(Model.MovementState.Moving);
@@ -104,6 +126,7 @@ namespace Player.Scripts.MVC
                 _model.StateUpdater(Model.MovementState.Wallrunning);
             else
                 _model.StateUpdater(Model.MovementState.Air);
+
                 
         }
     }
