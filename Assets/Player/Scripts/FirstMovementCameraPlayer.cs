@@ -20,8 +20,4 @@ public class FirstMovementCameraPlayer : MonoBehaviour
         _playerCam.CanRotateCamera();
         
     }
-    public void CanShootStasis()
-    {
-        _stasisGun.canShootStasis = true;
-    }
 }

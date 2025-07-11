@@ -11,7 +11,7 @@ public class FreezableErraticObject : MonoBehaviour,IStasis
     private MaterialPropertyBlock _mpb;
     [SerializeField] private Renderer _renderer;
 
-    [SerializeField] private ErraticObject erraticObject;
+    public ErraticObject erraticObject;
 
     public bool IsFreezed => erraticObject.isFreezed;
 
@@ -43,12 +43,13 @@ public class FreezableErraticObject : MonoBehaviour,IStasis
     {
         if (!erraticObject.isFreezed)
         {
-
+            
             erraticObject.rb.velocity = Vector3.zero;
             erraticObject.rb.angularVelocity = Vector3.zero;
             erraticObject.rb.useGravity = false;
             erraticObject.rb.isKinematic = true;
             erraticObject.isFreezed = true;
+           
 
             SetColorOutline(Color.green, 1);
             SetOutlineThickness(1.05f);
@@ -62,7 +63,6 @@ public class FreezableErraticObject : MonoBehaviour,IStasis
 
             erraticObject.isFreezed = false;
 
-            
             SetColorOutline(Color.white, 1);
             SetOutlineThickness(1f);
         }

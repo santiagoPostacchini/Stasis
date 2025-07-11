@@ -41,7 +41,7 @@ namespace Player.Stasis
         {
             Vector3 origin = cam.transform.position;
             Vector3 direction = cam.transform.forward;
-            float radius = 0.2f;
+            float radius = 0.05f;
             float maxDistance = 100f;
 
             bool hitSomething = Physics.SphereCast(origin, radius, direction, out RaycastHit hit, maxDistance);
@@ -84,6 +84,7 @@ namespace Player.Stasis
                 if (Time.time - _lastCrosshairChangeTime >= _changeCooldown)
                 {
                     crosshair.sprite = crosshairBasic;
+                    crosshair.color = normalColor;
                     _isCurrentlyLookingAtStasis = false;
                     _lastCrosshairChangeTime = Time.time;
                 }

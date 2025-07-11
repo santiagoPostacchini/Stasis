@@ -142,7 +142,7 @@ namespace Puzzle_Elements.Hedron.Scripts
                 _isFreezed = true;
                 SetColorOutline(Color.green, 1);
                 SetOutlineThickness(1.05f);
-                particleFrozen?.Play();
+               // particleFrozen?.Play();
             }
         }
 
@@ -174,7 +174,7 @@ namespace Puzzle_Elements.Hedron.Scripts
             rb.isKinematic = false;
             SetColorOutline(Color.white, 0.2f);
             SetOutlineThickness(0f);
-            particleFrozen?.Stop();
+           // particleFrozen?.Stop();
             //_audioEventListener.SetStopEventFlag("ObjInStasis", true, true);
             _audioEventListener.StopSound("ObjInStasis");
         }

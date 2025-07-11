@@ -19,6 +19,7 @@ namespace Player.Scripts.MVC
         [SerializeField] private float airControlMultiplier = 0.4f;
         [SerializeField] private float terminalVelocity = -50f;
         [SerializeField] private float minVerticalVelocity = -2f;
+        public bool canMove = false;
 
 
         [Header("Jumping")] [SerializeField] private float jumpForce = 8f;

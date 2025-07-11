@@ -1,7 +1,7 @@
 using Player.Camera;
 using UnityEngine;
 using Managers.Events;
-
+using System.Collections;
 namespace Player.Scripts.MVC
 {
     public class View : MonoBehaviour
@@ -17,6 +17,7 @@ namespace Player.Scripts.MVC
         private readonly int _shotHash = Animator.StringToHash("Shot");
         private readonly int _vaultHash = Animator.StringToHash("Vault");
 
+
         public Animator animator;
         public PlayerCam cam;
         
@@ -25,11 +26,27 @@ namespace Player.Scripts.MVC
 
 
         [SerializeField] private HurtEffect hurtEffect;
+
+
+        [SerializeField] private Transform cinematicPosB;   // Punto para mirar hacia arriba
+        public float cinematicRotationSpeed = 2f;
+
+        private Quaternion originalRotation;                 // Guarda rotación original (hacia abajo)
+        private bool originalRotationSaved = false;
+
+        private bool cinematicFinishedUp = false;            // Para saber si ya miró hacia arriba
+        public bool InCinematic = true;
+        public bool cinematicFinish = false;
         private void Start()
         {
             hurtEffect = GetComponentInChildren<HurtEffect>();
+            StartCinematic();
         }
-        
+        public void StartCinematic()
+        {
+            cinematicFinish = false;
+            InCinematic = true;
+        }
         public void OnJumpEvent()
         {
             Debug.Log("Jumping!");
@@ -116,6 +133,47 @@ namespace Player.Scripts.MVC
         {
             animator.SetTrigger(_climbHash);
             EventManager.TriggerEvent("OnClimb", gameObject);
+        }
+        public void CinematicInitial()
+        {
+            if (cinematicFinish) return;
+
+            // Guardar rotación original una sola vez (al inicio de la cinemática)
+            if (!originalRotationSaved)
+            {
+                originalRotation = cam.camHolder.rotation;
+                originalRotationSaved = true;
+            }
+
+            if (!cinematicFinishedUp)
+            {
+                // Rotar hacia arriba (hacia cinematicPosB)
+                Vector3 dirUp = cinematicPosB.position - cam.camHolder.position;
+                if (dirUp != Vector3.zero)
+                {
+                    Quaternion rotacionDeseada = Quaternion.LookRotation(dirUp.normalized);
+                    cam.camHolder.rotation = Quaternion.RotateTowards(cam.camHolder.rotation, rotacionDeseada, cinematicRotationSpeed * Time.deltaTime * 30f);
+
+                    float angleRemaining = Quaternion.Angle(cam.camHolder.rotation, rotacionDeseada);
+                    if (angleRemaining < 0.5f)
+                    {
+                        cinematicFinishedUp = true; // Ya terminó de mirar hacia arriba
+                    }
+                }
+            }
+            else
+            {
+                // Volver a rotación original (hacia abajo)
+                cam.camHolder.rotation = Quaternion.RotateTowards(cam.camHolder.rotation, originalRotation, cinematicRotationSpeed * Time.deltaTime * 40f);
+
+                float angleRemaining = Quaternion.Angle(cam.camHolder.rotation, originalRotation);
+                if (angleRemaining < 0.5f)
+                {
+                    cinematicFinish = true;  // Cinemática terminada
+                    Debug.Log("CINEMATICA TERMINADA");
+                    
+                }
+            }
         }
     }
 }

@@ -11,7 +11,7 @@ namespace Player.Scripts.MVC
         private KeyCode _jumpKey;
 
         private float _v, _h;
-
+        
         public Controller(Model model, View view, KeyCode crouchKey, KeyCode jumpKey)
         {
             
@@ -32,8 +32,15 @@ namespace Player.Scripts.MVC
         
         public void OnUpdate()
         {
-            _h = Input.GetAxis("Horizontal");
-            _v = Input.GetAxis("Vertical");
+            InCinematic();
+
+
+            if (_model.canMove)
+            {
+                _h = Input.GetAxis("Horizontal");
+                _v = Input.GetAxis("Vertical");
+            }
+           
             
             if (_model.isVaulting)
             {
@@ -64,7 +71,22 @@ namespace Player.Scripts.MVC
             
             StateHandler();
         }
-        
+        private void InCinematic()
+        {
+            if (_view.InCinematic)
+            {
+                if (!_view.cinematicFinish)
+                {
+                    _view.CinematicInitial();
+                }
+                else
+                {
+                    _view.cam.CanRotateCamera();
+                    _model.canMove = true;
+                    _view.InCinematic = false;
+                }
+            }
+        }
         public bool IsCrouchPressed()
         {
             return Input.GetKey(_crouchKey);
