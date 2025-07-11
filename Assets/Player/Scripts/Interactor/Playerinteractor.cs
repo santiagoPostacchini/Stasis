@@ -159,7 +159,7 @@ namespace Player.Scripts.Interactor
 
                 _objectGrabbable = physicsObject;
 
-                EventManager.TriggerEvent("OnObjectGrab", gameObject);
+                EventManager.TriggerEvent("Grab", gameObject);
             }
 
         }

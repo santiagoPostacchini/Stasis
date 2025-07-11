@@ -41,6 +41,7 @@ namespace Puzzle_Elements.Hedron.Scripts
 
         private AudioEventListener _audioEventListener;
 
+        private bool canDoSoundWithFloor = false;
 
         private void Start()
         {
@@ -48,6 +49,15 @@ namespace Puzzle_Elements.Hedron.Scripts
             _renderer = GetComponent<Renderer>();
             _audioEventListener = GetComponent<AudioEventListener>();
        
+        }
+        
+        private void OnCollisionEnter(Collision collision)
+        {
+            if (rb.velocity.magnitude != 0f)
+            {
+                Debug.Log("Sonido");
+                EventManager.TriggerEvent("ObjectInGround", gameObject);
+            }
         }
         public void Grab()
         {
