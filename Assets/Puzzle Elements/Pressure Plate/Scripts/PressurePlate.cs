@@ -35,7 +35,7 @@ namespace Puzzle_Elements.Pressure_Plate.Scripts
                     UpdateAnimator(pressed);
                     foreach (var group in plateGroup)
                     {
-                        group.NotifyPlateStateChanged();
+                        group?.NotifyPlateStateChanged();
                     }
                 }
             }

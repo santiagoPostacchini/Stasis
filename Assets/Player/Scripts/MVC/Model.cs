@@ -181,24 +181,6 @@ namespace Player.Scripts.MVC
             _verticalInput = vertical;
 
             bool hasInput = horizontal != 0f || vertical != 0f;
-            bool shouldPlayStep = hasInput && state == MovementState.Moving;
-           
-            if (shouldPlayStep)
-            {
-                if (!_isMoving)
-                {
-                    EventManager.TriggerEvent("Step1", gameObject); // PONGAN ESTO EN VIEW
-                    _isMoving = true;
-                }
-            }
-            else
-            {
-                if (_isMoving)
-                {
-                    _audioEventListener.StopSound("Step1"); // PONGAN ESTO EN VIEW
-                    _isMoving = false;
-                }
-            }
 
             Move();
 

@@ -34,7 +34,7 @@ namespace Player.Scripts.MVC
         
         public void OnUpdate()
         {
-            InCinematic();
+            //InCinematic();
             
             if (_model.canMove)
             {
@@ -91,22 +91,7 @@ namespace Player.Scripts.MVC
             
             StateHandler();
         }
-        private void InCinematic()
-        {
-            if (_view.inCinematic)
-            {
-                if (!_view.cinematicFinish)
-                {
-                    _view.CinematicInitial();
-                }
-                else
-                {
-                    _view.cam.CanRotateCamera();
-                    _model.canMove = true;
-                    _view.inCinematic = false;
-                }
-            }
-        }
+        
         public bool IsCrouchPressed()
         {
             return Input.GetKey(_crouchKey);
