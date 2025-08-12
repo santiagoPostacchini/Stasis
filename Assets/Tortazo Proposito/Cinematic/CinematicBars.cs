@@ -29,7 +29,10 @@ public class CinematicBars : MonoBehaviour
         bottomBar.sizeDelta = new Vector2(0, 300);
 
     }
-
+    private void Start()
+    {
+        isActive = false;
+    }
     private void Update()
     {
         if (isActive)
