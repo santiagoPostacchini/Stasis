@@ -84,8 +84,7 @@ public class BladeStasis : MonoBehaviour,IStasis
             }
         }
     }
-
-        private void UnfreezeObject()
+    private void UnfreezeObject()
     {
         if (!_isFreezed) return;
         _isFreezed = false;

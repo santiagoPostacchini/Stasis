@@ -342,7 +342,8 @@ namespace CurvedPathGenerator
         public void StopFollow()
         {
             IsMove = false;
-            particle.Stop();
+            particle?.Stop();
+            if(_magicSwitch != null)
             _magicSwitch.ChangeColor(_magicSwitch._colorFinishPath);
         }
 
