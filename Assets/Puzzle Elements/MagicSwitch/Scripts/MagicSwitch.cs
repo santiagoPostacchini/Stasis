@@ -12,7 +12,7 @@ public class MagicSwitch : MonoBehaviour
 
     [Header("Flotación en el centro")]
     public float amplitude = 0.2f;
-    public float speed = 2f;
+    public float forceNoise = 2f;
     public float rotationSpeed = 50f;
 
     private bool _objInCenter;
@@ -190,9 +190,9 @@ public class MagicSwitch : MonoBehaviour
                     // Flotar y rotar en el centro
 
 
-                    float offsetX = (Mathf.PerlinNoise(Time.time * speed, 0f) - 0.5f) * 2f * amplitude;
-                    float offsetY = (Mathf.PerlinNoise(0f, Time.time * speed) - 0.5f) * 2f * amplitude;
-                    float offsetZ = (Mathf.PerlinNoise(Time.time * speed, Time.time * 0.5f) - 0.5f) * 2f * amplitude;
+                    float offsetX = (Mathf.PerlinNoise(Time.time * forceNoise, 0f) - 0.5f) * 2f * amplitude;
+                    float offsetY = (Mathf.PerlinNoise(0f, Time.time * forceNoise) - 0.5f) * 2f * amplitude;
+                    float offsetZ = (Mathf.PerlinNoise(Time.time * forceNoise, Time.time * 0.5f) - 0.5f) * 2f * amplitude;
 
                     Vector3 floatOffset = new Vector3(offsetX, offsetY, offsetZ);
                     rb.MovePosition(transform.position + floatOffset);

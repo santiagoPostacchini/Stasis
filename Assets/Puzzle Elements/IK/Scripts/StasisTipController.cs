@@ -2,47 +2,55 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Player.Stasis;
+using System;
 
-public class StasisSensorLaser : MonoBehaviour, IStasis
+public class StasisTipController : MonoBehaviour,IStasis
 {
-    private SensorLaser _sensorLaser;
-    public bool IsFreezed => isFreezed;
-    [SerializeField]private bool isFreezed;
-
+    public bool IsFreezed => _isFreezed;
+    private bool _isFreezed = false;
     [Header("Stasis")]
     public Material matStasis;
     public readonly string _outlineThicknessName = "_BorderThickness";
     public MaterialPropertyBlock _mpb;
 
+
     // Soporta múltiples renderers
     public Renderer[] renderers;
 
+    public event Action OnFreezeEvent;
+    public event Action OnUnFreezeEvent;
+
+    [SerializeField] private FollowTargetController _followTargetController;
     public void StatisEffectActivate()
     {
+
         FreezeObject();
-        _sensorLaser.CanShootLasers(false);
+        _followTargetController.canMove = false;
     }
 
     public void StatisEffectDeactivate()
     {
         UnfreezeObject();
-        _sensorLaser.CanShootLasers(true);
+        _followTargetController.canMove = true;
     }
-    private void Update()
+
+    // Start is called before the first frame update
+    void Start()
+    {
+        _mpb = new MaterialPropertyBlock();
+        _followTargetController = GetComponent<FollowTargetController>();
+    }
+
+    // Update is called once per frame
+    void Update()
     {
         
     }
-    void Start()
-    {
-        _sensorLaser = GetComponent<SensorLaser>();
-        _mpb = new MaterialPropertyBlock();
-    }
-
     private void FreezeObject()
     {
-        if (!isFreezed)
+        if (!_isFreezed)
         {
-            isFreezed = true;
+            _isFreezed = true;
             SetOutlineThickness(1.05f);
             SetColorOutline(Color.green, 1f);
         }
@@ -50,13 +58,12 @@ public class StasisSensorLaser : MonoBehaviour, IStasis
 
     private void UnfreezeObject()
     {
-        if (!isFreezed) return;
-        isFreezed = false;
+        if (!_isFreezed) return;
+        _isFreezed = false;
         SetOutlineThickness(0f);
         Color lightGreen = new Color(0.6f, 1f, 0.6f);
         SetColorOutline(lightGreen, 1f);
     }
-
     public void SetOutlineThickness(float thickness)
     {
         if (renderers == null || _mpb == null) return;

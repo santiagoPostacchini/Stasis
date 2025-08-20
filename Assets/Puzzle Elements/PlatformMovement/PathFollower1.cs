@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using System;
 
 namespace CurvedPathGenerator
 {
@@ -17,12 +18,11 @@ namespace CurvedPathGenerator
         public bool IsEndEventEnable = false;
 
         private bool checkFlag = false;
-        private Rigidbody targetRigidbody;
-        private GameObject target;
-        private Vector3 nextPath;
-        private int pathIndex = 1;
+        protected Rigidbody targetRigidbody;
+        protected GameObject target;
+        [HideInInspector]public Vector3 nextPath;
+        [HideInInspector]public int pathIndex = 1;
         private bool isForward = true; // true = avanzando, false = retrocediendo
-
         private void Start()
         {
             targetRigidbody = GetComponent<Rigidbody>();
@@ -78,6 +78,7 @@ namespace CurvedPathGenerator
 
             if (distance < DistanceThreshold)
             {
+                
                 if (!IsLoop && !Generator.IsClosed)
                 {
                     // --- IDA Y VUELTA ---
@@ -144,6 +145,9 @@ namespace CurvedPathGenerator
                         }
                     }
                 }
+
+               
+
             }
         }
 

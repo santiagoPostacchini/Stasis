@@ -16,6 +16,7 @@ public class FollowTargetController : MonoBehaviour
     public float outMin = 0f;
     public float outMax = 1f;
     public AnimationCurve remapLerp;
+    public bool canMove;
 
     private void Start()
     {
@@ -26,11 +27,12 @@ public class FollowTargetController : MonoBehaviour
 
     private void Update()
     {
+        if (!canMove) return;
         dist = Vector3.Distance(player.position, transform.position);
         float value = math.remap(inMin, inMax, outMin, outMax, dist);
         rig.weight = remapLerp.Evaluate(value);
     }
-
+    
     public void ChangePosition()
     {
         if(transform.position == startTransform.position)
