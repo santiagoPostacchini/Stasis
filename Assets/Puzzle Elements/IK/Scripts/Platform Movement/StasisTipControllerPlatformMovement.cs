@@ -8,7 +8,7 @@ using CurvedPathGenerator;
 public class StasisTipControllerPlatformMovement : MonoBehaviour, IStasis
 {
     public bool IsFreezed => _isFreezed;
-    private bool _isFreezed = false;
+    [SerializeField]private bool _isFreezed = false;
     [Header("Stasis")]
     public Material matStasis;
     public readonly string _outlineThicknessName = "_BorderThickness";

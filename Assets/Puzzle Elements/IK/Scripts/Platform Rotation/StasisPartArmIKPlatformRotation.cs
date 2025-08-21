@@ -9,7 +9,6 @@ public class StasisPartArmIKPlatformRotation : MonoBehaviour, IStasis
     private bool _isFreezed = false;
     [SerializeField] private StasisTipControllerPlatformRotation _stasisTipControllerPlatformRotation;
 
-    [SerializeField] private bool a;
 
     // Start is called before the first frame update
     void Start()
@@ -41,17 +40,4 @@ public class StasisPartArmIKPlatformRotation : MonoBehaviour, IStasis
         }
     }
 
-    private void Update()
-    {
-        if (!a) return;
-
-        if (Input.GetKeyDown(KeyCode.J))
-        {
-            StatisEffectActivate();
-        }
-        if (Input.GetKeyDown(KeyCode.K))
-        {
-            StatisEffectDeactivate();
-        }
-    }
 }

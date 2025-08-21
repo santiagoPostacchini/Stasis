@@ -1,87 +1,182 @@
 using UnityEngine;
+using System.Collections;
 using System.Collections.Generic;
-using System.Threading.Tasks;
 
 public class FollowMultipleTargetController : MonoBehaviour
 {
     [Header("Lista de objetos a seguir")]
-    public List<Transform> brothers = new List<Transform>(); // Lista de objetos que definen posición y rotación
-    public AnimationCurve remapLerp; // Para suavizar movimiento y rotación
-    public float moveDelay = 0f; // Tiempo de espera antes de ir al siguiente punto
-    public float stopDuration = 0.5f; // Tiempo que espera en cada punto
+    public List<Transform> brothers = new List<Transform>();
+    public AnimationCurve remapLerp = AnimationCurve.Linear(0, 0, 1, 1);
 
-    private int currentIndex = 0;
-    private bool isMoving = false;
-    private bool forward = true; // Si vamos hacia adelante o hacia atrás
+    [Tooltip("Tiempo antes de iniciar cada movimiento")]
+    public float moveDelay = 0f;
+
+    [Tooltip("Pausa tras llegar al punto")]
+    public float stopDuration = 0.5f;
+
+    [Tooltip("Tiempo que tarda en viajar de un punto al siguiente")]
+    public float travelTime = 1f;
 
     public bool CanMove = true;
 
-    private void Update()
-    {
-        if (!CanMove || isMoving || brothers.Count == 0)
-            return;
+    // currentIndex = índice del punto en el que ESTÁS (no del que vas a ir)
+    private int currentIndex = 0;
+    private bool forward = true;
 
-        MoveToNextBrother();
+    private Coroutine moveRoutine; // guardia anti-race
+    private Rigidbody rb;          // opcional: para frenar física
+
+    private void Awake()
+    {
+        rb = GetComponent<Rigidbody>();
     }
 
-    private void MoveToNextBrother()
+    private void Update()
     {
-        // Ajustar índice según dirección
+        if (!CanMove)
+        {
+            CancelMovement();
+            return;
+        }
+
+        if (brothers == null || brothers.Count == 0)
+            return;
+
+        if (moveRoutine != null)
+            return;
+
+        // Intentá ir al próximo destino (sin avanzar estado todavía)
+        TryStartNextMove();
+    }
+
+    private void TryStartNextMove()
+    {
+        if (brothers.Count == 1)
+            return;
+
+        // Calculamos el PRÓXIMO destino como vista previa (no tocamos estado aún)
+        int targetIndex;
+        bool newForward;
+        PeekNext(out targetIndex, out newForward);
+
+        Transform target = brothers[Mathf.Clamp(targetIndex, 0, brothers.Count - 1)];
+        if (target == null) return;
+
+        // Arrancamos la corrutina y al COMPLETAR recién aplicamos el cambio de estado
+        moveRoutine = StartCoroutine(MoveCoroutine(target, targetIndex, newForward));
+    }
+
+    /// <summary>
+    /// Calcula el próximo índice y posible cambio de dirección SIN aplicar el cambio.
+    /// </summary>
+    private void PeekNext(out int targetIndex, out bool newForward)
+    {
+        newForward = forward;
+
         if (forward)
         {
-            if (currentIndex >= brothers.Count)
+            if (currentIndex >= brothers.Count - 1)
             {
-                forward = false;
-                currentIndex = brothers.Count - 2; // Retrocedemos
+                // Estamos en el último -> rebotar
+                newForward = false;
+                targetIndex = Mathf.Max(0, brothers.Count - 2);
+            }
+            else
+            {
+                targetIndex = currentIndex + 1;
             }
         }
         else
         {
-            if (currentIndex < 0)
+            if (currentIndex <= 0)
             {
-                forward = true;
-                currentIndex = 1; // Avanzamos
+                // Estamos en el primero -> rebotar
+                newForward = true;
+                targetIndex = (brothers.Count > 1) ? 1 : 0;
+            }
+            else
+            {
+                targetIndex = currentIndex - 1;
+            }
+        }
+    }
+
+    private IEnumerator MoveCoroutine(Transform to, int targetIndex, bool newForward)
+    {
+        // Delay previo (cancelable)
+        if (moveDelay > 0f)
+        {
+            float tDelay = 0f;
+            while (tDelay < moveDelay)
+            {
+                if (!CanMove) { CancelMovement(); yield break; }
+                tDelay += Time.deltaTime;
+                yield return null;
             }
         }
 
-        Transform target = brothers[currentIndex];
-        currentIndex += forward ? 1 : -1;
+        Vector3 startPos = transform.position;
+        Quaternion startRot = transform.rotation;
 
-        MoveAsync(transform, target);
-    }
+        float dur = Mathf.Max(0.0001f, travelTime);
+        float t = 0f;
 
-    private async void MoveAsync(Transform from, Transform to)
-    {
-        isMoving = true;
-
-        if (moveDelay > 0f)
-            await Task.Delay((int)(moveDelay * 1000));
-
-        await SomeAsyncMethod(from, to);
-
-        if (stopDuration > 0f)
-            await Task.Delay((int)(stopDuration * 1000));
-
-        isMoving = false;
-    }
-
-    private async Task SomeAsyncMethod(Transform from, Transform to)
-    {
-        for (float t = 0; t < 1f; t += Time.deltaTime)
+        while (t < dur)
         {
-            // Si el objeto fue destruido o CanMove es false, salimos
-            if (!CanMove || this == null)
-                break;
+            if (!CanMove) { CancelMovement(); yield break; }
 
-            transform.position = Vector3.Lerp(from.position, to.position, remapLerp.Evaluate(t));
-            transform.rotation = Quaternion.Lerp(from.rotation, to.rotation, remapLerp.Evaluate(t));
-            await Task.Yield();
+            float k = remapLerp.Evaluate(t / dur);
+            // (Unclamped por si la curva remapea >1/<0)
+            transform.position = Vector3.LerpUnclamped(startPos, to.position, k);
+            transform.rotation = Quaternion.SlerpUnclamped(startRot, to.rotation, k);
+
+            t += Time.deltaTime;
+            yield return null;
         }
 
-        if (this != null && CanMove)
+        if (CanMove)
         {
+            // Asegurar estado final
             transform.position = to.position;
             transform.rotation = to.rotation;
+
+            // **Recién ahora** aplicamos el avance de estado
+            currentIndex = targetIndex;
+            forward = newForward;
+
+            // Pausa (cancelable)
+            if (stopDuration > 0f)
+            {
+                float tStop = 0f;
+                while (tStop < stopDuration)
+                {
+                    if (!CanMove) { CancelMovement(); yield break; }
+                    tStop += Time.deltaTime;
+                    yield return null;
+                }
+            }
         }
+
+        moveRoutine = null; // listo para un nuevo movimiento
     }
+
+    private void CancelMovement()
+    {
+        if (moveRoutine != null)
+        {
+            StopAllCoroutines(); // mata cualquier corrutina de este componente
+            moveRoutine = null;
+        }
+
+        // Opcional: frenar física por si hay arrastre
+        if (rb != null)
+        {
+            rb.velocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
+        }
+        // Importante: **NO** tocamos currentIndex ni forward al cancelar.
+    }
+
+    private void OnDisable() => CancelMovement();
+    private void OnDestroy() => CancelMovement();
 }
