@@ -2,33 +2,50 @@ using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 
+[RequireComponent(typeof(Rigidbody))]
 public class FollowMultipleTargetController : MonoBehaviour
 {
-    [Header("Lista de objetos a seguir")]
+    [Header("Waypoints")]
     public List<Transform> brothers = new List<Transform>();
+
+    [Header("Easing temporal (0..1)")]
     public AnimationCurve remapLerp = AnimationCurve.Linear(0, 0, 1, 1);
 
+    [Header("Curva espacial (Bezier cuadrática)")]
+    [Tooltip("Altura del arco entre puntos (unidades)")]
+    public float arcHeight = 0f;
+    [Tooltip("Eje para elevar el arco (si es null, usa Vector3.up)")]
+    public Transform arcUp; // opcional
+
+    [Header("Tiempos")]
     [Tooltip("Tiempo antes de iniciar cada movimiento")]
     public float moveDelay = 0f;
-
+    [Tooltip("Tiempo de viaje entre puntos")]
+    public float travelTime = 1f;
     [Tooltip("Pausa tras llegar al punto")]
     public float stopDuration = 0.5f;
 
-    [Tooltip("Tiempo que tarda en viajar de un punto al siguiente")]
-    public float travelTime = 1f;
+    [Header("Orientación")]
+    [Tooltip("Alinear rotación con la tangente de la curva")]
+    public bool orientAlongPath = false;
 
+    [Header("Control")]
     public bool CanMove = true;
+    [Tooltip("Forzar Rigidbody a kinematic (recomendado)")]
+    public bool forceKinematic = true;
 
-    // currentIndex = índice del punto en el que ESTÁS (no del que vas a ir)
+    // currentIndex = índice del punto en el que ESTÁS (no del que vas)
     private int currentIndex = 0;
     private bool forward = true;
 
-    private Coroutine moveRoutine; // guardia anti-race
-    private Rigidbody rb;          // opcional: para frenar física
+    private Coroutine moveRoutine;
+    private Rigidbody rb;
 
     private void Awake()
     {
         rb = GetComponent<Rigidbody>();
+        if (forceKinematic) rb.isKinematic = true;
+        rb.interpolation = RigidbodyInterpolation.Interpolate;
     }
 
     private void Update()
@@ -39,36 +56,26 @@ public class FollowMultipleTargetController : MonoBehaviour
             return;
         }
 
-        if (brothers == null || brothers.Count == 0)
-            return;
+        if (brothers == null || brothers.Count == 0) return;
+        if (moveRoutine != null) return;
 
-        if (moveRoutine != null)
-            return;
-
-        // Intentá ir al próximo destino (sin avanzar estado todavía)
         TryStartNextMove();
     }
 
     private void TryStartNextMove()
     {
-        if (brothers.Count == 1)
-            return;
+        if (brothers.Count <= 1) return;
 
-        // Calculamos el PRÓXIMO destino como vista previa (no tocamos estado aún)
         int targetIndex;
         bool newForward;
         PeekNext(out targetIndex, out newForward);
 
-        Transform target = brothers[Mathf.Clamp(targetIndex, 0, brothers.Count - 1)];
-        if (target == null) return;
+        if (brothers[targetIndex] == null) return;
 
-        // Arrancamos la corrutina y al COMPLETAR recién aplicamos el cambio de estado
-        moveRoutine = StartCoroutine(MoveCoroutine(target, targetIndex, newForward));
+        moveRoutine = StartCoroutine(MoveCoroutine(targetIndex, newForward));
     }
 
-    /// <summary>
-    /// Calcula el próximo índice y posible cambio de dirección SIN aplicar el cambio.
-    /// </summary>
+    /// Calcula siguiente índice y dirección SIN aplicarlos.
     private void PeekNext(out int targetIndex, out bool newForward)
     {
         newForward = forward;
@@ -77,46 +84,46 @@ public class FollowMultipleTargetController : MonoBehaviour
         {
             if (currentIndex >= brothers.Count - 1)
             {
-                // Estamos en el último -> rebotar
                 newForward = false;
                 targetIndex = Mathf.Max(0, brothers.Count - 2);
             }
-            else
-            {
-                targetIndex = currentIndex + 1;
-            }
+            else targetIndex = currentIndex + 1;
         }
         else
         {
             if (currentIndex <= 0)
             {
-                // Estamos en el primero -> rebotar
                 newForward = true;
                 targetIndex = (brothers.Count > 1) ? 1 : 0;
             }
-            else
-            {
-                targetIndex = currentIndex - 1;
-            }
+            else targetIndex = currentIndex - 1;
         }
     }
 
-    private IEnumerator MoveCoroutine(Transform to, int targetIndex, bool newForward)
+    private IEnumerator MoveCoroutine(int targetIndex, bool newForward)
     {
-        // Delay previo (cancelable)
+        // Snapshot de poses de este tramo (para estabilidad)
+        Vector3 p1 = rb.position;                         // inicio
+        Vector3 p2 = brothers[targetIndex].position;      // fin
+        Quaternion startRot = rb.rotation;
+        Quaternion endRot = brothers[targetIndex].rotation;
+
+        // Bezier: punto de control elevado
+        Vector3 up = (arcUp != null ? arcUp.up : Vector3.up);
+        Vector3 mid = (p1 + p2) * 0.5f;
+        Vector3 ctrl = mid + up * arcHeight;
+
+        // Delay previo (alineado a física)
         if (moveDelay > 0f)
         {
-            float tDelay = 0f;
-            while (tDelay < moveDelay)
+            float tD = 0f;
+            while (tD < moveDelay)
             {
                 if (!CanMove) { CancelMovement(); yield break; }
-                tDelay += Time.deltaTime;
-                yield return null;
+                tD += Time.fixedDeltaTime;
+                yield return new WaitForFixedUpdate();
             }
         }
-
-        Vector3 startPos = transform.position;
-        Quaternion startRot = transform.rotation;
 
         float dur = Mathf.Max(0.0001f, travelTime);
         float t = 0f;
@@ -125,56 +132,76 @@ public class FollowMultipleTargetController : MonoBehaviour
         {
             if (!CanMove) { CancelMovement(); yield break; }
 
-            float k = remapLerp.Evaluate(t / dur);
-            // (Unclamped por si la curva remapea >1/<0)
-            transform.position = Vector3.LerpUnclamped(startPos, to.position, k);
-            transform.rotation = Quaternion.SlerpUnclamped(startRot, to.rotation, k);
+            float u = remapLerp.Evaluate(t / dur); // 0..1
 
-            t += Time.deltaTime;
-            yield return null;
+            // Bezier cuadrática
+            Vector3 a = Vector3.LerpUnclamped(p1, ctrl, u);
+            Vector3 b = Vector3.LerpUnclamped(ctrl, p2, u);
+            Vector3 pos = Vector3.LerpUnclamped(a, b, u);
+            rb.MovePosition(pos);
+
+            if (orientAlongPath)
+            {
+                // Tangente de Bezier cuadrática: 2*(1-u)*(ctrl-p1) + 2*u*(p2-ctrl)
+                Vector3 tan = 2f * (1f - u) * (ctrl - p1) + 2f * u * (p2 - ctrl);
+                if (tan.sqrMagnitude > 1e-6f)
+                {
+                    Quaternion look = Quaternion.LookRotation(tan.normalized, Vector3.up);
+                    Quaternion rot = Quaternion.SlerpUnclamped(startRot, look, u);
+                    rb.MoveRotation(rot);
+                }
+            }
+            else
+            {
+                Quaternion rot = Quaternion.SlerpUnclamped(startRot, endRot, u);
+                rb.MoveRotation(rot);
+            }
+
+            t += Time.fixedDeltaTime;
+            yield return new WaitForFixedUpdate();
         }
 
         if (CanMove)
         {
-            // Asegurar estado final
-            transform.position = to.position;
-            transform.rotation = to.rotation;
+            // Pose final exacta
+            rb.isKinematic = true;
+            rb.MovePosition(p2);
+            rb.MoveRotation(orientAlongPath
+                ? Quaternion.LookRotation((p2 - ctrl).normalized, Vector3.up)
+                : endRot);
 
-            // **Recién ahora** aplicamos el avance de estado
+            // Avanzar estado
             currentIndex = targetIndex;
             forward = newForward;
 
-            // Pausa (cancelable)
+            // Pausa tras llegar (en física)
             if (stopDuration > 0f)
             {
                 float tStop = 0f;
                 while (tStop < stopDuration)
                 {
                     if (!CanMove) { CancelMovement(); yield break; }
-                    tStop += Time.deltaTime;
-                    yield return null;
+                    tStop += Time.fixedDeltaTime;
+                    yield return new WaitForFixedUpdate();
                 }
             }
         }
 
-        moveRoutine = null; // listo para un nuevo movimiento
+        moveRoutine = null; // listo para el siguiente tramo
     }
 
     private void CancelMovement()
     {
         if (moveRoutine != null)
         {
-            StopAllCoroutines(); // mata cualquier corrutina de este componente
+            StopAllCoroutines();
             moveRoutine = null;
         }
-
-        // Opcional: frenar física por si hay arrastre
-        if (rb != null)
-        {
-            rb.velocity = Vector3.zero;
-            rb.angularVelocity = Vector3.zero;
-        }
-        // Importante: **NO** tocamos currentIndex ni forward al cancelar.
+        // Frenar cualquier residuo físico
+        rb.isKinematic = false;
+        rb.velocity = Vector3.zero;
+        rb.angularVelocity = Vector3.zero;
+        // No tocamos currentIndex ni forward.
     }
 
     private void OnDisable() => CancelMovement();
