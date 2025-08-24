@@ -7,15 +7,22 @@ public class Trigger1 : MonoBehaviour
 {
     public List<FollowTargetController> followTargetControllers;
     public Material yellow, green;
+    private bool _alreadyCollision = false;
 
     private void OnTriggerEnter(Collider other)
     {
+        if (_alreadyCollision) return;
         Debug.Log("Entre en colision");
         foreach (var item in followTargetControllers)
         {
             item.ChangePosition();
         }
+        _alreadyCollision = true;
         ChangeMaterial();
+    }
+    private void OnTriggerExit(Collider other)
+    {
+        _alreadyCollision = false;
     }
 
     async void ChangeMaterial()

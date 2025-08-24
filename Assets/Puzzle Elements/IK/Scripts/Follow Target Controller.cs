@@ -7,9 +7,9 @@ using UnityEngine.Animations.Rigging;
 public class FollowTargetController : MonoBehaviour
 {
     [Header("Refs")]
-    public Transform player;          // Solo lectura de posición
-    public Rig rig;                   // Peso del rig según distancia
-    public Transform brother;         // Punto B
+    public Transform player;
+    public Rig rig;
+    public Transform brother;
 
     [Header("Rig weight por distancia")]
     public float inMin = 2f;
@@ -18,143 +18,147 @@ public class FollowTargetController : MonoBehaviour
     public float outMax = 1f;
     public AnimationCurve remapLerp = AnimationCurve.Linear(0, 0, 1, 1);
 
-    [Header("Movimiento")]
-    [Tooltip("Duración (s) del desplazamiento al cambiar de posición")]
-    public float moveDuration = 1f;
+    [Header("Suavizado del weight")]
+    public float weightSpeed = 2f; // unidades de weight por segundo
 
-    [Tooltip("Si es false, no inicia ni continúa desplazamientos")]
+    [Header("Movimiento ChangePosition")]
+    public float moveDuration = 1f; // segundos para ir de A a B o viceversa
+
+    [Header("Control")]
     public bool canMove = true;
 
-    // Estado
+    // Estado interno
     private Rigidbody rb;
-    private Vector3 startPos;         // Punto A (posición inicial)
-    private Quaternion startRot;      // Rotación inicial
-    private bool atStart = true;   
+    private Transform startAnchor; // ancla A
+    private bool atStart = true;   // estamos en A?
     private Coroutine moveRoutine;
 
-    // Expuesto para depurar (solo lectura)
+    // Weight interno (suavizado)
+    private float targetWeight = 0f;
+    private float currentWeight = 0f;
+
+    // Debug solo lectura
     public float dist { get; private set; }
 
     private void Awake()
     {
         rb = GetComponent<Rigidbody>();
-        rb.isKinematic = true;                               // Controlado por script
+        rb.isKinematic = true;
         rb.interpolation = RigidbodyInterpolation.Interpolate;
     }
 
     private void Start()
     {
-        // Ancla A: la pose inicial del rigidbody
-        startPos = rb.position;
-        startRot = rb.rotation;
+        // Crear ancla A en la pose inicial del RB
+        startAnchor = new GameObject(name + "_StartAnchor").transform;
+        startAnchor.SetPositionAndRotation(rb.position, rb.rotation);
         atStart = true;
+
+        // Inicializar weight
+        if (rig != null)
+        {
+            currentWeight = Mathf.Clamp01(rig.weight);
+            targetWeight = currentWeight;
+            rig.weight = currentWeight;
+        }
     }
 
     private void Update()
     {
-        // Si se deshabilita en runtime, detiene todo de inmediato
-        if (!canMove && moveRoutine != null)
-            CancelMovement();
-
-        // Actualiza el peso del rig según la distancia (lógico que sea en Update)
+        // Distancia a player (no mueve este objeto)
         if (player != null)
-        {
-            if (!canMove) return;
             dist = Vector3.Distance(player.position, rb.position);
-            float value = math.remap(inMin, inMax, outMin, outMax, dist);
-            if (rig != null) rig.weight = remapLerp.Evaluate(value);
+
+        // Pausa total
+        if (!canMove) return;
+
+        // Objetivo de weight segun distancia con curva (NO setear directo)
+        // Remapeamos dist -> [outMin..outMax], curvamos y clamp a [0..1]
+        float raw = math.remap(inMin, inMax, outMin, outMax, dist);
+        float curved = remapLerp.Evaluate(raw);
+        targetWeight = Mathf.Clamp01(curved);
+
+        // Suavizar el weight hacia el objetivo
+        if (rig != null)
+        {
+            currentWeight = Mathf.MoveTowards(rig.weight, targetWeight, weightSpeed * Time.deltaTime);
+            rig.weight = currentWeight;
         }
     }
 
-    /// <summary>
-    /// Alterna entre el punto inicial  y el punto brother .
-    /// Si ya hay un movimiento en curso, lo cancela y arranca desde la pose actual.
-    /// </summary>
+    // Alterna entre Start (ancla A) y Brother con animacion usando Rigidbody
     public void ChangePosition()
     {
-        if (!canMove || brother == null) return;
+        if (brother == null) return;
 
-        Vector3 fromPos = rb.position;
-        Quaternion fromRot = rb.rotation;
+        Transform to = atStart ? brother : startAnchor;
 
-        Vector3 toPos = atStart ? brother.position : startPos;
-        Quaternion toRot = atStart ? brother.rotation : startRot;
-
-        // Reinicia movimiento si había uno en curso
         if (moveRoutine != null) StopCoroutine(moveRoutine);
-        moveRoutine = StartCoroutine(MoveRB(fromPos, fromRot, toPos, toRot, moveDuration));
+        moveRoutine = StartCoroutine(MoveRB_Pausable(to, moveDuration));
     }
 
-    private IEnumerator MoveRB(Vector3 fromPos, Quaternion fromRot, Vector3 toPos, Quaternion toRot, float duration)
+    // Corrutina pausable: no teletransporta al reactivar canMove
+    private IEnumerator MoveRB_Pausable(Transform to, float totalDuration)
     {
-        duration = Mathf.Max(0.0001f, duration);
-        float t = 0f;
+        totalDuration = Mathf.Max(0.0001f, totalDuration);
+        float remaining = totalDuration;
 
-        // Bucle de física
-        while (t < duration)
+        Vector3 segStartPos = rb.position;
+        Quaternion segStartRot = rb.rotation;
+
+        while (remaining > 0f)
         {
-            // Cancelación inmediata si canMove cambia a false
-            if (!canMove)
+            // Esperar hasta poder mover
+            while (!canMove) yield return null;
+
+            // Recalcular destino por si se movio
+            Vector3 segEndPos = to.position;
+            Quaternion segEndRot = to.rotation;
+
+            float elapsed = 0f;
+            // Avanzar el segmento actual hasta que termine o se pause
+            while (elapsed < remaining && canMove)
             {
-                HardStop();
-                yield break;
+                // Normal 0..1 sobre el tiempo restante del segmento
+                float u = Mathf.Clamp01(elapsed / remaining);
+                float k = remapLerp.Evaluate(u);
+
+                // Destino puede cambiar frame a frame
+                segEndPos = to.position;
+                segEndRot = to.rotation;
+
+                rb.MovePosition(Vector3.LerpUnclamped(segStartPos, segEndPos, k));
+                rb.MoveRotation(Quaternion.SlerpUnclamped(segStartRot, segEndRot, k));
+
+                elapsed += Time.fixedDeltaTime;
+                yield return new WaitForFixedUpdate();
             }
 
-            float u = t / duration;                 // 0..1 lineal
-            float k = remapLerp.Evaluate(u);        // easing temporal
+            if (!canMove)
+            {
+                // Pausa: conservar lo restante y arrancar nuevo segmento desde la pose actual
+                remaining -= elapsed;
+                segStartPos = rb.position;
+                segStartRot = rb.rotation;
+                continue;
+            }
 
-            Vector3 pos = Vector3.LerpUnclamped(fromPos, toPos, k);
-            Quaternion rot = Quaternion.SlerpUnclamped(fromRot, toRot, k);
-
-            rb.MovePosition(pos);
-            rb.MoveRotation(rot);
-
-            t += Time.fixedDeltaTime;
-            yield return new WaitForFixedUpdate();
+            // Segmento completado
+            rb.MovePosition(segEndPos);
+            rb.MoveRotation(segEndRot);
+            remaining = 0f;
         }
 
-        // Pose final exacta
-        rb.MovePosition(toPos);
-        rb.MoveRotation(toRot);
-
-        // Solo alternamos A  B cuando realmente LLEGAMOS
-        atStart = !atStart;
-
+        atStart = (to == startAnchor);
         moveRoutine = null;
-    }
-
-    /// <summary>
-    /// Cancela corrutinas y detiene por completo el rigidbody .
-    /// </summary>
-    private void CancelMovement()
-    {
-        if (moveRoutine != null)
-        {
-            StopAllCoroutines();
-            moveRoutine = null;
-        }
-        HardStop();
-    }
-
-    /// <summary>
-    /// Detiene velocidades y limpia la interpolación para que no se mueva ni un píxel más.
-    /// </summary>
-    private void HardStop()
-    {
-        rb.velocity = Vector3.zero;
-        rb.angularVelocity = Vector3.zero;
-
-        // Flush de la interpolación para evitar que siga blendando al último target
-        var interp = rb.interpolation;
-        rb.interpolation = RigidbodyInterpolation.None;
-        // Reafirmamos la pose actual del RB (sin usar transform)
-        rb.position = rb.position;
-        rb.rotation = rb.rotation;
-        rb.interpolation = interp;
     }
 
     private void OnDisable()
     {
-        CancelMovement();
+        if (moveRoutine != null)
+        {
+            StopCoroutine(moveRoutine);
+            moveRoutine = null;
+        }
     }
 }
