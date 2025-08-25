@@ -5,7 +5,6 @@ using UnityEngine.Events;
 
 public class SensorLaser : MonoBehaviour
 {
-    [Header("Laser Settings (used only if ByLaser)")]
     public Laser[] lasers;
 
 

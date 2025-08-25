@@ -15,7 +15,7 @@ public class FollowMultipleTargetController : MonoBehaviour
     [Tooltip("Altura del arco entre puntos (unidades)")]
     public float arcHeight = 0f;
     [Tooltip("Eje para elevar el arco (si es null, usa Vector3.up)")]
-    public Transform arcUp; // opcional
+    private Transform arcUp; // opcional
 
     [Header("Tiempos")]
     [Tooltip("Tiempo antes de iniciar cada movimiento")]

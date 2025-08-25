@@ -7,24 +7,41 @@ using UnityEngine.Animations.Rigging;
 public class FollowTargetController : MonoBehaviour
 {
     [Header("Refs")]
+    [Tooltip("Referencia al Player; solo se usa para medir la distancia.")]
     public Transform player;
+
+    [Tooltip("Rig que controla el peso del IK (0..1).")]
     public Rig rig;
+
+    [Tooltip("Destino alternativo para ChangePosition (punto B).")]
     public Transform brother;
 
     [Header("Rig weight por distancia")]
+    [Tooltip("Distancia mínima desde la cual empieza el mapeo del peso.")]
     public float inMin = 2f;
+
+    [Tooltip("Distancia máxima para el mapeo del peso.")]
     public float inMax = 5f;
+
+    [Tooltip("Salida mínima del mapeo previo a la curva (antes de remapLerp).")]
     public float outMin = 0f;
+
+    [Tooltip("Salida máxima del mapeo previo a la curva (antes de remapLerp).")]
     public float outMax = 1f;
+
+    [Tooltip("Curva de easing para transformar la distancia en el peso del Rig.")]
     public AnimationCurve remapLerp = AnimationCurve.Linear(0, 0, 1, 1);
 
     [Header("Suavizado del weight")]
-    public float weightSpeed = 2f; // unidades de weight por segundo
+    [Tooltip("Velocidad a la que el peso del Rig converge hacia el objetivo (0..1 por segundo).")]
+    public float weightSpeed = 2f;
 
     [Header("Movimiento ChangePosition")]
-    public float moveDuration = 1f; // segundos para ir de A a B o viceversa
+    [Tooltip("Duración (segundos) del movimiento entre Start (ancla A) y Brother (punto B).")]
+    public float moveDuration = 1f;
 
     [Header("Control")]
+    [Tooltip("Si es false, no se actualiza el Rig ni avanza el movimiento.")]
     public bool canMove = true;
 
     // Estado interno
