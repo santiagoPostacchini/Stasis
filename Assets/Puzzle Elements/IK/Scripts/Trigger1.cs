@@ -24,7 +24,17 @@ public class Trigger1 : MonoBehaviour
     {
         _alreadyCollision = false;
     }
-
+    public void ChangeDirection()
+    {
+        if (_alreadyCollision) return;
+        Debug.Log("Entre en colision");
+        foreach (var item in followTargetControllers)
+        {
+            item.ChangePosition();
+        }
+        _alreadyCollision = true;
+        ChangeMaterial();
+    }
     async void ChangeMaterial()
     {
         GetComponent<Renderer>().material = yellow;
