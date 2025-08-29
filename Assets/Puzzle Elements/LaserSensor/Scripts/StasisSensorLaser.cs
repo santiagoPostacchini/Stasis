@@ -13,7 +13,11 @@ public class StasisSensorLaser : MonoBehaviour, IStasis
     public Material matStasis;
     public readonly string _outlineThicknessName = "_BorderThickness";
     public MaterialPropertyBlock _mpb;
-
+    void Start()
+    {
+        _sensorLaser = GetComponent<SensorLaser>();
+        _mpb = new MaterialPropertyBlock();
+    }
     // Soporta múltiples renderers
     public Renderer[] renderers;
 
@@ -28,15 +32,7 @@ public class StasisSensorLaser : MonoBehaviour, IStasis
         UnfreezeObject();
         _sensorLaser.CanShootLasers(true);
     }
-    private void Update()
-    {
-        
-    }
-    void Start()
-    {
-        _sensorLaser = GetComponent<SensorLaser>();
-        _mpb = new MaterialPropertyBlock();
-    }
+  
 
     private void FreezeObject()
     {

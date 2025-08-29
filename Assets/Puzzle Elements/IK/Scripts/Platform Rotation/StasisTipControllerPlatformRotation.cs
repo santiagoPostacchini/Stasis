@@ -22,6 +22,11 @@ public class StasisTipControllerPlatformRotation : MonoBehaviour, IStasis
     public event Action OnUnFreezeEvent;
 
     [SerializeField] private FollowMultipleTargetController _followMultipleTargetController;
+    void Start()
+    {
+        _mpb = new MaterialPropertyBlock();
+        _followMultipleTargetController = GetComponent<FollowMultipleTargetController>();
+    }
     public void StatisEffectActivate()
     {
 
@@ -35,18 +40,7 @@ public class StasisTipControllerPlatformRotation : MonoBehaviour, IStasis
         _followMultipleTargetController.CanMove = true;
     }
 
-    // Start is called before the first frame update
-    void Start()
-    {
-        _mpb = new MaterialPropertyBlock();
-        _followMultipleTargetController = GetComponent<FollowMultipleTargetController>();
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-
-    }
+  
     private void FreezeObject()
     {
         if (!_isFreezed)
