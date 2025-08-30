@@ -66,6 +66,8 @@ namespace Puzzle_Elements.Fan.Scripts
         [Tooltip("Renderers a los que se les aplica el outline/color de Stasis. Si queda vacío, se autollenan con hijos.")]
         public Renderer[] targetRenderers;
 
+        public ParticleSystem windParticles;
+
         [Tooltip("Propiedad de grosor de borde en el shader (float).")]
         public string outlineThicknessProperty = "_BorderThickness";
 
@@ -176,6 +178,8 @@ namespace Puzzle_Elements.Fan.Scripts
         {
             _isRunning = running;
             if (!running) _rb.angularVelocity = Vector3.zero;
+            if (running) windParticles.Play();
+            else windParticles.Pause();
         }
 
         // ======================== STASIS (IStasis) ========================
@@ -187,7 +191,7 @@ namespace Puzzle_Elements.Fan.Scripts
             _rb.isKinematic = true;
             _rb.angularVelocity = Vector3.zero;
             _ccExternalVel.Clear();
-
+            windParticles.Stop();
             ApplyStasisVFX(true);
         }
 
@@ -195,7 +199,7 @@ namespace Puzzle_Elements.Fan.Scripts
         {
             _isStasis = false;
             _rb.isKinematic = false;
-
+            windParticles.Play();
             ApplyStasisVFX(false);
         }
 
