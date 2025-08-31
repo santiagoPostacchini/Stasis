@@ -9,8 +9,13 @@ namespace Puzzle_Elements.Fan.Scripts
     {
         // ======================== ROTACIÓN ========================
         [Header("Rotación")]
+        [Tooltip("Eje en el que girará el ventilador.")]
         public Vector3 ejeRotacion = new(0, 1, 0);
+
+        [Tooltip("Velocidad de rotación del ventilador en grados por segundo.")]
         public float velocidadRotacion = 45f;
+
+        [Tooltip("Si está activado, el ventilador comenzará encendido al iniciar.")]
         public bool startOn = true;
 
         private Rigidbody _rb;
@@ -19,44 +24,82 @@ namespace Puzzle_Elements.Fan.Scripts
 
         // ======================== VOLUMEN FRONTAL ========================
         [Header("Volumen del aire (frontal)")]
+        [Tooltip("Longitud del área de efecto frontal del ventilador.")]
         public float length = 10f;
+
+        [Tooltip("Radio inicial del cono de viento en la parte frontal.")]
         public float startRadius = 1.0f;
+
+        [Tooltip("Radio final del cono de viento en la parte frontal.")]
         public float endRadius = 1.0f;
 
         [Header("Fuerza (frontal)")]
+        [Tooltip("Aceleración máxima que aplica el ventilador en su zona frontal.")]
         public float maxAcceleration = 30f;
+
+        [Tooltip("Curva que define la caída de fuerza en el eje longitudinal (a lo largo de la longitud).")]
         public AnimationCurve longitudinalFalloff = AnimationCurve.Linear(0f, 1f, 1f, 0f);
+
+        [Tooltip("Curva que define la caída de fuerza en el eje radial (desde el centro hacia afuera).")]
         public AnimationCurve radialFalloff = AnimationCurve.Linear(0f, 1f, 1f, 0f);
 
         // ======================== SUCCIÓN TRASERA ========================
         [Header("Succión trasera (opcional)")]
+        [Tooltip("Si está activado, el ventilador generará succión en la parte trasera.")]
         public bool enableBackSuction = true;
+
+        [Tooltip("Longitud del área de succión trasera.")]
         public float backLength = 6f;
+
+        [Tooltip("Radio inicial de la zona de succión trasera.")]
         public float backStartRadius = 1.0f;
+
+        [Tooltip("Radio final de la zona de succión trasera.")]
         public float backEndRadius = 1.0f;
 
         [Header("Fuerza (trasera)")]
+        [Tooltip("Aceleración máxima aplicada por la succión trasera.")]
         public float backMaxAcceleration = 20f;
+
+        [Tooltip("Curva que define la caída de fuerza longitudinal en la succión trasera.")]
         public AnimationCurve backLongitudinalFalloff = AnimationCurve.Linear(0f, 1f, 1f, 0f);
+
+        [Tooltip("Curva que define la caída de fuerza radial en la succión trasera.")]
         public AnimationCurve backRadialFalloff = AnimationCurve.Linear(0f, 1f, 1f, 0f);
 
         // ======================== APLICACIÓN DE FUERZAS ========================
         [Header("Capas afectadas")]
+        [Tooltip("Capas de objetos que serán afectadas por el viento o la succión.")]
         public LayerMask affectLayers = ~0;
 
         [Header("Ajustes extra")]
+        [Tooltip("Fracción de la fuerza aplicada verticalmente como 'elevación' (0 a 0.5).")]
         [Range(0f, 0.5f)] public float liftFraction = 0.15f;
+
+        [Tooltip("Coeficiente aproximado de fricción estática para aplicar fuerzas mínimas realistas en objetos con Rigidbody.")]
         public float approxMuStatic = 0.5f;
 
         [Header("CharacterController (sin componentes extra)")]
+        [Tooltip("Si está activado, el ventilador también empuja objetos con CharacterController.")]
         public bool pushCharacterControllers = true;
+
+        [Tooltip("Velocidad máxima que puede alcanzar un CharacterController debido al viento.")]
         public float ccMaxExternalSpeed = 10f;
+
+        [Tooltip("Factor de amortiguación para reducir progresivamente la velocidad aplicada a CharacterControllers (0-1).")]
         [Range(0f, 1f)] public float ccDamping = 0.15f;
 
         [Header("Línea de visión (opcional)")]
+        [Tooltip("Si está activado, el ventilador solo afectará a los objetos si hay línea de visión directa.")]
         public bool requireLineOfSight;
+
+        [Tooltip("Capas que pueden bloquear la línea de visión del ventilador.")]
         public LayerMask occluderLayers = ~0;
+
+        [Tooltip("Altura desde la base del ventilador para iniciar el chequeo de línea de visión.")]
         public float losOriginYOffset = 0.1f;
+
+        [Tooltip("Radio de la esfera usada para verificar la línea de visión (SphereCast).")]
         public float losProbeRadius = 0.2f;
 
         private readonly Dictionary<CharacterController, Vector3> _ccExternalVel = new();
@@ -66,6 +109,7 @@ namespace Puzzle_Elements.Fan.Scripts
         [Tooltip("Renderers a los que se les aplica el outline/color de Stasis. Si queda vacío, se autollenan con hijos.")]
         public Renderer[] targetRenderers;
 
+        [Tooltip("Sistema de partículas que simula el viento del ventilador.")]
         public ParticleSystem windParticles;
 
         [Tooltip("Propiedad de grosor de borde en el shader (float).")]
@@ -103,10 +147,19 @@ namespace Puzzle_Elements.Fan.Scripts
 
         // ======================== GIZMOS ========================
         [Header("Gizmos")]
+        [Tooltip("Si está activado, se dibujarán gizmos para visualizar el área de efecto del ventilador.")]
         public bool drawGizmos = true;
+
+        [Tooltip("Número de anillos de gizmo que representan el área de efecto.")]
         public int gizmoRings = 6;
+
+        [Tooltip("Número de segmentos por anillo en el gizmo.")]
         public int gizmoRingSegments = 32;
+
+        [Tooltip("Color de los gizmos que representan el flujo frontal de aire.")]
         public Color gizmoColorFront = new(0f, 0.8f, 1f, 0.7f);
+
+        [Tooltip("Color de los gizmos que representan la succión trasera.")]
         public Color gizmoColorBack = new(1f, 0.6f, 0f, 0.7f);
 
         // ======================== LIFECYCLE ========================
@@ -184,7 +237,11 @@ namespace Puzzle_Elements.Fan.Scripts
 
         // ======================== STASIS (IStasis) ========================
         public bool IsFreezed => _isStasis;
-
+        public void EventFan()
+        {
+            if (IsFreezed) StatisEffectDeactivate();
+            else StatisEffectActivate();
+        }
         public void StatisEffectActivate()
         {
             _isStasis = true;

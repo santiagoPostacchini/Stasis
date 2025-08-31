@@ -22,18 +22,7 @@ public class StasisTipControllerPlatformMovement : MonoBehaviour, IStasis
     public event Action OnUnFreezeEvent;
 
     [SerializeField] private PathFollower1 _pathFollower1;
-    public void StatisEffectActivate()
-    {
-
-        FreezeObject();
-        _pathFollower1.IsMove = false;
-    }
-
-    public void StatisEffectDeactivate()
-    {
-        UnfreezeObject();
-        _pathFollower1.IsMove = true;
-    }
+    
 
     // Start is called before the first frame update
     void Start()
@@ -46,6 +35,23 @@ public class StasisTipControllerPlatformMovement : MonoBehaviour, IStasis
     void Update()
     {
 
+    }
+    public void EventTipPlatformMovement()
+    {
+        if (IsFreezed) StatisEffectDeactivate();
+        else StatisEffectActivate();
+    }
+    public void StatisEffectActivate()
+    {
+
+        FreezeObject();
+        _pathFollower1.IsMove = false;
+    }
+
+    public void StatisEffectDeactivate()
+    {
+        UnfreezeObject();
+        _pathFollower1.IsMove = true;
     }
     private void FreezeObject()
     {

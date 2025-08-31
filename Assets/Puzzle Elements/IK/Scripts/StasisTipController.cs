@@ -21,18 +21,7 @@ public class StasisTipController : MonoBehaviour,IStasis
     public event Action OnUnFreezeEvent;
 
     [SerializeField] private FollowTargetController _followTargetController;
-    public void StatisEffectActivate()
-    {
-
-        FreezeObject();
-        _followTargetController.canMove = false;
-    }
-
-    public void StatisEffectDeactivate()
-    {
-        UnfreezeObject();
-        _followTargetController.canMove = true;
-    }
+    
 
     // Start is called before the first frame update
     void Start()
@@ -45,6 +34,23 @@ public class StasisTipController : MonoBehaviour,IStasis
     void Update()
     {
         
+    }
+    public void EventTipController()
+    {
+        if (IsFreezed) StatisEffectDeactivate();
+        else StatisEffectActivate();
+    }
+    public void StatisEffectActivate()
+    {
+
+        FreezeObject();
+        _followTargetController.canMove = false;
+    }
+
+    public void StatisEffectDeactivate()
+    {
+        UnfreezeObject();
+        _followTargetController.canMove = true;
     }
     private void FreezeObject()
     {

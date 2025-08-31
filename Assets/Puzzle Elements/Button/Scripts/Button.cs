@@ -12,7 +12,9 @@ namespace Puzzle_Elements.Button.Scripts
         private static readonly int Click = Animator.StringToHash("Click");
 
         [SerializeField] private Animator animator;
+        [Tooltip("Evento lanzado al presionar el boton")]
         public UnityEvent onPressed;
+        [Tooltip("Texto que aparece al entrar en colision con el boton")]
         [SerializeField] private TextMeshProUGUI textInteract;
         public void Interact()
         {
