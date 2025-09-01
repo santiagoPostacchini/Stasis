@@ -6082,20 +6082,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ef57a34ece7c60e4db43f5d5bb422208, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  platformMask:
+  groundLayer:
     serializedVersion: 2
     m_Bits: 256
   groundCheckRadius: 0.4
   groundCheckDistance: 0.3
   groundProbe: {fileID: 0}
   applyPlatformRotation: 0
-  stickDownForce: 0.1
-  maxSnapSpeed: 10
-  _platform: {fileID: 0}
-  _isOnPlatform: 0
-  groundLayer:
-    serializedVersion: 2
-    m_Bits: 128
+  stickDownForce: 0
+  maxSnapSpeed: 20
 --- !u!1001 &990585666
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -11542,8 +11537,8 @@ MonoBehaviour:
   groundCheckDistance: 0.2
   groundProbe: {fileID: 8300888065588625960}
   applyPlatformRotation: 1
-  stickDownForce: 20
-  maxSnapSpeed: 30
+  stickDownForce: 300
+  maxSnapSpeed: 100
   _platform: {fileID: 0}
   _isOnPlatform: 0
 --- !u!1001 &2123691078
