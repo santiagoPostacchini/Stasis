@@ -5,11 +5,12 @@ using UnityEngine.Events;
 
 public class SensorLaser : MonoBehaviour
 {
+    [Tooltip("Lista de lasers")]
     public Laser[] lasers;
 
 
-
     [Header("Events")]
+    [Tooltip("Eventos que se llaman cuando el laser detecta al Player")]
     public UnityEvent OnIntruderDetected;
 
 

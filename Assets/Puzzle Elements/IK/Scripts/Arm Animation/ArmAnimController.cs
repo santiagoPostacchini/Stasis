@@ -3,61 +3,78 @@ using System.Collections.Generic;
 using UnityEngine;
 using Player.Stasis;
 
-public class StasisSensorLaser : MonoBehaviour, IStasis
+public class ArmAnimController : MonoBehaviour,IStasis
 {
-    private SensorLaser _sensorLaser;
-    public bool IsFreezed => isFreezed;
-    [SerializeField]private bool isFreezed;
+    public Animator anim;
+    public string animationClipName = "Target_Mover_128";
 
+    [Range(0, 1)]
+    public float position;
+    [Range(0, 1)]
+    public float shake;
     [Header("Stasis")]
     public Material matStasis;
     public readonly string _outlineThicknessName = "_BorderThickness";
     public MaterialPropertyBlock _mpb;
-    void Start()
-    {
-        _sensorLaser = GetComponent<SensorLaser>();
-        _mpb = new MaterialPropertyBlock();
-    }
+
+
     // Soporta múltiples renderers
     public Renderer[] renderers;
 
-    public void EventSensorLaser()
+    private bool _isFreezed = false;
+    public bool IsFreezed => _isFreezed;
+
+    
+    // Start is called before the first frame update
+    void Awake()
+    {
+        _mpb = new MaterialPropertyBlock();
+    }
+
+    private IEnumerator Start()
+    {
+        float randomDelay = UnityEngine.Random.Range(0, 1);
+        yield return new WaitForSeconds(randomDelay);
+        anim.enabled = true;
+    }
+    private void Update()
+    {
+        anim.Play(animationClipName, -1, position);
+        anim.SetLayerWeight(1, shake);
+    }
+    private void FreezeObject()
+    {
+        if (!_isFreezed)
+        {
+            _isFreezed = true;
+            SetOutlineThickness(1.05f);
+            SetColorOutline(Color.green, 1f);
+        }
+    }
+    public void EventArmAnimController()
     {
         if (IsFreezed) StatisEffectDeactivate();
         else StatisEffectActivate();
     }
     public void StatisEffectActivate()
     {
+
         FreezeObject();
-        _sensorLaser.CanShootLasers(false);
     }
 
     public void StatisEffectDeactivate()
     {
         UnfreezeObject();
-        _sensorLaser.CanShootLasers(true);
-    }
-  
-
-    private void FreezeObject()
-    {
-        if (!isFreezed)
-        {
-            isFreezed = true;
-            SetOutlineThickness(1.05f);
-            SetColorOutline(Color.green, 1f);
-        }
     }
 
     private void UnfreezeObject()
     {
-        if (!isFreezed) return;
-        isFreezed = false;
+        if (!_isFreezed) return;
+        _isFreezed = false;
         SetOutlineThickness(0f);
         Color lightGreen = new Color(0.6f, 1f, 0.6f);
         SetColorOutline(lightGreen, 1f);
     }
-
     public void SetOutlineThickness(float thickness)
     {
         if (renderers == null || _mpb == null) return;
@@ -83,4 +100,5 @@ public class StasisSensorLaser : MonoBehaviour, IStasis
             rend.SetPropertyBlock(_mpb);
         }
     }
+    
 }
