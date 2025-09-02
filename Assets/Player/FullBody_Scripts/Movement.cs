@@ -9,7 +9,7 @@ public class Movement : MonoBehaviour
     [SerializeField] public bool _isRunning;
     [SerializeField] public bool _isWalking;
     [SerializeField] public bool _isInIdle;
-    [SerializeField] public bool _isStopping; // <-- NUEVO
+    [SerializeField] public bool _isStopping;
 
     [Header("<color=yellow>Bools</color>")]
     [SerializeField] public bool _canMove = true;  
@@ -21,7 +21,10 @@ public class Movement : MonoBehaviour
     [SerializeField] private float _runningSpeed = 6f;
     [SerializeField] private float _acceleration = 20f;
     [SerializeField] private float _deceleration = 30f;
-    [SerializeField] public float _xAxis, _zAxis;
+    [SerializeField] public float _xAxis, _zAxis;          // Suavizados (GetAxis)
+
+    // --- NUEVO: ejes crudos para lógica de stop ---
+    private float _rawX, _rawZ;                            // GetAxisRaw (sin smoothing)
 
     [Header("<color=cyan>Animator Settings</color>")]
     public float _animX, _animZ;     
@@ -37,11 +40,13 @@ public class Movement : MonoBehaviour
     public List<System.Func<float>> speedOverrides = new List<System.Func<float>>();
     private Animator animator;
 
-    // --- Variables para detectar frenado ---
-    private bool _wasMoving;
-    [SerializeField] private float stopThreshold = 0.1f; // input casi cero
-    [SerializeField] private float moveThreshold = 0.25f; // animX o animZ mayor a 0.25 = se considera en movimiento
-    [SerializeField] private float stopCooldown = 0.2f; // cuanto dura el bool de stop
+    // --- Variables para detectar frenado (con histéresis) ---
+    // moveThreshold: magnitud de input crudo a partir de la cual consideramos "se estaba moviendo"
+    // stopThreshold: magnitud de input crudo por debajo de la cual consideramos "input cero"
+    private bool _wasMovingByInput;
+    [SerializeField] private float stopThreshold = 0.05f;  // 0.05 ~ cero (crudo)
+    [SerializeField] private float moveThreshold = 0.20f;  // 0.20 ~ se considera input de movimiento
+    [SerializeField] private float stopCooldown = 0.2f;    // duración del pulso isStopping
     private float _stopTimer;
 
     private void Awake()
@@ -54,24 +59,33 @@ public class Movement : MonoBehaviour
     {
         if (_canMove)  
         {
-            _xAxis = Input.GetAxis("Horizontal");
-            _zAxis = Input.GetAxis("Vertical");
+            // Ejes para gameplay/anim (suavizados)
+            _xAxis = Mathf.Clamp(Input.GetAxis("Horizontal"), -1f, 1f);
+            _zAxis = Mathf.Clamp(Input.GetAxis("Vertical"), -1f, 1f);
 
-            float targetMax = _isRunning ? 1f : 0.5f;
+            // Ejes crudos para detección precisa de "solté"
+            _rawX = Mathf.Clamp(Input.GetAxisRaw("Horizontal"), -1f, 1f);
+            _rawZ = Mathf.Clamp(Input.GetAxisRaw("Vertical"), -1f, 1f);
+
+            float targetMax = _isRunning ? 1f : 0.5f; // camina llega a 0.5, corre a 1.0
             _targetAnimX = Mathf.Clamp(_xAxis, -1f, 1f) * targetMax;
             _targetAnimZ = Mathf.Clamp(_zAxis, -1f, 1f) * targetMax;
 
             _animX = Mathf.Lerp(_animX, _targetAnimX, Time.deltaTime * _animLerpSpeed);
             _animZ = Mathf.Lerp(_animZ, _targetAnimZ, Time.deltaTime * _animLerpSpeed);
 
+            // Nunca pasar de -1..1 al Animator
+            _animX = Mathf.Clamp(_animX, -1f, 1f);
+            _animZ = Mathf.Clamp(_animZ, -1f, 1f);
+
             if(animator != null)
             {
                 animator.SetFloat("xAxis", _animX);
                 animator.SetFloat("zAxis", _animZ);
-                animator.SetBool("isStopping", _isStopping); // <-- Enviar al animator
+                animator.SetBool("isStopping", _isStopping);
             }
 
-            HandleStoppingLogic(); // <-- detectar frenado
+            HandleStoppingLogic(); // ahora basado en input crudo + histéresis
         }
     }
 
@@ -93,7 +107,8 @@ public class Movement : MonoBehaviour
     {
         if (_canMove)  
         {
-            _isRunning = _canRun && Input.GetKey(_runningKey) && (Mathf.Abs(_xAxis) > 0.1f || Mathf.Abs(_zAxis) > 0.1f);
+            _isRunning = _canRun && Input.GetKey(_runningKey) && 
+                        (Mathf.Abs(_xAxis) > 0.1f || Mathf.Abs(_zAxis) > 0.1f);
         }
     }
 
@@ -182,17 +197,21 @@ public class Movement : MonoBehaviour
 
     private void HandleStoppingLogic()
     {
-        bool isMovingNow = Mathf.Abs(_animX) > moveThreshold || Mathf.Abs(_animZ) > moveThreshold;
-        bool inputIsZero = Mathf.Abs(_xAxis) < stopThreshold && Mathf.Abs(_zAxis) < stopThreshold;
+        // Usamos magnitud del input crudo para evitar el smoothing de GetAxis
+        float rawMag = new Vector2(_rawX, _rawZ).magnitude;
 
-        // Detecta cuando estaba moviéndose y ahora deja de dar input
-        if (_wasMoving && inputIsZero && !_isStopping)
+        bool inputIsZero   = rawMag < stopThreshold;  // “solté” (casi cero)
+        bool hadInputBefore = _wasMovingByInput;      // frame anterior
+        bool hasInputNow   = rawMag > moveThreshold;  // “me estaba moviendo” (umbral superior)
+
+        // Dispara al detectar transición “tenía input” -> “ahora cero”
+        if (hadInputBefore && inputIsZero && !_isStopping)
         {
             _isStopping = true;
             _stopTimer = stopCooldown;
         }
 
-        // Controla duración del stopping
+        // Duración del pulso
         if (_isStopping)
         {
             _stopTimer -= Time.deltaTime;
@@ -202,7 +221,8 @@ public class Movement : MonoBehaviour
             }
         }
 
-        _wasMoving = isMovingNow;
+        // Actualizamos el estado “tenía input”
+        _wasMovingByInput = hasInputNow;
     }
 
     private void OnDrawGizmosSelected()
