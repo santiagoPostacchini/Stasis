@@ -1,4 +1,5 @@
 using CurvedPathGenerator;
+using Puzzle_Elements.Hedron.Scripts;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -11,9 +12,12 @@ public class MagicSwitch : MonoBehaviour
     public float radius= 1f;
 
     [Header("Flotación en el centro")]
-    public float amplitude = 0.2f;
-    public float forceNoise = 2f;
+    private float amplitude = 0.2f;
+    private float forceNoise = 2f;
+    private float smoothSpeed = 2f;
     public float rotationSpeed = 50f;
+    private Vector3 basePosition;
+    private Vector3 lastOffset = Vector3.zero;
 
     private bool _objInCenter;
     private bool _allready = true;
@@ -167,53 +171,69 @@ public class MagicSwitch : MonoBehaviour
     private void Attraction()
     {
         Collider[] objs = Physics.OverlapSphere(transform.position, radius);
+
         foreach (Collider col in objs)
         {
+            PhysicsBox hedro = col.GetComponent<PhysicsBox>();
+            if (hedro == null)
+                continue;
             Rigidbody rb = col.attachedRigidbody;
-            if (rb != null && rb != GetComponent<Rigidbody>())
+            if (rb == null || rb == GetComponent<Rigidbody>())
+                continue;
+
+
+            Vector3 direction = transform.position - rb.position;
+            float distance = direction.magnitude;
+
+            if (distance > stopDistance)
             {
-                Vector3 direction = transform.position - rb.position;
-                float distance = direction.magnitude;
+                // Atraer suavemente hacia el centro
+                if (rb.useGravity)
+                    rb.velocity = Vector3.zero;
 
-                if (distance > stopDistance)
+                rb.useGravity = false;
+                rb.AddForce(direction.normalized * attractionForce, ForceMode.Acceleration);
+            }
+            else
+            {
+                // Si la base no está configurada, la seteamos una vez
+                if (basePosition == Vector3.zero)
+                    basePosition = transform.position;
+                //
+                // Generar offset usando Perlin Noise
+                float offsetX = (Mathf.PerlinNoise(Time.time / smoothSpeed * forceNoise, 0f) - 0.5f) * 2f * amplitude;
+                float offsetY = (Mathf.PerlinNoise(0f, Time.time / smoothSpeed * forceNoise) - 0.5f) * 2f * amplitude;
+                float offsetZ = (Mathf.PerlinNoise(Time.time / smoothSpeed * forceNoise, Time.time / smoothSpeed * 0.5f) - 0.5f) * 2f * amplitude;
+
+                Vector3 targetOffset = new Vector3(offsetX, offsetY, offsetZ);
+
+                // Suavizamos el offset para que no vibre
+                lastOffset = Vector3.Lerp(lastOffset, targetOffset, Time.deltaTime /6);
+
+                // Usamos siempre la posición base para evitar acumulación de errores
+                Vector3 finalPos = basePosition ;
+                //rb.MovePosition(finalPos + lastOffset);
+                rb.velocity = Vector3.zero;
+                // Rotación suave y estable
+                Quaternion rot = Quaternion.Euler(
+                    rotationSpeed * Time.deltaTime,
+                    rotationSpeed * 0.3f * Time.deltaTime,
+                    rotationSpeed * 0.2f * Time.deltaTime
+                );
+                rb.MoveRotation(rb.rotation * rot);
+
+                // Si el objeto llegó al centro, activamos el movimiento del path
+                _objInCenter = true;
+
+                if (_allready && _objInCenter)
                 {
-                    // Atraer suavemente hacia el centro
-                    if (rb.useGravity)
-                    {
-                        rb.velocity = Vector3.zero;
-                    }
-                    rb.useGravity = false;
-                    rb.AddForce(direction.normalized * attractionForce, ForceMode.Acceleration);
-                }
-                else
-                {
-                    // Flotar y rotar en el centro
-
-
-                    float offsetX = (Mathf.PerlinNoise(Time.time * forceNoise, 0f) - 0.5f) * 2f * amplitude;
-                    float offsetY = (Mathf.PerlinNoise(0f, Time.time * forceNoise) - 0.5f) * 2f * amplitude;
-                    float offsetZ = (Mathf.PerlinNoise(Time.time * forceNoise, Time.time * 0.5f) - 0.5f) * 2f * amplitude;
-
-                    Vector3 floatOffset = new Vector3(offsetX, offsetY, offsetZ);
-                    rb.MovePosition(transform.position + floatOffset);
-
-                    Quaternion rot = Quaternion.Euler(
-                        rotationSpeed * Time.deltaTime,
-                        rotationSpeed * 0.5f * Time.deltaTime,
-                        rotationSpeed * 0.3f * Time.deltaTime
-                    );
-                    rb.MoveRotation(rb.rotation * rot);
-                    _objInCenter = true;
-                    if (_allready && _objInCenter)
-                    {
-                        _pathFollower.IsMove = true;
-                       
-                        _allready = false;
-                    }
+                    _pathFollower.IsMove = true;
+                    _allready = false;
                 }
             }
         }
     }
+
         private void OnDrawGizmos()
     {
         Gizmos.color = Color.red;
