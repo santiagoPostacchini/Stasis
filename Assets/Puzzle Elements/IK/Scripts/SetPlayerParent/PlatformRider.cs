@@ -29,7 +29,7 @@ public class PlatformRider : MonoBehaviour
         // _cc.minMoveDistance = 0f;
     }
 
-    private void LateUpdate()
+    private void Update()
     {
         // 1) Detectar si estamos sobre una plataforma válida
         RaycastHit hit;

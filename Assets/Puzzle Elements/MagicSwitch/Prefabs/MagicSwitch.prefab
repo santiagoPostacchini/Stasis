@@ -100,7 +100,7 @@ MonoBehaviour:
   IsLivePath: 0
   IsShowingIcons: 1
   PathDensity: 8
-  EditMode: 1
+  EditMode: 2
   CreateMeshFlag: 1
   LineMehsWidth: 0.34
   LineOpacity: 0
@@ -112,19 +112,19 @@ MonoBehaviour:
   PathList: []
   PathLengths: []
   NodeList:
-  - {x: -0.0010528564, y: 0, z: 0.0053710938}
-  - {x: 4.028244, y: 0, z: 3.7852173}
-  - {x: 5.7374725, y: 0, z: 7.760437}
+  - {x: 0.008773804, y: -0.0027313232, z: 0.08392334}
+  - {x: 4.0380707, y: -0.0027313232, z: 3.8637695}
+  - {x: 5.747299, y: -0.0027313232, z: 7.8389893}
   AngleList:
-  - {x: 4.603836, y: 0, z: 1.8479004}
-  - {x: 3.9450073, y: 0, z: 5.46286}
+  - {x: 4.6136627, y: -0.0027313232, z: 1.9264526}
+  - {x: 3.954834, y: -0.0027313232, z: 5.5414124}
   NodeList_World:
-  - {x: 162.19894, y: 160.2, z: 266.0749}
-  - {x: 166.22824, y: 160.2, z: 269.85474}
-  - {x: 167.93747, y: 160.2, z: 273.82996}
+  - {x: 193.61877, y: 159.20728, z: 235.48392}
+  - {x: 197.64807, y: 159.20728, z: 239.26376}
+  - {x: 199.3573, y: 159.20728, z: 243.23898}
   AngleList_World:
-  - {x: 166.80383, y: 160.2, z: 267.91742}
-  - {x: 166.145, y: 160.2, z: 271.53238}
+  - {x: 198.22366, y: 159.20728, z: 237.32645}
+  - {x: 197.56483, y: 159.20728, z: 240.9414}
 --- !u!1 &2454414195425352352
 GameObject:
   m_ObjectHideFlags: 0
@@ -163,6 +163,7 @@ Transform:
   - {fileID: 3714959514766297702}
   - {fileID: 3315054586594480216}
   - {fileID: 743194009409044484}
+  - {fileID: 5128754700297565724}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &3690095446279526695
@@ -178,11 +179,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   attractionForce: 6
-  stopDistance: 0.5
+  stopDistance: 0.2
   radius: 4
-  amplitude: 0.2
-  forceNoise: 2
-  rotationSpeed: 50
+  rotationSpeed: 10
   _pathFollower: {fileID: 8674258092488994828}
   _colorFinishPath: {r: 0.4405482, g: 0.9281572, b: 0.9433962, a: 0.7058824}
   rightDoorRenderer: {fileID: 0}
@@ -19837,7 +19836,7 @@ ParticleSystemRenderer:
   m_FreeformStretching: 0
   m_RotateWithStretchDirection: 1
   m_VertexStreams: 00010304
-  m_Mesh: {fileID: -3327115478645436507, guid: 262792f88710a77459c69f3ebd40561f, type: 3}
+  m_Mesh: {fileID: 365172287751340079, guid: 95c5f10515d3bb247be4422cc37fff5c, type: 3}
   m_Mesh1: {fileID: 0}
   m_Mesh2: {fileID: 0}
   m_Mesh3: {fileID: 0}
@@ -19846,6 +19845,37 @@ ParticleSystemRenderer:
   m_MeshWeighting2: 1
   m_MeshWeighting3: 1
   m_MaskInteraction: 0
+--- !u!1 &8016005378252718810
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5128754700297565724}
+  m_Layer: 8
+  m_Name: Pos
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5128754700297565724
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8016005378252718810}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 171491490110134471}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &8032218107444739629
 GameObject:
   m_ObjectHideFlags: 0

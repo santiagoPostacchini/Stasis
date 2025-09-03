@@ -17,7 +17,7 @@ public class MovingPlatformDeltaPosition : MonoBehaviour
     }
 
     // Usamos LateUpdate para capturar el delta real de este frame
-    private void LateUpdate()
+    private void FixedUpdate()
     {
         DeltaPosition = transform.position - _lastPos;
         DeltaRotation = transform.rotation * Quaternion.Inverse(_lastRot);
