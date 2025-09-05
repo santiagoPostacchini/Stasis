@@ -10,7 +10,7 @@ public class Water : MonoBehaviour
     [SerializeField] private Transform _posHedro;
     private void OnTriggerEnter(Collider other)
     {
-        Model player = other.GetComponent<Model>();
+        Movement player = other.GetComponent<Movement>();
         if(player != null)
         {
             player.transform.position = _posPlayer.transform.position;

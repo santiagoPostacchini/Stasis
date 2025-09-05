@@ -8,6 +8,7 @@ public class HedroPlatform : MonoBehaviour
     [SerializeField] private LayerMask groundLayer;
     public float groundCheckRadius = 0.25f;
     public float groundCheckDistance = 0.3f;
+    public float offSetY = 0;
     public Transform groundProbe;
 
     [Header("Platform Settings")]
@@ -18,7 +19,7 @@ public class HedroPlatform : MonoBehaviour
     private Rigidbody _rb;
     private MovingPlatformDeltaPosition _platform;
     private Vector3 _lastHitPoint;
-    private bool _isOnPlatform;
+    [SerializeField]private bool _isOnPlatform;
 
     private void Awake()
     {
@@ -30,7 +31,7 @@ public class HedroPlatform : MonoBehaviour
     {
         // Detectar suelo/plataforma
         RaycastHit hit;
-        Vector3 origin = groundProbe.position + Vector3.up * 0.05f;
+        Vector3 origin = groundProbe.position + Vector3.up * 0.05f + new Vector3(0,offSetY,0);
         bool groundedByCast = Physics.SphereCast(
             origin, groundCheckRadius, Vector3.down,
             out hit, groundCheckDistance + 0.05f,
@@ -88,7 +89,7 @@ public class HedroPlatform : MonoBehaviour
     private void OnDrawGizmos()
     {
         Transform probe = groundProbe != null ? groundProbe : transform;
-        Vector3 origin = probe.position + Vector3.up * 0.05f;
+        Vector3 origin = probe.position + Vector3.up * 0.05f + new Vector3(0,offSetY,0);
         float totalDist = groundCheckDistance + 0.05f;
         Vector3 end = origin + Vector3.down * totalDist;
 

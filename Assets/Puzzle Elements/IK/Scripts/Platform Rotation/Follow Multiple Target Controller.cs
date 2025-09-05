@@ -43,21 +43,23 @@ public class FollowMultipleTargetController : MonoBehaviour
     private bool forward = true;
     private Coroutine moveRoutine;
     private Rigidbody rb;
+    [SerializeField]public int shoots =0;
 
     private void Awake()
     {
         rb = GetComponent<Rigidbody>();
         if (forceKinematic) rb.isKinematic = true;
         rb.interpolation = RigidbodyInterpolation.Interpolate;
+        
     }
 
     private void Update()
     {
-        if (!CanMove)
-        {
-            CancelMovement();
-            return;
-        }
+        //if (!CanMove && shoots>0)
+        //{
+        //    CancelMovement();
+        //    return;
+        //}
 
         if (brothers == null || brothers.Count == 0) return;
         if (moveRoutine != null) return;
@@ -67,6 +69,7 @@ public class FollowMultipleTargetController : MonoBehaviour
 
     private void TryStartNextMove()
     {
+        if (!CanMove) return;
         if (brothers.Count <= 1) return;
 
         int targetIndex;
@@ -82,7 +85,6 @@ public class FollowMultipleTargetController : MonoBehaviour
     private void PeekNext(out int targetIndex, out bool newForward)
     {
         newForward = forward;
-
         if (forward)
         {
             if (currentIndex >= brothers.Count - 1)
@@ -209,14 +211,12 @@ public class FollowMultipleTargetController : MonoBehaviour
 
     private void CancelMovement()
     {
+        if (shoots == 0) return;
         if (moveRoutine != null)
         {
             StopAllCoroutines();
             moveRoutine = null;
         }
-        rb.isKinematic = false;
-        rb.velocity = Vector3.zero;
-        rb.angularVelocity = Vector3.zero;
     }
 
     private void OnDisable() => CancelMovement();

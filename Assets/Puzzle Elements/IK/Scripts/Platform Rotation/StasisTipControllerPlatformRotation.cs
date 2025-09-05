@@ -14,7 +14,6 @@ public class StasisTipControllerPlatformRotation : MonoBehaviour, IStasis
     public readonly string _outlineThicknessName = "_BorderThickness";
     public MaterialPropertyBlock _mpb;
 
-
     // Soporta múltiples renderers
     public Renderer[] renderers;
 
@@ -50,6 +49,7 @@ public class StasisTipControllerPlatformRotation : MonoBehaviour, IStasis
         if (!_isFreezed)
         {
             _isFreezed = true;
+            _followMultipleTargetController.shoots = 1;
             SetOutlineThickness(1.05f);
             SetColorOutline(Color.green, 1f);
         }

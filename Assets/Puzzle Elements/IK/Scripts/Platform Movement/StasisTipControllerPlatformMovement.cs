@@ -13,7 +13,7 @@ public class StasisTipControllerPlatformMovement : MonoBehaviour, IStasis
     public Material matStasis;
     public readonly string _outlineThicknessName = "_BorderThickness";
     public MaterialPropertyBlock _mpb;
-
+    private Rigidbody _rb;
 
     // Soporta múltiples renderers
     public Renderer[] renderers;
@@ -29,6 +29,7 @@ public class StasisTipControllerPlatformMovement : MonoBehaviour, IStasis
     {
         _mpb = new MaterialPropertyBlock();
         _pathFollower1 = GetComponent<PathFollower1>();
+        _rb = GetComponent<Rigidbody>();
     }
 
     // Update is called once per frame
@@ -60,6 +61,7 @@ public class StasisTipControllerPlatformMovement : MonoBehaviour, IStasis
             _isFreezed = true;
             SetOutlineThickness(1.05f);
             SetColorOutline(Color.green, 1f);
+            _rb.isKinematic = true;
         }
     }
 
@@ -67,6 +69,7 @@ public class StasisTipControllerPlatformMovement : MonoBehaviour, IStasis
     {
         if (!_isFreezed) return;
         _isFreezed = false;
+        _rb.isKinematic = false;
         SetOutlineThickness(0f);
         Color lightGreen = new Color(0.6f, 1f, 0.6f);
         SetColorOutline(lightGreen, 1f);
