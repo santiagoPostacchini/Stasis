@@ -7379,7 +7379,7 @@ PrefabInstance:
     - target: {fileID: 6906211476808698676, guid: b45213e18e1ace5429ec60b20fcdceac,
         type: 3}
       propertyPath: m_LocalPosition.z
-      value: 54.74
+      value: 9.15
       objectReference: {fileID: 0}
     - target: {fileID: 6906211476808698676, guid: b45213e18e1ace5429ec60b20fcdceac,
         type: 3}
@@ -7420,6 +7420,11 @@ PrefabInstance:
         type: 3}
       propertyPath: m_Name
       value: PlayerGroup
+      objectReference: {fileID: 0}
+    - target: {fileID: 7310016068417924627, guid: b45213e18e1ace5429ec60b20fcdceac,
+        type: 3}
+      propertyPath: m_TagString
+      value: Player
       objectReference: {fileID: 0}
     - target: {fileID: 8532547807731845238, guid: b45213e18e1ace5429ec60b20fcdceac,
         type: 3}
@@ -8931,8 +8936,8 @@ MonoBehaviour:
   groundLayer:
     serializedVersion: 2
     m_Bits: 256
-  groundCheckRadius: 0.2
-  groundCheckDistance: 1
+  groundCheckRadius: 0.4
+  groundCheckDistance: 0.65
   offSetY: 1
   groundProbe: {fileID: 0}
   applyPlatformRotation: 0

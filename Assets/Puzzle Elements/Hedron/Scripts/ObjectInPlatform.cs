@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class HedroPlatform : MonoBehaviour
+public class ObjectInPlatform : MonoBehaviour
 {
     [Header("Ground Detection")]
     [SerializeField] private LayerMask groundLayer;
@@ -60,7 +60,7 @@ public class HedroPlatform : MonoBehaviour
         {
             Vector3 platformDeltaPos = Vector3.ClampMagnitude(
                 _platform.DeltaPosition,
-                maxSnapSpeed * Time.deltaTime
+                maxSnapSpeed * Time.fixedDeltaTime
             );
 
             Vector3 rotatedPos = transform.position;

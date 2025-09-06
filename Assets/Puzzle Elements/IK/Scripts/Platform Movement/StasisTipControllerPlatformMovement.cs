@@ -61,7 +61,7 @@ public class StasisTipControllerPlatformMovement : MonoBehaviour, IStasis
             _isFreezed = true;
             SetOutlineThickness(1.05f);
             SetColorOutline(Color.green, 1f);
-            _rb.isKinematic = true;
+            //_rb.isKinematic = true;
         }
     }
 
@@ -69,7 +69,7 @@ public class StasisTipControllerPlatformMovement : MonoBehaviour, IStasis
     {
         if (!_isFreezed) return;
         _isFreezed = false;
-        _rb.isKinematic = false;
+       // _rb.isKinematic = false;
         SetOutlineThickness(0f);
         Color lightGreen = new Color(0.6f, 1f, 0.6f);
         SetColorOutline(lightGreen, 1f);

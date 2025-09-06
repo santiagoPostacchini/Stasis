@@ -1,7 +1,5 @@
 using System.Collections;
 using System.Collections.Generic;
-using Player.Scripts.MVC;
-using Resources;
 using UnityEngine;
 
 namespace Puzzle_Elements.LaunchPlate.Scripts
@@ -9,233 +7,253 @@ namespace Puzzle_Elements.LaunchPlate.Scripts
     [RequireComponent(typeof(Collider))]
     public class LaunchPlate : MonoBehaviour
     {
-        [Header("Player Path")]
+        [Header("Trajectories (use children as control points)")]
         [SerializeField] private Transform playerTrajectoryParent;
-        private readonly List<Transform> _playerTrajectory = new();
-
-        [Header("Object Path")]
         [SerializeField] private Transform objectTrajectoryParent;
-        private readonly List<Transform> _objectTrajectory = new();
 
-        [Header("Line Renderers")]
+        [Header("Line Renderers (optional)")]
         [SerializeField] private LineRenderer playerLineRenderer;
         [SerializeField] private LineRenderer objectLineRenderer;
+        [SerializeField] private Color playerColor = Color.cyan;
+        [SerializeField] private Color objectColor = Color.yellow;
 
-        [Header("Physics")]
-        [SerializeField] private float timeToNextNode = 0.5f;
-        [SerializeField] private float pointReachThreshold = 0.2f;
-
-        [Header("Spline Launch")]
-        [SerializeField] private float totalLaunchTime = 1.5f;
+        [Header("Motion")]
+        [Tooltip("Tiempo total para recorrer la curva completa (seg).")]
+        [SerializeField] private float totalLaunchTime = 1.35f;
+        [Tooltip("Muestras por segmento para construir la tabla de arco (suavidad).")]
+        [SerializeField, Range(8, 128)] private int samplesPerSegment = 32;
+        [Tooltip("Velocidad extra al salir (se suma a la tangente).")]
+        [SerializeField] private float exitSpeedBoost = 0f;
 
         [Header("Cooldown")]
-        [SerializeField] private float cooldown = 0.5f;
+        [SerializeField] private float cooldown = 0.35f;
+        [Tooltip("Evita relanzar mientras hay un lanzamiento activo.")]
+        [SerializeField] private bool singleFireWhileActive = true;
 
         private bool _canLaunch = true;
 
-        private void Awake()
+        void Awake()
         {
             var col = GetComponent<Collider>();
             col.isTrigger = true;
-
-            BuildPath(playerTrajectoryParent, _playerTrajectory);
-            BuildPath(objectTrajectoryParent, _objectTrajectory);
-
-            DrawLineRenderer(_playerTrajectory, playerLineRenderer, Color.cyan);
-            DrawLineRenderer(_objectTrajectory, objectLineRenderer, Color.yellow);
+            RedrawAll();
         }
 
-        private void OnValidate()
+        void OnValidate()
         {
-            BuildPath(playerTrajectoryParent, _playerTrajectory);
-            BuildPath(objectTrajectoryParent, _objectTrajectory);
-
-            DrawLineRenderer(_playerTrajectory, playerLineRenderer, Color.cyan);
-            DrawLineRenderer(_objectTrajectory, objectLineRenderer, Color.yellow);
+            totalLaunchTime = Mathf.Max(0.05f, totalLaunchTime);
+            samplesPerSegment = Mathf.Clamp(samplesPerSegment, 8, 128);
+            RedrawAll();
         }
 
-        private static void BuildPath(Transform parent, List<Transform> path)
+        private void RedrawAll()
         {
-            path.Clear();
-            if (!parent) return;
-            for (int i = 0; i < parent.childCount; i++)
-                path.Add(parent.GetChild(i));
+            DrawTrajectory(playerTrajectoryParent, playerLineRenderer, playerColor);
+            DrawTrajectory(objectTrajectoryParent, objectLineRenderer, objectColor);
         }
 
         private void OnTriggerEnter(Collider other)
         {
-            if (!_canLaunch) return;
+            if (!_canLaunch && singleFireWhileActive) return;
 
-            bool isPlayer = other.CompareTag("Player") || other.GetComponent<Model>();
-            bool objectInPlayerHands = other.GetComponentInParent<Model>() != null;
-            var trajectory = (isPlayer || objectInPlayerHands) ? _playerTrajectory : _objectTrajectory;
-            if (trajectory.Count == 0) return;
+            var rb = other.attachedRigidbody ?? other.GetComponentInParent<Rigidbody>();
+            if (!rb) return;
 
-            if (isPlayer || objectInPlayerHands)
-            {
-                var model = other.GetComponent<Model>() ?? other.GetComponentInParent<Model>();
-                StartCoroutine(LaunchCharacterSplineRoutine(other.transform, trajectory, model));
-            }
-            else
-            {
-                Rigidbody rb = other.attachedRigidbody ?? other.GetComponent<Rigidbody>();
-                if (!rb) return;
-                StartCoroutine(LaunchRigidbodyRoutine(rb, trajectory));
-            }
+            bool isPlayer = other.CompareTag("Player") || other.transform.root.CompareTag("Player");
+            Transform parent = (isPlayer && playerTrajectoryParent) ? playerTrajectoryParent : objectTrajectoryParent;
+            if (!parent || parent.childCount < 2) return;
+
+            var sampler = new ArcLengthSpline(parent, samplesPerSegment);
+            if (sampler.TotalLength <= 1e-4f) return;
+
+            StartCoroutine(LaunchAlongArc(rb, sampler));
         }
 
-        private IEnumerator LaunchCharacterSplineRoutine(Transform tr, List<Transform> path, Model model)
+        private IEnumerator LaunchAlongArc(Rigidbody rb, ArcLengthSpline sampler)
         {
             _canLaunch = false;
-            int numNodes = path.Count;
-            if (numNodes < 2) yield break;
 
-            float duration = totalLaunchTime;
-            float elapsed = 0f;
+            // guardo y ajusto settings para smoothness
+            var prevInterp = rb.interpolation;
+            var prevCCD = rb.collisionDetectionMode;
+            rb.interpolation = RigidbodyInterpolation.None;
+            rb.collisionDetectionMode = CollisionDetectionMode.Discrete;
 
-            List<Vector3> points = new List<Vector3>();
-            points.Add(path[0].position + (path[0].position - path[1].position));
-            for (int i = 0; i < numNodes; i++) points.Add(path[i].position);
-            points.Add(path[numNodes - 1].position + (path[numNodes - 1].position - path[numNodes - 2].position));
+            float totalLen = sampler.TotalLength;
+            float speed = totalLen / Mathf.Max(0.0001f, totalLaunchTime); // m/s a lo largo de la curva
 
-            while (elapsed < duration)
+            // empezamos al instante con un primer paso (sin esperar al próximo FixedUpdate)
+            float s = 0f;                           // distancia recorrida a lo largo de la curva
+            Vector3 p0 = sampler.PointAtArc(0f);
+            Vector3 p1 = sampler.PointAtArc(Mathf.Min(speed * Time.fixedDeltaTime, totalLen));
+
+            // “paso 0” inmediato para que no se sienta delay
+            rb.MovePosition(p0);
+
+            // bucle de física
+            while (s < totalLen)
             {
-                float t = elapsed / duration;
-                float scaledT = t * (numNodes - 1);
-                int seg = Mathf.FloorToInt(scaledT);
-                float segT = scaledT - seg;
+                // siguiente s por longitud de arco
+                s = Mathf.Min(s + speed * Time.fixedDeltaTime, totalLen);
 
-                seg = Mathf.Clamp(seg, 0, numNodes - 2);
+                Vector3 pos = sampler.PointAtArc(s);
+                rb.MovePosition(pos); // suave, sin teletransporte, coherente con colisiones
 
-                Vector3 p0 = points[seg];
-                Vector3 p1 = points[seg + 1];
-                Vector3 p2 = points[seg + 2];
-                Vector3 p3 = points[seg + 3];
-
-                Vector3 pos = CatmullRom.CatmullRomCalc(p0, p1, p2, p3, segT);
-
-                if (model)
-                    model.SetLaunchSplinePosition(pos);
-                else
-                    tr.position = pos;
-
-                elapsed += Time.deltaTime;
-                yield return null;
+                yield return new WaitForFixedUpdate();
             }
 
-            if (model)
-                model.SetLaunchSplinePosition(path[numNodes - 1].position);
-            else
-                tr.position = path[numNodes - 1].position;
+            // velocidad de salida en dirección de la tangente final + boost opcional
+            Vector3 tan = sampler.TangentAtArc(totalLen).normalized;
+            Vector3 exitVel = tan * Mathf.Max(0f, exitSpeedBoost);
+            rb.velocity = exitVel;
 
+            // restauro settings
+            rb.interpolation = prevInterp;
+            rb.collisionDetectionMode = prevCCD;
+
+            // cooldown
             yield return new WaitForSeconds(cooldown);
             _canLaunch = true;
         }
 
-        private IEnumerator LaunchRigidbodyRoutine(Rigidbody rb, List<Transform> path)
+        // =================== Visual helpers ===================
+        private void DrawTrajectory(Transform parent, LineRenderer lr, Color color)
         {
-            _canLaunch = false;
-            int currentIndex = 0;
+            if (!lr) return;
 
-            while (currentIndex < path.Count)
+            if (!parent || parent.childCount < 2)
             {
-                Vector3 target = path[currentIndex].position;
-                Vector3 velocity = CalculateBallisticVelocity(rb.position, target, timeToNextNode);
-                rb.velocity = velocity;
-
-                float elapsed = 0f;
-                bool reached = false;
-                while (elapsed < timeToNextNode + 0.1f)
-                {
-                    if (Vector3.Distance(rb.position, target) <= pointReachThreshold)
-                    {
-                        reached = true;
-                        break;
-                    }
-
-                    elapsed += Time.deltaTime;
-                    yield return new WaitForFixedUpdate();
-                }
-
-                if (!reached) break;
-
-                currentIndex++;
+                lr.positionCount = 0;
+                return;
             }
 
-            yield return new WaitForSeconds(cooldown);
-            _canLaunch = true;
-        }
-
-        private Vector3 CalculateBallisticVelocity(Vector3 start, Vector3 end, float time)
-        {
-            Vector3 delta = end - start;
-            Vector3 deltaXZ = new Vector3(delta.x, 0f, delta.z);
-            float sxz = deltaXZ.magnitude;
-
-            float vy = (delta.y - 0.5f * Physics.gravity.y * time * time) / time;
-            float vxz = sxz / time;
-
-            Vector3 result = deltaXZ.normalized * vxz;
-            result.y = vy;
-            return result;
-        }
-
-        private void DrawLineRenderer(List<Transform> path, LineRenderer lr, Color color)
-        {
-            if (path.Count < 2 || lr == null) return;
-
-            List<Vector3> points = new List<Vector3>();
-            points.Add(path[0].position + (path[0].position - path[1].position));
-            for (int i = 0; i < path.Count; i++)
-                points.Add(path[i].position);
-            points.Add(path[^1].position + (path[^1].position - path[^2].position));
-
-            const int stepsPerSegment = 16;
-            List<Vector3> linePoints = new List<Vector3>();
-
-            for (int i = 0; i < points.Count - 3; i++)
+            var sampler = new ArcLengthSpline(parent, samplesPerSegment);
+            int steps = Mathf.Max(16, samplesPerSegment * (parent.childCount - 1));
+            var pts = new Vector3[steps + 1];
+            for (int i = 0; i <= steps; i++)
             {
-                for (int j = 0; j <= stepsPerSegment; j++)
-                {
-                    float t = j / (float)stepsPerSegment;
-                    Vector3 pos = CatmullRom.CatmullRomCalc(points[i], points[i + 1], points[i + 2], points[i + 3], t);
-                    linePoints.Add(pos);
-                }
+                float s = (sampler.TotalLength * i) / steps;
+                pts[i] = sampler.PointAtArc(s);
             }
-
-            lr.positionCount = linePoints.Count;
-            lr.SetPositions(linePoints.ToArray());
+            lr.positionCount = pts.Length;
+            lr.SetPositions(pts);
+#if UNITY_EDITOR
             lr.startColor = color;
             lr.endColor = color;
+#endif
         }
 
 #if UNITY_EDITOR
         private void OnDrawGizmos()
         {
-            if (playerTrajectoryParent && playerTrajectoryParent.childCount >= 2)
+            void Draw(Transform parent, Color col)
             {
-                Gizmos.color = Color.cyan;
-                var points = new List<Vector3>();
-                for (int i = 0; i < playerTrajectoryParent.childCount; i++)
-                    points.Add(playerTrajectoryParent.GetChild(i).position);
-
-                points.Insert(0, points[0] + (points[0] - points[1]));
-                points.Add(points[^1] + (points[^1] - points[^2]));
-
-                const int steps = 32;
-                for (int i = 0; i < points.Count - 3; i++)
+                if (!parent || parent.childCount < 2) return;
+                var sampler = new ArcLengthSpline(parent, samplesPerSegment);
+                int steps = Mathf.Max(16, samplesPerSegment * (parent.childCount - 1));
+                Vector3 prev = sampler.PointAtArc(0f);
+                Gizmos.color = col;
+                for (int i = 1; i <= steps; i++)
                 {
-                    Vector3 prev = CatmullRom.CatmullRomCalc(points[i], points[i + 1], points[i + 2], points[i + 3], 0);
-                    for (int j = 1; j <= steps; j++)
-                    {
-                        float t = j / (float)steps;
-                        Vector3 next = CatmullRom.CatmullRomCalc(points[i], points[i + 1], points[i + 2], points[i + 3], t);
-                        Gizmos.DrawLine(prev, next);
-                        prev = next;
-                    }
+                    float s = (sampler.TotalLength * i) / steps;
+                    Vector3 p = sampler.PointAtArc(s);
+                    Gizmos.DrawLine(prev, p);
+                    prev = p;
                 }
             }
+            Draw(playerTrajectoryParent, playerColor);
+            Draw(objectTrajectoryParent, objectColor);
         }
 #endif
+    }
+
+    // =================== Arc-length Catmull-Rom spline ===================
+    public class ArcLengthSpline
+    {
+        private readonly List<Vector3> ctrl = new();     // p(-1), p0..pn, p(n+1)
+        private readonly List<Vector3> samples = new();  // puntos muestreados
+        private readonly List<float> cumLen = new();    // longitud acumulada
+        public float TotalLength { get; private set; }
+
+        public ArcLengthSpline(Transform parent, int stepsPerSegment)
+        {
+            // control points
+            var basePts = new List<Vector3>(parent.childCount);
+            for (int i = 0; i < parent.childCount; i++)
+                basePts.Add(parent.GetChild(i).position);
+            if (basePts.Count < 2) { TotalLength = 0f; return; }
+
+            Vector3 pre = basePts[0] + (basePts[0] - basePts[1]);
+            Vector3 post = basePts[^1] + (basePts[^1] - basePts[^2]);
+            ctrl.Add(pre);
+            ctrl.AddRange(basePts);
+            ctrl.Add(post);
+
+            // sampling uniformly in t, then build arc-length table
+            samples.Clear();
+            cumLen.Clear();
+            float acc = 0f;
+            samples.Add(CR(ctrl[0], ctrl[1], ctrl[2], ctrl[3], 0f));
+            cumLen.Add(0f);
+
+            int segs = ctrl.Count - 3;
+            for (int s = 0; s < segs; s++)
+            {
+                Vector3 prev = CR(ctrl[s], ctrl[s + 1], ctrl[s + 2], ctrl[s + 3], 0f);
+                int steps = Mathf.Max(2, stepsPerSegment);
+                for (int j = 1; j <= steps; j++)
+                {
+                    float t = j / (float)steps;
+                    Vector3 p = CR(ctrl[s], ctrl[s + 1], ctrl[s + 2], ctrl[s + 3], t);
+                    acc += Vector3.Distance(prev, p);
+                    samples.Add(p);
+                    cumLen.Add(acc);
+                    prev = p;
+                }
+            }
+            TotalLength = Mathf.Max(acc, 1e-4f);
+        }
+
+        public Vector3 PointAtArc(float s)
+        {
+            if (samples.Count == 0) return Vector3.zero;
+            s = Mathf.Clamp(s, 0f, TotalLength);
+            int idx = FindIndexByArc(s);
+            if (idx >= samples.Count - 1) return samples[^1];
+
+            float s0 = cumLen[idx];
+            float s1 = cumLen[idx + 1];
+            float u = (s1 - s0) > 1e-6f ? (s - s0) / (s1 - s0) : 0f;
+            return Vector3.Lerp(samples[idx], samples[idx + 1], u);
+        }
+
+        public Vector3 TangentAtArc(float s)
+        {
+            if (samples.Count < 2) return Vector3.forward;
+            s = Mathf.Clamp(s, 0f, TotalLength);
+            int idx = Mathf.Min(FindIndexByArc(s), samples.Count - 2);
+            Vector3 dir = samples[idx + 1] - samples[idx];
+            return dir.sqrMagnitude > 1e-8f ? dir.normalized : Vector3.forward;
+        }
+
+        private int FindIndexByArc(float s)
+        {
+            int lo = 0, hi = cumLen.Count - 1;
+            while (lo < hi)
+            {
+                int mid = (lo + hi) >> 1;
+                if (cumLen[mid] < s) lo = mid + 1; else hi = mid;
+            }
+            return Mathf.Max(0, lo - 1);
+        }
+
+        private static Vector3 CR(Vector3 p0, Vector3 p1, Vector3 p2, Vector3 p3, float t)
+        {
+            float t2 = t * t, t3 = t2 * t;
+            return 0.5f * ((2f * p1) +
+                           (-p0 + p2) * t +
+                           (2f * p0 - 5f * p1 + 4f * p2 - p3) * t2 +
+                           (-p0 + 3f * p1 - 3f * p2 + p3) * t3);
+        }
     }
 }
