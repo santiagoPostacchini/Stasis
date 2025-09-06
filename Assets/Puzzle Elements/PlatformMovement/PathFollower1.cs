@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using System;
+using System.Collections;
 
 namespace CurvedPathGenerator
 {
@@ -38,6 +39,8 @@ namespace CurvedPathGenerator
         [HideInInspector]public Vector3 nextPath;
         [HideInInspector]public int pathIndex = 1;
         private bool isForward = true; // true = avanzando, false = retrocediendo
+        private bool lastIsForward = true;
+        private bool canMove = true;
         private void Start()
         {
             targetRigidbody = GetComponent<Rigidbody>();
@@ -79,7 +82,11 @@ namespace CurvedPathGenerator
                 nextPath = Generator.PathList[1];
                 this.transform.position = Generator.PathList[0];
             }
+            if (DidDirectionChange())
+            {
+                canMove = false; 
 
+            }
             // Look at next path
             Vector3 offset = nextPath - target.transform.position;
             offset.Normalize();
@@ -88,6 +95,8 @@ namespace CurvedPathGenerator
 
             // Move towards next path
             //targetRigidbody.velocity = Speed * Time.fixedDeltaTime * offset;
+
+            if(canMove)
             targetRigidbody.MovePosition(targetRigidbody.position + offset * Speed * Time.fixedDeltaTime);
 
 
@@ -167,7 +176,23 @@ namespace CurvedPathGenerator
 
             }
         }
-
+        public bool DidDirectionChange()
+        {
+            if (isForward != lastIsForward)
+            {
+                lastIsForward = isForward; // actualizar para el siguiente frame
+                canMove = false;
+                StartCoroutine(Wait());
+                return true;
+            }
+            return false;
+        }
+        IEnumerator Wait()
+        {
+            targetRigidbody.velocity = Vector3.zero;
+            yield return new WaitForSeconds(1f);
+            canMove = true;
+        }
         public float GetPassedLength()
         {
             if (Generator == null) return -1;
