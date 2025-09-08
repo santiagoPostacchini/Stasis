@@ -1,9 +1,11 @@
 using Player.Scripts.Interactor;
 using UnityEngine;
 using UnityEngine.Events;
-using Player.Scripts.MVC;
 using TMPro;
 using Managers.Events;
+using Player.FullBody_Scripts.MovementFSM;
+using Player.Scripts.MovementFSM;
+using Player.Scripts.MovementFSM.MVC;
 
 namespace Puzzle_Elements.Button.Scripts
 {

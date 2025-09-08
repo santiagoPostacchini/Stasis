@@ -2,10 +2,10 @@
 using Managers.Events;
 using Player.Scripts.Interactor;
 using UnityEngine;
-using Player.Scripts.MVC;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using Player.Scripts.MovementFSM;
 
 namespace Player.Stasis
 {
@@ -17,7 +17,7 @@ namespace Player.Stasis
         [SerializeField] private float _radiusStasis = 0.2f;
 
         [Header("Cantidad de objetos staseables")]
-        [HideInInspector]public List<(GameObject obj, IStasis stasis)> _stasisList = new List<(GameObject, IStasis)>();
+        [HideInInspector] public List<(GameObject obj, IStasis stasis)> _stasisList = new List<(GameObject, IStasis)>();
         private int _maxStasisObjects = 2;
 
         private StasisBeam _activeBeam;
@@ -34,15 +34,12 @@ namespace Player.Stasis
 
         private View _view;
 
-
-
-
         void Start()
         {
             _playerInteractor = GetComponent<PlayerInteractor>();
             mainCam = UnityEngine.Camera.main;
             _view = GetComponentInParent<View>();
-            OnShoot += _view.OnShotEvent;
+            OnShoot += _view.OnShootEvent;
         }
 
         void Update()

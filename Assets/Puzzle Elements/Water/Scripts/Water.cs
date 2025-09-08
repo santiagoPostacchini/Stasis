@@ -1,34 +1,35 @@
-using Player.Scripts.MVC;
+using Player.Scripts;
 using Puzzle_Elements.Hedron.Scripts;
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
-public class Water : MonoBehaviour
+namespace Puzzle_Elements.Water.Scripts
 {
-    [SerializeField] private Transform _posPlayer;
-    [SerializeField] private Transform _posHedro;
-    private void OnTriggerEnter(Collider other)
+    public class Water : MonoBehaviour
     {
-        Movement player = other.GetComponent<Movement>();
-        if(player != null)
+        [SerializeField] private Transform _posPlayer;
+        [SerializeField] private Transform _posHedro;
+        private void OnTriggerEnter(Collider other)
         {
-            player.transform.position = _posPlayer.transform.position;
-            Rigidbody rb = player.GetComponent<Rigidbody>();
-            if(rb != null)
+            Movement player = other.GetComponent<Movement>();
+            if(player != null)
             {
-                rb.velocity = Vector3.zero;
+                player.transform.position = _posPlayer.transform.position;
+                Rigidbody rb = player.GetComponent<Rigidbody>();
+                if(rb != null)
+                {
+                    rb.velocity = Vector3.zero;
+                }
             }
-        }
 
-        PhysicsBox hedro = other.GetComponent<PhysicsBox>();
-        if(hedro != null)
-        {
-            hedro.transform.position = _posHedro.transform.position;
-            Rigidbody rb = hedro.GetComponent<Rigidbody>();
-            if (rb != null)
+            PhysicsBox hedro = other.GetComponent<PhysicsBox>();
+            if(hedro != null)
             {
-                rb.velocity = Vector3.zero;
+                hedro.transform.position = _posHedro.transform.position;
+                Rigidbody rb = hedro.GetComponent<Rigidbody>();
+                if (rb != null)
+                {
+                    rb.velocity = Vector3.zero;
+                }
             }
         }
     }

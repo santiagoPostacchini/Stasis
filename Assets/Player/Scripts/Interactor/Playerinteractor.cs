@@ -4,8 +4,9 @@ using Player.Stasis;
 using Puzzle_Elements.Hedron.Scripts;
 using UI.Scripts;
 using UnityEngine;
-using Player.Scripts.MVC;
+
 using System.Collections;
+using Player.Scripts.MovementFSM;
 
 namespace Player.Scripts.Interactor
 {
