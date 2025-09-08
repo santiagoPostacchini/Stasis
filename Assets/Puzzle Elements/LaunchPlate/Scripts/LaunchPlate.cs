@@ -7,6 +7,10 @@ namespace Puzzle_Elements.LaunchPlate.Scripts
     [RequireComponent(typeof(Collider))]
     public class LaunchPlate : MonoBehaviour
     {
+        [Tooltip("Que tanto afectan los inputs del player al desfase de la trayectoria del pad")]
+        [Range(0,1)]
+        [SerializeField] private float playerControlFactor = 0.5f;
+
         [Header("Trajectories (use children as control points)")]
         [SerializeField] private Transform playerTrajectoryParent;
         [SerializeField] private Transform objectTrajectoryParent;
@@ -73,48 +77,99 @@ namespace Puzzle_Elements.LaunchPlate.Scripts
         {
             _canLaunch = false;
 
-            // guardo y ajusto settings para smoothness
             var prevInterp = rb.interpolation;
             var prevCCD = rb.collisionDetectionMode;
-            rb.interpolation = RigidbodyInterpolation.None;
-            rb.collisionDetectionMode = CollisionDetectionMode.Discrete;
+            var prevUseGravity = rb.useGravity;
+
+            rb.interpolation = RigidbodyInterpolation.Interpolate;
+            rb.collisionDetectionMode = CollisionDetectionMode.ContinuousSpeculative;
+
+            // Como forzamos posición sobre la curva, apagamos gravedad para no pelear con MovePosition
+            rb.useGravity = false;
 
             float totalLen = sampler.TotalLength;
-            float speed = totalLen / Mathf.Max(0.0001f, totalLaunchTime); // m/s a lo largo de la curva
+            float speedAlongCurve = totalLen / Mathf.Max(0.0001f, totalLaunchTime);
 
-            // empezamos al instante con un primer paso (sin esperar al próximo FixedUpdate)
-            float s = 0f;                           // distancia recorrida a lo largo de la curva
-            Vector3 p0 = sampler.PointAtArc(0f);
-            Vector3 p1 = sampler.PointAtArc(Mathf.Min(speed * Time.fixedDeltaTime, totalLen));
+            // Control lateral (solo X relativo a la curva)
+            float lateralMaxSpeed = speedAlongCurve * Mathf.Clamp01(playerControlFactor); // m/s lateral
+            float lateralAccel = lateralMaxSpeed * 3f;                                 // aceleración lateral
 
-            // “paso 0” inmediato para que no se sienta delay
-            rb.MovePosition(p0);
+            // Estado de integración
+            float s = 0f;
+            float elapsed = 0f;
+            float dt;
+            float inputH;
 
-            // bucle de física
-            while (s < totalLen)
+            // Offset lateral acumulado y su “velocidad” (en metros, no en ejes locales)
+            float lateralOffset = 0f;
+            float lateralVel = 0f;
+
+            // Posicionar al inicio
+            Vector3 startPos = sampler.PointAtArc(0f);
+            rb.MovePosition(startPos);
+            rb.velocity = Vector3.zero;
+
+            while (elapsed < totalLaunchTime)
             {
-                // siguiente s por longitud de arco
-                s = Mathf.Min(s + speed * Time.fixedDeltaTime, totalLen);
+                dt = Time.fixedDeltaTime;
+                elapsed += dt;
 
-                Vector3 pos = sampler.PointAtArc(s);
-                rb.MovePosition(pos); // suave, sin teletransporte, coherente con colisiones
+                // Avance a lo largo de la curva (siempre)
+                s = Mathf.Min(s + speedAlongCurve * dt, totalLen);
+
+                // Tangente de la curva en s
+                Vector3 T = sampler.TangentAtArc(s).normalized;
+
+                // Vector “derecha” relativo a la curva en el plano XZ (binormal plana)
+                Vector3 up = Vector3.up;
+                Vector3 R = Vector3.Cross(up, T);
+                if (R.sqrMagnitude < 1e-6f)
+                {
+                    // Si la tangente es casi vertical, elegimos una derecha estable
+                    R = Vector3.Cross(Vector3.forward, up);
+                }
+                R.Normalize();
+
+                // Input A/D: solo horizontal
+                inputH = Input.GetAxisRaw("Horizontal");
+
+                // Aceleramos la velocidad lateral hacia la deseada (no tocamos Y ni Z del avance)
+                float targetLateralVel = inputH * lateralMaxSpeed;
+                lateralVel = Mathf.MoveTowards(lateralVel, targetLateralVel, lateralAccel * dt);
+
+                // Integramos el offset lateral (persistente; al soltar no vuelve)
+                lateralOffset += lateralVel * dt;
+
+                // Posición base sobre la curva + offset lateral
+                Vector3 basePos = sampler.PointAtArc(s);
+                Vector3 pos = basePos + R * lateralOffset;
+
+                // Forzamos posición (guiado); anulamos cualquier velocidad residual
+                rb.MovePosition(pos);
+                rb.velocity = Vector3.zero;
 
                 yield return new WaitForFixedUpdate();
             }
 
-            // velocidad de salida en dirección de la tangente final + boost opcional
-            Vector3 tan = sampler.TangentAtArc(totalLen).normalized;
-            Vector3 exitVel = tan * Mathf.Max(0f, exitSpeedBoost);
-            rb.velocity = exitVel;
+            // Velocidad de salida: dirección combinada (tangente + componente lateral actual)
+            Vector3 finalT = sampler.TangentAtArc(s).normalized;
+            Vector3 up2 = Vector3.up;
+            Vector3 finalR = Vector3.Cross(up2, finalT).normalized;
+            Vector3 outDir = (finalT * Mathf.Max(0.1f, speedAlongCurve) + finalR * lateralVel).normalized;
 
-            // restauro settings
+            // Aplicamos empuje extra si corresponde
+            rb.useGravity = prevUseGravity; // restauramos gravedad para el vuelo posterior
+            rb.velocity = outDir * (speedAlongCurve + Mathf.Max(0f, exitSpeedBoost));
+
+            // Restaurar estado del rigidbody
             rb.interpolation = prevInterp;
             rb.collisionDetectionMode = prevCCD;
 
-            // cooldown
             yield return new WaitForSeconds(cooldown);
             _canLaunch = true;
         }
+
+
 
         // =================== Visual helpers ===================
         private void DrawTrajectory(Transform parent, LineRenderer lr, Color color)
