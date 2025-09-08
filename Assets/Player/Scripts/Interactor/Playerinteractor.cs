@@ -163,7 +163,7 @@ namespace Player.Scripts.Interactor
             }
 
         }
-        private void TryDropObject()
+        public void TryDropObject()
         {
             if (_objectGrabbable)
             {

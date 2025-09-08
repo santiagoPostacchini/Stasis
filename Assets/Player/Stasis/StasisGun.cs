@@ -4,6 +4,8 @@ using Player.Scripts.Interactor;
 using UnityEngine;
 using Player.Scripts.MVC;
 using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace Player.Stasis
 {
@@ -26,13 +28,31 @@ namespace Player.Stasis
         [HideInInspector] public UnityEngine.Camera mainCam;
 
         public bool canShootStasis;
-        [SerializeField] private Transform posShot;
         [SerializeField] private LayerMask layer;
         [SerializeField] private float cooldown;
         
         public event Action OnShoot = delegate { };
 
         private View _view;
+
+
+
+        [Header("Cantidad de objetos staseables")]
+        [SerializeField] private int cantStaseable = 2;
+
+        // Diccionario donde guardamos los staseables
+        private Dictionary<int, IStasis> stasisDict;
+
+
+        private void Awake()
+        {
+            stasisDict = new Dictionary<int, IStasis>(cantStaseable);
+
+            for (int i = 0; i < cantStaseable; i++)
+            {
+                stasisDict[i] = null; 
+            }
+        }
 
         void Start()
         {
@@ -74,29 +94,29 @@ namespace Player.Stasis
                 
                 GameObject hitObject = hit.collider.gameObject;
 
+
                 if (hitObject.TryGetComponent<IStasis>(out var stasisComponent))
                 {
-                    DestroyedPieceController piece = hitObject.GetComponent<DestroyedPieceController>();
-                    if(piece != null)
+                    IStasis staseable = stasisComponent;
+                    GameObject objStaseable = ((MonoBehaviour)stasisComponent).gameObject;
+
+                    // Buscamos el StasisRoot en los padres
+                    StasisRoot root = hitObject.GetComponentInParent<StasisRoot>();
+
+                    if (root != null)
                     {
-                        if (piece.is_connected)
-                        {
-                            stasisHit = false;
-                        }
-                        else
-                        {
-                            stasisHit = true;
-                        }
-                    }
-                    else
-                    {
-                        stasisHit = true;
+                        // Buscamos el IStasis correcto en el root
+                        staseable = root.GetComponentsInChildren<MonoBehaviour>().OfType<IStasis>().FirstOrDefault();
+                        if (staseable != null)
+                            objStaseable = ((MonoBehaviour)staseable).gameObject;
                     }
 
-                    StartCoroutine(WaitStasisEffect(hitObject, stasisComponent));
-                    
-                    
+                    if (staseable != null)
+                        Debug.Log("El objeto staseable es " + objStaseable);
+                        StartCoroutine(WaitStasisEffect(objStaseable, staseable));
                 }
+
+
                 if (_activeBeam)
                 {
                     Destroy(_activeBeam.gameObject);
@@ -121,6 +141,12 @@ namespace Player.Stasis
             _activeBeam.SetBeam(stasisOrigin.position, hit.point, stasisHit);
             EventManager.TriggerEvent("LaserFX", gameObject);
         }
+
+        void ApplyStasis(GameObject newObject, IStasis newStasisComponent)
+        {
+
+        }
+
         void ApplyStasisEffect(GameObject newObject, IStasis newStasisComponent)
         {
             if (newObject == _firstFrozenObject)

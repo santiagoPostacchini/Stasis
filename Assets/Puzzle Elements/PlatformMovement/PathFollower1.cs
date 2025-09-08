@@ -189,8 +189,10 @@ namespace CurvedPathGenerator
         }
         IEnumerator Wait()
         {
+            targetRigidbody.isKinematic = false;
             targetRigidbody.velocity = Vector3.zero;
             yield return new WaitForSeconds(1f);
+            targetRigidbody.isKinematic = true;
             canMove = true;
         }
         public float GetPassedLength()

@@ -1,4 +1,5 @@
 using CurvedPathGenerator;
+using Player.Scripts.Interactor;
 using Puzzle_Elements.Hedron.Scripts;
 using System.Collections;
 using System.Collections.Generic;
@@ -112,7 +113,7 @@ public class MagicSwitch : MonoBehaviour
         }
        
     }
-    private void GrowDoor()
+    public void GrowDoor()
     {
         shineTimer += Time.deltaTime;
 
@@ -233,8 +234,20 @@ public class MagicSwitch : MonoBehaviour
             }
         }
     }
-
-        private void OnDrawGizmos()
+    private void OnTriggerEnter(Collider other)
+    {
+        PhysicsBox hedro = other.GetComponent<PhysicsBox>();
+        Debug.Log("Hedro");
+        if (hedro != null && hedro.transform.parent != null)
+        {
+            if (hedro.transform.parent.parent.TryGetComponent<PlayerInteractor>(out PlayerInteractor player))
+            {
+                Debug.Log("Player");
+                player.TryDropObject();
+            }
+        }
+    }
+    private void OnDrawGizmos()
     {
         Gizmos.color = Color.red;
         Gizmos.DrawWireSphere(transform.position, radius);

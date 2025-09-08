@@ -117,17 +117,17 @@ namespace Puzzle_Elements.Hedron.Scripts
             _objGrabPointTransform = grabHolder;
         }
 
-        private void OnTriggerEnter(Collider other)
-        {
-            if(other.gameObject.layer != GameManager.Instance.triggerLayers)
-                IsOverlappingAnything = true;
-        }
+        //private void OnTriggerEnter(Collider other)
+        //{
+        //    if(other.gameObject.layer != GameManager.Instance.triggerLayers)
+        //        IsOverlappingAnything = true;
+        //}
 
-        private void OnTriggerExit(Collider other)
-        {
-            if(other.gameObject.layer != GameManager.Instance.triggerLayers)
-                IsOverlappingAnything = false;
-        }
+        //private void OnTriggerExit(Collider other)
+        //{
+        //    if(other.gameObject.layer != GameManager.Instance.triggerLayers)
+        //        IsOverlappingAnything = false;
+        //}
 
         public void StatisEffectActivate()
         {

@@ -61,7 +61,7 @@ Rigidbody:
   m_ImplicitCom: 1
   m_ImplicitTensor: 1
   m_UseGravity: 0
-  m_IsKinematic: 0
+  m_IsKinematic: 1
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 0
@@ -83,8 +83,8 @@ MonoBehaviour:
       m_Calls: []
   Generator: {fileID: 7900252490712701972}
   Speed: 4
-  DistanceThreshold: 0.2
-  TurningSpeed: 10
+  DistanceThreshold: 0.5
+  TurningSpeed: 1
   IsLoop: 0
   IsMove: 1
   IsEndEventEnable: 0
@@ -658,13 +658,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 3226323581491432803}
   serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalRotation: {x: 0, y: 0, z: 1, w: 0}
   m_LocalPosition: {x: 0, y: -0.35, z: -0.01}
-  m_LocalScale: {x: 1, y: -3, z: 1}
+  m_LocalScale: {x: 1, y: 3, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 5729428463804808000}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 180}
 --- !u!33 &4561904355268292991
 MeshFilter:
   m_ObjectHideFlags: 0
@@ -911,8 +911,8 @@ MonoBehaviour:
   IsLivePath: 1
   IsShowingIcons: 0
   PathDensity: 41
-  EditMode: 2
-  CreateMeshFlag: 0
+  EditMode: 1
+  CreateMeshFlag: 1
   LineMehsWidth: 0.34
   LineOpacity: 0.817
   LineSpeed: -100
@@ -923,18 +923,18 @@ MonoBehaviour:
   PathList: []
   PathLengths: []
   NodeList:
-  - {x: -4.272478, y: 3.271075, z: -5.2868195}
-  - {x: -4.344681, y: 0.87805367, z: 5.0425415}
-  - {x: 5.1302185, y: 2.934801, z: 5.533783}
+  - {x: -5.321036, y: 3.271075, z: -5.2868195}
+  - {x: -3.0085065, y: 1.8501914, z: 3.6465378}
+  - {x: 4.713418, y: 2.934801, z: 4.9574585}
   - {x: 10.838837, y: 2.990633, z: -0.40245056}
   AngleList:
   - {x: -6.637665, y: 1.2260303, z: -1.1654358}
   - {x: -0.31259155, y: 1.9064199, z: 7.6230392}
   - {x: 7.9845276, y: 2.9627247, z: 2.5656586}
   NodeList_World:
-  - {x: -4.029722, y: -0.3089249, z: 54.972847}
-  - {x: -4.101925, y: -2.7019463, z: 65.30221}
-  - {x: 5.3729744, y: -0.6451988, z: 65.79345}
+  - {x: -5.07828, y: -0.3089249, z: 54.972847}
+  - {x: -2.7657506, y: -1.7298086, z: 63.906204}
+  - {x: 4.956174, y: -0.6451988, z: 65.217125}
   - {x: 11.081593, y: -0.5893669, z: 59.857216}
   AngleList_World:
   - {x: -6.394909, y: -2.3539696, z: 59.09423}
