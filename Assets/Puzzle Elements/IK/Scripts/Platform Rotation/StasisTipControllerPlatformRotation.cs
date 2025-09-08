@@ -32,10 +32,13 @@ public class StasisTipControllerPlatformRotation : MonoBehaviour, IStasis
         FreezeObject();
         _followMultipleTargetController.CanMove = false;
     }
-    public void EventTipPlatformRotation()
+    public void EventPositiveTipControllerRotation()
+    {
+        if(!IsFreezed) StatisEffectActivate();
+    }
+    public void EventNegativeTipPlatformRotation()
     {
         if (IsFreezed) StatisEffectDeactivate();
-        else StatisEffectActivate();
     }
     public void StatisEffectDeactivate()
     {

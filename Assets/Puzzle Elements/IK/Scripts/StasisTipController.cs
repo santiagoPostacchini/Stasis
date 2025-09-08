@@ -35,10 +35,14 @@ public class StasisTipController : MonoBehaviour,IStasis
     {
         
     }
-    public void EventTipController()
+    public void EventPositiveTipController()
+    {
+        if(!IsFreezed)
+        StatisEffectActivate();
+    }
+    public void EventNegativeTipController()
     {
         if (IsFreezed) StatisEffectDeactivate();
-        else StatisEffectActivate();
     }
     public void StatisEffectActivate()
     {

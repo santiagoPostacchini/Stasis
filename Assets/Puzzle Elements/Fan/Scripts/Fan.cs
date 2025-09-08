@@ -237,10 +237,14 @@ namespace Puzzle_Elements.Fan.Scripts
 
         // ======================== STASIS (IStasis) ========================
         public bool IsFreezed => _isStasis;
-        public void EventFan()
+
+        public void EventPositiveFan()
+        {
+            if(!IsFreezed) StatisEffectActivate();
+        }
+        public void EventNegativeFan()
         {
             if (IsFreezed) StatisEffectDeactivate();
-            else StatisEffectActivate();
         }
         public void StatisEffectActivate()
         {

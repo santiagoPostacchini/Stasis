@@ -43,6 +43,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 2891517459733935289}
+  - component: {fileID: 4971021948267217921}
   m_Layer: 8
   m_Name: IK by Distance Inverse
   m_TagString: Untagged
@@ -68,6 +69,18 @@ Transform:
   - {fileID: 918023928906434498}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 30, z: 0}
+--- !u!114 &4971021948267217921
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1424462063694510217}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 73aea6c73ba953c43a58c142d4a0bf6a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &1879346686798517840
 GameObject:
   m_ObjectHideFlags: 0
@@ -1254,13 +1267,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 7955915435293277637}
   serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalRotation: {x: 0, y: 0, z: 1, w: 0}
   m_LocalPosition: {x: 0, y: -0.78, z: -0.01}
   m_LocalScale: {x: 1, y: 3, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 924008331965888716}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 180}
 --- !u!33 &8413243809990366679
 MeshFilter:
   m_ObjectHideFlags: 0
@@ -1382,7 +1395,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 7969205170659104682}
   serializedVersion: 2
-  m_LocalRotation: {x: -0.5, y: -0.5, z: -0.5, w: -0.5}
+  m_LocalRotation: {x: -0.49999994, y: -0.5, z: -0.49999988, w: -0.5000002}
   m_LocalPosition: {x: -0.03, y: 7.98, z: -1.11}
   m_LocalScale: {x: 2.4999993, y: 2.4999995, z: 2.4999995}
   m_ConstrainProportionsScale: 0

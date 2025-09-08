@@ -37,10 +37,13 @@ public class StasisTipControllerPlatformMovement : MonoBehaviour, IStasis
     {
 
     }
-    public void EventTipPlatformMovement()
+    public void EventPositiveTipPlatformMovement()
+    {
+        if(!IsFreezed) StatisEffectActivate();
+    }
+    public void EventNegativeTipPlatformMovement()
     {
         if (IsFreezed) StatisEffectDeactivate();
-        else StatisEffectActivate();
     }
     public void StatisEffectActivate()
     {

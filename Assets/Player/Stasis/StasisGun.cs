@@ -14,12 +14,11 @@ namespace Player.Stasis
         [Header("Visual Settings")]
         [SerializeField] private Transform stasisOrigin;
         [SerializeField] private GameObject stasisBeamPrefab;
+        [SerializeField] private float _radiusStasis = 0.2f;
 
-        private GameObject _firstFrozenObject;
-        private IStasis _firstStasisComponent;
-
-        private GameObject _secondFrozenObject;
-        private IStasis _secondStasisComponent;
+        [Header("Cantidad de objetos staseables")]
+        [HideInInspector]public List<(GameObject obj, IStasis stasis)> _stasisList = new List<(GameObject, IStasis)>();
+        private int _maxStasisObjects = 2;
 
         private StasisBeam _activeBeam;
         private Coroutine _beamCoroutine;
@@ -37,22 +36,6 @@ namespace Player.Stasis
 
 
 
-        [Header("Cantidad de objetos staseables")]
-        [SerializeField] private int cantStaseable = 2;
-
-        // Diccionario donde guardamos los staseables
-        private Dictionary<int, IStasis> stasisDict;
-
-
-        private void Awake()
-        {
-            stasisDict = new Dictionary<int, IStasis>(cantStaseable);
-
-            for (int i = 0; i < cantStaseable; i++)
-            {
-                stasisDict[i] = null; 
-            }
-        }
 
         void Start()
         {
@@ -75,6 +58,13 @@ namespace Player.Stasis
                 TryApplyStasis(mainCam.transform);
             }
         }
+        public void RemoveToListStasis()
+        {
+            for (int i = 0; i < _stasisList.Count; i++)
+            {
+                if (!_stasisList[i].stasis.IsFreezed) _stasisList.RemoveAt(i);
+            }
+        }
 
         private IEnumerator WaitCanShoot(float a)
         {
@@ -88,10 +78,10 @@ namespace Player.Stasis
             Vector3 origin = playerCameraTransform.position;
             Vector3 direction = playerCameraTransform.forward;
             StartCoroutine(WaitCanShoot(cooldown));
-            if (Physics.Raycast(origin, direction, out RaycastHit hit, Mathf.Infinity, layer))
+            if(Physics.SphereCast(origin, _radiusStasis, direction, out RaycastHit hit, Mathf.Infinity, layer))
             {
                 bool stasisHit = false;
-                
+
                 GameObject hitObject = hit.collider.gameObject;
 
 
@@ -113,7 +103,7 @@ namespace Player.Stasis
 
                     if (staseable != null)
                         Debug.Log("El objeto staseable es " + objStaseable);
-                        StartCoroutine(WaitStasisEffect(objStaseable, staseable));
+                    StartCoroutine(WaitStasisEffect(objStaseable, staseable));
                 }
 
 
@@ -125,6 +115,10 @@ namespace Player.Stasis
                 OnShoot();
                 StartCoroutine(WaitShot(hit, stasisHit));
             }
+            //if (Physics.Raycast(origin, direction, out RaycastHit hit, Mathf.Infinity, layer))
+            //{
+                
+            //}
         }
 
         private IEnumerator WaitStasisEffect(GameObject hitObject,IStasis stasisComponent)
@@ -142,53 +136,28 @@ namespace Player.Stasis
             EventManager.TriggerEvent("LaserFX", gameObject);
         }
 
-        void ApplyStasis(GameObject newObject, IStasis newStasisComponent)
-        {
-
-        }
-
         void ApplyStasisEffect(GameObject newObject, IStasis newStasisComponent)
         {
-            if (newObject == _firstFrozenObject)
+            // Si ya estaba congelado
+            var existing = _stasisList.FindIndex(x => x.obj == newObject);
+            if (existing != -1)
             {
-                _firstStasisComponent.StatisEffectDeactivate();
-                _firstFrozenObject = null;
-                _firstStasisComponent = null;
+                _stasisList[existing].stasis.StatisEffectDeactivate();
+                _stasisList.RemoveAt(existing);
                 return;
-            }
-            if (newObject == _secondFrozenObject)
-            {
-                _secondStasisComponent.StatisEffectDeactivate();
-                _secondFrozenObject = null;
-                _secondStasisComponent = null;
-                return;
-            }
-            
-            if (_firstFrozenObject && _secondFrozenObject)
-            {
-                _firstStasisComponent.StatisEffectDeactivate();
-                
-                _firstFrozenObject = _secondFrozenObject;
-                _firstStasisComponent = _secondStasisComponent;
-                _secondFrozenObject = null;
-                _secondStasisComponent = null;
             }
 
-            // Si hay lugar en el segundo slot, poner el nuevo ahí
-            if (!_firstFrozenObject)
+            // Si estamos en el límite
+            if (_stasisList.Count >= _maxStasisObjects)
             {
-                _firstFrozenObject = newObject;
-                _firstStasisComponent = newStasisComponent;
-                _firstStasisComponent.StatisEffectActivate();
+                _stasisList[0].stasis.StatisEffectDeactivate(); // descongelar el primero
+                _stasisList.RemoveAt(0);
             }
-            else if (!_secondFrozenObject)
-            {
-                _secondFrozenObject = newObject;
-                _secondStasisComponent = newStasisComponent;
-                _secondStasisComponent.StatisEffectActivate();
-            }
+
+            // Agregamos al final
+            _stasisList.Add((newObject, newStasisComponent));
+            newStasisComponent.StatisEffectActivate();
         }
-
         private void OnDisable()
         {
             UnfreezeAllObjects();
@@ -196,13 +165,12 @@ namespace Player.Stasis
 
         private void UnfreezeAllObjects()
         {
-            _firstStasisComponent?.StatisEffectDeactivate();
-            _secondStasisComponent?.StatisEffectDeactivate();
+            foreach (var item in _stasisList)
+            {
+                item.stasis.StatisEffectDeactivate();
+            }
 
-            _firstFrozenObject = null;
-            _secondFrozenObject = null;
-            _firstStasisComponent = null;
-            _secondStasisComponent = null;
+            _stasisList.Clear();
         }
 
         public void ActivateGun()
