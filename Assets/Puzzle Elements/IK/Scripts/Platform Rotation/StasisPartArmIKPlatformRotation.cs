@@ -13,6 +13,10 @@ public class StasisPartArmIKPlatformRotation : MonoBehaviour, IStasis
     // Start is called before the first frame update
     void Start()
     {
+        if(_stasisTipControllerPlatformRotation == null)
+        {
+            _stasisTipControllerPlatformRotation = GetComponentInParent<StasisTipControllerPlatformRotation>();
+        }
         _stasisTipControllerPlatformRotation.OnFreezeEvent += StatisEffectActivate;
         _stasisTipControllerPlatformRotation.OnUnFreezeEvent += StatisEffectDeactivate;
     }
