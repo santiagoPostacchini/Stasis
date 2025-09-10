@@ -20,6 +20,20 @@ public class Trigger1 : MonoBehaviour
         _alreadyCollision = true;
         ChangeMaterial();
     }
+    public void EventButton()
+    {
+        foreach (var item in followTargetControllers)
+        {
+            item.ChangePosition();
+        }
+        _alreadyCollision = true;
+        StartCoroutine(wait());
+    }
+    IEnumerator wait()
+    {
+        yield return new WaitForSeconds(1f);
+        _alreadyCollision = false;
+    }
     private void OnTriggerExit(Collider other)
     {
         _alreadyCollision = false;

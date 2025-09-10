@@ -166,15 +166,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e8e4696eeceef1644b65294e9a03214e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  playerControlFactor: 0.2
   playerTrajectoryParent: {fileID: 2354434565641940765}
   objectTrajectoryParent: {fileID: 3710109166206272896}
   playerLineRenderer: {fileID: 0}
   objectLineRenderer: {fileID: 0}
   playerColor: {r: 0, g: 1, b: 1, a: 1}
   objectColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
-  totalLaunchTime: 1
-  samplesPerSegment: 84
-  exitSpeedBoost: 2
+  totalLaunchTime: 2
+  samplesPerSegment: 40
+  exitSpeedBoost: 30
   cooldown: 0.5
   singleFireWhileActive: 1
 --- !u!65 &6021681263753704601
