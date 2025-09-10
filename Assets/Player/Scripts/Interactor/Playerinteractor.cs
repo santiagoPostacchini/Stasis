@@ -7,6 +7,7 @@ using UnityEngine;
 
 using System.Collections;
 using Player.Scripts.MovementFSM;
+using Player.Scripts.MovementFSM.MVC;
 
 namespace Player.Scripts.Interactor
 {

@@ -36,9 +36,15 @@ namespace Player.Scripts.MovementFSM.MVC
         public Rigidbody rb;
         
         private StairStepper _stair;
+        
+        private ParkourScanner _scanner;
 
-        [Header("Movement Keys")] public KeyCode runningKey = KeyCode.LeftShift;
+        public ParkourProbe probe;
+
+        [Header("Movement Keys")] 
+        public KeyCode runningKey = KeyCode.LeftShift;
         public KeyCode jumpKey = KeyCode.Space;
+        public KeyCode crouchKey = KeyCode.LeftControl;
 
         [Header("Mouse Keys")] public KeyCode mouseLeft = KeyCode.Mouse0;
         public KeyCode mouseRight = KeyCode.Mouse1;
@@ -47,7 +53,6 @@ namespace Player.Scripts.MovementFSM.MVC
 
         [Header("<color=green>Movement Settings</color>")]
         public float walkingSpeed = 4f;
-
         public float runningSpeed = 8f;
         public float acceleration = 20f;
         public float deceleration = 30f;
@@ -61,12 +66,66 @@ namespace Player.Scripts.MovementFSM.MVC
         public float airAcceleration = 12f;
         public float minAirTime = 0.08f;
         public float landVelThreshold = -2.5f;
+        
+        [Header("Landing Event")]
+        public float landEventCooldown = 0.15f;
+        
+        [HideInInspector] public bool  landedPending;
+        [HideInInspector] public float lastAirTime;
+        [HideInInspector] public float lastFallSpeed;   // v.y justo al salir del aire
+        [HideInInspector] public float lastLandingTime = -999f;
 
-        [Header("Grounding")] public CapsuleCollider capsule; // arrastrá tu capsule aquí
-        public float groundCheckDistance = 0.2f; // > 0.15 para tolerancia
-        public float maxGroundSlope = 55f; // grados
-        public LayerMask groundMask;
+        [Header("Wallrun")]
+        public LayerMask wallMask;
+        public LayerMask wallGroundMask;
+        public float wallRunMaxSpeed = 8.0f;
+        public float wallRunAccel    = 30.0f;
+        public float wallStickForce  = 60.0f;
+        public float wallRegrabCooldown = 0.25f;
+        public float wallCruiseSpeed      = 4.0f;
+        public float wallCruiseAccel      = 18.0f;
+        public float wallGlideDownSpeed   = 1.2f;
+        public float wallInputThreshold   = 0.12f;
+        public float wallStandOff        = 0.18f;
+        public float wallStickKp         = 220f;
+        public float wallStickKd         = 16f;
+        public float wallEnterBlendTime  = 0.18f;
+        public float wallIntoDamp        = 8f;
+        public float wallAlignLerp       = 12f; 
+        [HideInInspector] public float blockWallrunUntil = -999f;
 
+        [Tooltip("Fuerza hacia adelante a lo largo de la pared.")]
+        public float wallRunForce = 25f;
+        [Tooltip("Vel. vertical aplicada al mantener Shift (subir).")]
+        public float wallClimbSpeed = 3.5f;
+        [Tooltip("Vel. vertical aplicada al mantener Ctrl (bajar).")]
+        public float wallDescendSpeed = 3.5f;
+
+        [Tooltip("Tiempo máximo en pared (s).")]
+        public float maxWallRunTime = 1.5f;
+        [Tooltip("Tiempo de cooldown de salida forzada (s).")]
+        public float exitWallTime = 0.3f;
+
+        [Tooltip("Distancia para detectar pared a los lados.")]
+        public float wallCheckDistance = 0.9f;
+        [Tooltip("Altura mínima desde el suelo para poder iniciar/seguir wallrun.")]
+        public float minJumpHeight = 0.6f;
+
+        [Tooltip("Fuerza hacia arriba al saltar desde la pared (impulso).")]
+        public float wallJumpUpForce = 7.5f;
+        [Tooltip("Fuerza lateral alejándose de la pared (impulso).")]
+        public float wallJumpSideForce = 6.5f;
+
+        [Tooltip("Si true, mantenemos gravedad activada pero la contrarrestamos.")]
+        public bool wallUseGravity = true;
+        [Tooltip("Contrafuerza de gravedad durante wallrun.")]
+        public float gravityCounterForce = 14f;
+
+        [Tooltip("Empuje hacia la pared para ‘pegar’ al jugador.")]
+        public float pushToWallForce = 100f;
+        [Tooltip("Ángulo máx. entre la dir. de avance y el eje de la pared.")]
+        [Range(0f, 80f)] public float wallToForwardMaxAngle = 55f;
+        
         // Compartidos entre estados (timestamps)
         [HideInInspector] public float lastJumpPressedTime = -999f;
         [HideInInspector] public float lastLeftGroundTime = -999f;
@@ -110,6 +169,8 @@ namespace Player.Scripts.MovementFSM.MVC
             _interactor = GetComponentInChildren<PlayerInteractor>();
             rb = GetComponent<Rigidbody>();
             _stair = GetComponent<StairStepper>();
+            _scanner = GetComponent<ParkourScanner>();
+            probe = _scanner.Probe;
 
             _fsm = new FSM();
             _fsm.CreateState(FSM.States.Grounded, new S_Grounded(_fsm, this, cameraHolderTransform));
@@ -125,6 +186,12 @@ namespace Player.Scripts.MovementFSM.MVC
         {
             _controller.OnUpdate();
             _fsm.ArtificialUpdate();
+            if (_scanner)
+            {
+                _scanner.OnProbeUpdated += p => probe = p;
+                probe = _scanner.Probe;
+            }
+
         }
 
         private void FixedUpdate()
@@ -172,81 +239,14 @@ namespace Player.Scripts.MovementFSM.MVC
             OnRun?.Invoke(run);
         }
 
+        public void LandedEvent()
+        {
+            OnLand?.Invoke();
+        }
+        
         internal bool IsGroundedNow()
         {
-            if (!capsule) return false;
-            
-            const float skin = 0.02f;
-            const float minUpDot = 0.55f;
-            const float maxSlopeDeg = 55f;
-            float slopeLimit = maxGroundSlope > 0f ? maxGroundSlope : maxSlopeDeg;
-            
-            float radius = Mathf.Max(0.01f, capsule.radius - skin);
-            Vector3 center = transform.TransformPoint(capsule.center);
-            float half = capsule.height * 0.5f - radius;
-
-            Vector3 top = center + Vector3.up * half;
-            Vector3 bottom = center - Vector3.up * half;
-            
-            Vector3 bottomSphereCenter = bottom;
-            
-            var cols = Physics.OverlapCapsule(
-                top, bottom, radius + skin, groundMask, QueryTriggerInteraction.Ignore);
-
-            foreach (var col in cols)
-            {
-                if (!col || col.attachedRigidbody == rb) continue;
-                
-                if (Physics.ComputePenetration(
-                        capsule, transform.position, transform.rotation,
-                        col, col.transform.position, col.transform.rotation,
-                        out Vector3 sepDir, out float sepDist))
-                {
-                    // 1.a) El contacto debe empujarnos mayormente HACIA ARRIBA
-                    float upDot = Vector3.Dot(sepDir.normalized, Vector3.up);
-                    if (upDot < minUpDot) continue; // pared/lado -> NO es suelo
-
-                    // 1.b) Y debe estar BAJO la media esfera inferior (evita aceptar costados)
-                    // Proyectamos el vector desde el centro de la hemisfera inferior hacia el collider
-                    Vector3 p = col.ClosestPoint(bottomSphereCenter);
-                    
-                    Vector3 toP = p - bottomSphereCenter;
-                    // Si el punto está por encima del plano ecuatorial (y > 0), sería “lateral”
-                    if (Vector3.Dot(toP.normalized, Vector3.up) > 0f) continue;
-
-                    // 1.c) (Opcional) validar pendiente con un ray corto hacia abajo
-                    if (Physics.Raycast(center, Vector3.down, out RaycastHit rh,
-                            half + groundCheckDistance + 0.5f, groundMask, QueryTriggerInteraction.Ignore))
-                    {
-                        float slope = Vector3.Angle(rh.normal, Vector3.up);
-                        if (slope <= slopeLimit) return true;
-                    }
-                    else
-                    {
-                        // Sin normal confiable: confiar en upDot del overlap
-                        return true;
-                    }
-                }
-            }
-
-            // === 2) GAP pequeño: no hay overlap; probar cast hacia abajo bajo los pies ===
-
-            // 2.a) SphereCast desde la hemisfera inferior, así no pescamos paredes laterales
-            float castDist = Mathf.Max(0.05f, groundCheckDistance);
-            if (Physics.SphereCast(bottomSphereCenter + Vector3.up * 0.01f, radius, Vector3.down,
-                    out RaycastHit hitS, castDist + 0.02f, groundMask, QueryTriggerInteraction.Ignore))
-            {
-                if (hitS.normal.y >= Mathf.Cos(slopeLimit * Mathf.Deg2Rad)) return true;
-            }
-
-            // 2.b) Fallback: CapsuleCast hacia abajo (más amplio, pero con filtro de pendiente)
-            if (Physics.CapsuleCast(top, bottom, radius, Vector3.down, out RaycastHit hitC,
-                    castDist, groundMask, QueryTriggerInteraction.Ignore))
-            {
-                if (hitC.normal.y >= Mathf.Cos(slopeLimit * Mathf.Deg2Rad)) return true;
-            }
-
-            return false;
+            return _scanner && _scanner.IsGrounded();
         }
     }
 }

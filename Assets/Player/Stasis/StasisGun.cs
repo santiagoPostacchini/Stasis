@@ -6,6 +6,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Player.Scripts.MovementFSM;
+using Player.Scripts.MovementFSM.MVC;
 
 namespace Player.Stasis
 {

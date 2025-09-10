@@ -11,8 +11,6 @@ namespace Player.Scripts.MovementFSM
 
         private bool _enteredFromGround;
         private float _airTime;
-        
-        
 
         public S_Air(FSM fsm, Model model, Transform camHolder)
         {
@@ -35,15 +33,23 @@ namespace Player.Scripts.MovementFSM
             
             TryConsumeCoyoteOrBuffer();
             
+            var p = _model.probe;
+            if (p.action == ParkourAction.WallrunLeft ||
+                p.action == ParkourAction.WallrunRight)
+            {
+                _model.ClearJumpBuffer();
+                _fsm.ChangeState(FSM.States.Wallrun);
+                return;
+            }
+
+            // 3) Aterrizar via Scanner
             if (_model.IsGroundedNow())
             {
                 bool shouldLand = (_airTime >= _model.minAirTime) &&
                                   (_model.rb.velocity.y <= _model.landVelThreshold);
                 
-                //_model.UpdateLanding(shouldLand);
                 _model.ClearJumpBuffer();
                 _model.airEnteredFromGround = false;
-
                 _fsm.ChangeState(FSM.States.Grounded);
             }
         }
@@ -73,6 +79,10 @@ namespace Player.Scripts.MovementFSM
         public void OnExit()
         {
             _model.OnJump -= OnJumpPressed;
+            
+            _model.lastAirTime   = _airTime;
+            _model.lastFallSpeed = _model.rb.velocity.y;
+            _model.landedPending = true;
         }
 
         private void OnJumpPressed()
@@ -106,7 +116,6 @@ namespace Player.Scripts.MovementFSM
 
             _airTime = 0f;
         }
-
         
     }
 }

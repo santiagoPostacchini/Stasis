@@ -6,7 +6,7 @@ namespace Player.Scripts.MovementFSM
     public class StairStepper : MonoBehaviour
     {
         [Header("Máscara")]
-        public LayerMask walkableMask; // 0 => usa model.groundMask
+        public LayerMask walkableMask; // 0 => usa scanner.groundMask
 
         [Header("Alturas")]
         public float maxStepUp   = 0.35f;
@@ -45,13 +45,17 @@ namespace Player.Scripts.MovementFSM
         public Transform cameraBasis;
         public bool useRawAxes = true;
 
+        [Header("Integración con Scanner")]
+        public bool blockIfParkourOpportunity = true; // no interferir si hay Vault/Climb/Wallrun
+
         [Header("Debug")] public bool debugDraw;
 
         // ---- internos
         Model _m; Rigidbody _rb; CapsuleCollider _cap;
+        ParkourScanner _scanner;
+
         private const float Skin = 0.02f;
         float _cosMaxSlope;
-        float _yVel; // bajar
         float _lastSnapTime = -999f;
 
         // Latch del step
@@ -62,22 +66,41 @@ namespace Player.Scripts.MovementFSM
 
         void Awake()
         {
-            _m  = GetComponent<Model>();
-            _rb = _m.rb;
-            _cap = _m.capsule;
+            _m       = GetComponent<Model>();
+            _scanner = GetComponent<ParkourScanner>();
+            _rb      = _scanner.rb;
+            _cap     = _scanner.capsule;
 
-            if (walkableMask.value == 0) walkableMask = _m.groundMask;
-            _cosMaxSlope = Mathf.Cos(Mathf.Deg2Rad * Mathf.Clamp(_m.maxGroundSlope, 0f, 89f));
+            if (_scanner)
+            {
+                if (!_cap) _cap = _scanner.capsule;
+                _cosMaxSlope = Mathf.Cos(Mathf.Deg2Rad * Mathf.Clamp(_scanner.maxGroundSlopeDeg, 0f, 89f));
+            }
+            else
+            {
+                if (walkableMask.value == 0) walkableMask = _scanner.groundMask;
+                _cosMaxSlope = Mathf.Cos(Mathf.Deg2Rad * Mathf.Clamp(_scanner.maxGroundSlopeDeg, 0f, 89f));
+            }
 
             _rb.interpolation = RigidbodyInterpolation.Interpolate;
             _rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
         }
-
-        // LLAMAR al final de Model.FixedUpdate()
+        
         public void ManualFixedStep()
         {
-            bool grounded = _m.IsGroundedNow();
+            bool grounded = _scanner ? _scanner.IsGrounded() : _m.IsGroundedNow();
+
             if (_rb.velocity.y < freeFallVy && !grounded) { _isStepping = _didCommit = false; return; }
+            
+            if (blockIfParkourOpportunity && _scanner)
+            {
+                var a = _scanner.Probe.action;
+                if (a == ParkourAction.Vault || a == ParkourAction.Climb || a == ParkourAction.WallrunLeft || a == ParkourAction.WallrunRight)
+                {
+                    _isStepping = _didCommit = false;
+                    return;
+                }
+            }
 
             GetMoveDirAndSpeedFromInput(out var moveDir, out var inputSpeed);
 
@@ -116,7 +139,9 @@ namespace Player.Scripts.MovementFSM
             Vector3 overEdge = riserHit.point + moveDir * riserOvershoot + Vector3.up * (maxStepUp + Skin);
             if (!Physics.Raycast(overEdge, Vector3.down, out RaycastHit top, maxStepUp + 2f * Skin, walkableMask, QueryTriggerInteraction.Ignore))
                 return false;
-            if (top.normal.y < _cosMaxSlope) return false;
+
+            // pendiente válida según el ángulo del scanner / model
+            if (!SlopeOk(top.normal)) return false;
 
             float targetY  = top.point.y + Skin;
             if (Mathf.Abs(targetY - _rb.position.y) <= deadbandY) return false;
@@ -151,7 +176,7 @@ namespace Player.Scripts.MovementFSM
 
             _rb.MovePosition(new Vector3(_rb.position.x, y, _rb.position.z) + commitXZ + driftXZ);
 
-            // Permite algo de v.y positiva, con cap.
+            // Limitar v.y
             Vector3 v = _rb.velocity; v.y = Mathf.Clamp(v.y, -0.5f, maxUpVel); _rb.velocity = v;
 
             if (Mathf.Abs(_targetTopY - y) <= deadbandY || (Time.time - _stepStartTime) > stepTimeout)
@@ -169,7 +194,8 @@ namespace Player.Scripts.MovementFSM
 
             if (!Physics.Raycast(ahead, Vector3.down, out RaycastHit down, maxStepDown + 2f * Skin, walkableMask, QueryTriggerInteraction.Ignore))
                 return;
-            if (down.normal.y < _cosMaxSlope) return;
+
+            if (!SlopeOk(down.normal)) return;
 
             float targetY  = down.point.y + Skin;
             float currentY = _rb.position.y;
@@ -188,11 +214,22 @@ namespace Player.Scripts.MovementFSM
             }
         }
 
+        bool SlopeOk(in Vector3 normal)
+        {
+            // Usa el límite del scanner si existe; si no, el del model.
+            if (_scanner) return normal.y >= Mathf.Cos(_scanner.maxGroundSlopeDeg * Mathf.Deg2Rad);
+            return normal.y >= _cosMaxSlope;
+        }
+
         Vector3 BottomSphereCenter()
         {
-            float r = _cap.radius;
-            float half = _cap.height * 0.5f - r;
-            Vector3 c = transform.TransformPoint(_cap.center);
+            var cap = _cap;
+            if (!cap && _scanner) cap = _scanner.capsule;
+            if (!cap) cap = GetComponent<CapsuleCollider>(); // último fallback
+
+            float r = cap.radius;
+            float half = cap.height * 0.5f - r;
+            Vector3 c = transform.TransformPoint(cap.center);
             return new Vector3(c.x, c.y - half, c.z);
         }
 

@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 0.18028352, g: 0.22571376, b: 0.30692244, a: 1}
+  m_IndirectSpecularColor: {r: 0.18028378, g: 0.22571412, b: 0.30692285, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -3497,6 +3497,7 @@ GameObject:
   - component: {fileID: 295647212}
   - component: {fileID: 295647211}
   - component: {fileID: 295647213}
+  - component: {fileID: 295647214}
   m_Layer: 9
   m_Name: PlayerGroupNew
   m_TagString: Untagged
@@ -3615,8 +3616,23 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   rb: {fileID: 295647209}
+  probe:
+    action: 0
+    hitPoint: {x: 0, y: 0, z: 0}
+    hitNormal: {x: 0, y: 0, z: 0}
+    obstacleHeight: 0
+    vaultTopPoint: {x: 0, y: 0, z: 0}
+    vaultLandPoint: {x: 0, y: 0, z: 0}
+    vaultDistance: 0
+    climbLedgePoint: {x: 0, y: 0, z: 0}
+    climbStandPoint: {x: 0, y: 0, z: 0}
+    climbHeight: 0
+    wallRunWallPoint: {x: 0, y: 0, z: 0}
+    wallRunNormal: {x: 0, y: 0, z: 0}
+    wallSide: 0
   runningKey: 304
   jumpKey: 32
+  crouchKey: 306
   mouseLeft: 316
   mouseRight: 317
   cameraHolderTransform: {fileID: 1758720788}
@@ -3632,12 +3648,30 @@ MonoBehaviour:
   airAcceleration: 12
   minAirTime: 0.08
   landVelThreshold: -2.5
-  capsule: {fileID: 295647208}
-  groundCheckDistance: 0.2
-  maxGroundSlope: 55
-  groundMask:
+  landEventCooldown: 0.15
+  landedPending: 0
+  lastAirTime: 0
+  lastFallSpeed: 0
+  lastLandingTime: -999
+  wallMask:
+    serializedVersion: 2
+    m_Bits: 16384
+  wallGroundMask:
     serializedVersion: 2
     m_Bits: 128
+  wallRunForce: 25
+  wallClimbSpeed: 3.5
+  wallDescendSpeed: 3.5
+  maxWallRunTime: 1.5
+  exitWallTime: 0.3
+  wallCheckDistance: 0.9
+  minJumpHeight: 0.6
+  wallJumpUpForce: 7.5
+  wallJumpSideForce: 6.5
+  wallUseGravity: 1
+  gravityCounterForce: 14
+  pushToWallForce: 100
+  wallToForwardMaxAngle: 55
   lastJumpPressedTime: -999
   lastLeftGroundTime: -999
   xAxis: 0
@@ -3689,8 +3723,52 @@ MonoBehaviour:
   inputToMps: 4
   cameraBasis: {fileID: 1758720788}
   useRawAxes: 1
+  blockIfParkourOpportunity: 1
   debugDraw: 1
   stepTimeout: 0.6
+--- !u!114 &295647214
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 295647202}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b029f971a182be84cbaff1e6996e7ff6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  rb: {fileID: 295647209}
+  cameraHolder: {fileID: 1758720788}
+  environmentMask:
+    serializedVersion: 2
+    m_Bits: 16640
+  groundMask:
+    serializedVersion: 2
+    m_Bits: 128
+  forwardCheckDistance: 1.2
+  clearanceSkin: 0.06
+  capsule: {fileID: 295647208}
+  groundCheckDistance: 0.2
+  maxGroundSlopeDeg: 55
+  vaultMinHeight: 0.4
+  vaultMaxHeight: 1.2
+  vaultTopClearance: 0.25
+  vaultMinForward: 0.4
+  vaultMaxForward: 2.2
+  vaultDownCast: 2.5
+  climbMinHeight: 1
+  climbMaxHeight: 2.2
+  climbForwardProbe: 0.25
+  climbTopClearance: 0.35
+  climbStandForward: 0.35
+  wallCheckDistance: 1.5
+  wallMinHeight: 1.4
+  wallMaxSlopeDeg: 15
+  wallToForwardMaxAngle: 55
+  wallMinSpeed: 1
+  requireAirForWallrun: 1
+  drawGizmos: 1
 --- !u!1 &305349819
 GameObject:
   m_ObjectHideFlags: 0
@@ -8249,6 +8327,111 @@ Transform:
   - {fileID: 530823426}
   m_Father: {fileID: 295647210}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1768396071
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1768396075}
+  - component: {fileID: 1768396074}
+  - component: {fileID: 1768396073}
+  - component: {fileID: 1768396072}
+  m_Layer: 14
+  m_Name: Cube (2)
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!65 &1768396072
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1768396071}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 1, y: 1, z: 1}
+  m_Center: {x: 0, y: 0, z: 0}
+--- !u!23 &1768396073
+MeshRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1768396071}
+  m_Enabled: 1
+  m_CastShadows: 1
+  m_ReceiveShadows: 1
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 2
+  m_RayTraceProcedural: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 2100000, guid: 31321ba15b8f8eb4c954353edc038b1d, type: 2}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 3
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_AdditionalVertexStreams: {fileID: 0}
+--- !u!33 &1768396074
+MeshFilter:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1768396071}
+  m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!4 &1768396075
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1768396071}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 3.7524135, y: 2.9717045, z: -4.2156496}
+  m_LocalScale: {x: 0.24477322, y: 3.6576, z: 7.8770685}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1784311054
 GameObject:
   m_ObjectHideFlags: 0
@@ -9250,7 +9433,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!64 &2051039241
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -15767,3 +15950,4 @@ SceneRoots:
   - {fileID: 312390098}
   - {fileID: 220766438}
   - {fileID: 2051039246}
+  - {fileID: 1768396075}

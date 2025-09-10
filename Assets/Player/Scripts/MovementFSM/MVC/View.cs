@@ -1,13 +1,14 @@
 using UnityEngine;
 
-namespace Player.Scripts.MovementFSM
+namespace Player.Scripts.MovementFSM.MVC
 {
     public class View : MonoBehaviour
     {
         private static readonly int XAxisHash = Animator.StringToHash("xAxis");
         private static readonly int ZAxisHash = Animator.StringToHash("zAxis");
-        private static readonly int IsStopping = Animator.StringToHash("isStopping");
-        private static readonly int IsJumping = Animator.StringToHash("isJumping");
+        private static readonly int IsStopping = Animator.StringToHash("IsStopping");
+        private static readonly int IsJumping = Animator.StringToHash("IsJumping");
+        private static readonly int IsGrounded = Animator.StringToHash("IsGrounded");
         
         [SerializeField] private Animator animator;
         
@@ -59,6 +60,8 @@ namespace Player.Scripts.MovementFSM
         public void OnLandEvent()
         {
             Debug.Log("Landed Event");
+            animator.SetBool(IsJumping, false);
+            animator.SetBool(IsGrounded, true);
             //animator.SetTrigger(_landHash);
         }
         
@@ -66,6 +69,7 @@ namespace Player.Scripts.MovementFSM
         {
             Debug.Log("Jump Event");
             animator.SetTrigger(IsJumping);
+            animator.SetBool(IsGrounded, false);
             animator.CrossFade("Player_Leg_Jump", 1);
             animator.CrossFade("Player_Arm_Jump", 0);
             //EventManager.TriggerEvent("OnJump", gameObject);
