@@ -3618,6 +3618,8 @@ MonoBehaviour:
   rb: {fileID: 295647209}
   probe:
     action: 0
+    playerRadius: 0
+    playerHeight: 0
     hitPoint: {x: 0, y: 0, z: 0}
     hitNormal: {x: 0, y: 0, z: 0}
     obstacleHeight: 0
@@ -3656,9 +3658,9 @@ MonoBehaviour:
   wallMask:
     serializedVersion: 2
     m_Bits: 16384
-  wallGroundMask:
+  groundMask:
     serializedVersion: 2
-    m_Bits: 128
+    m_Bits: 384
   wallRunMaxSpeed: 8
   wallRunAccel: 30
   wallStickForce: 60
@@ -3687,6 +3689,63 @@ MonoBehaviour:
   gravityCounterForce: 14
   pushToWallForce: 100
   wallToForwardMaxAngle: 55
+  vaultSpeed: 6
+  vaultMinDuration: 0.28
+  vaultMaxDuration: 0.55
+  vaultArcHeight: 0.55
+  vaultExitSpeed: 6.5
+  vaultExitUpVel: 1.2
+  vaultFacingLerp: 12
+  vaultDisableCollisions: 1
+  vaultColliderRadiusScale: 0.75
+  vaultYCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  vaultProgressCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
   lastJumpPressedTime: -999
   lastLeftGroundTime: -999
   xAxis: 0
@@ -3873,7 +3932,7 @@ GameObject:
   - component: {fileID: 312390097}
   - component: {fileID: 312390096}
   - component: {fileID: 312390095}
-  m_Layer: 14
+  m_Layer: 8
   m_Name: Cube (1)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -3960,7 +4019,7 @@ Transform:
   m_GameObject: {fileID: 312390094}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 4.13, z: 15.69}
+  m_LocalPosition: {x: 0, y: 2.27, z: 15.69}
   m_LocalScale: {x: 7.6257, y: 4.4803314, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -9184,7 +9243,7 @@ GameObject:
   - component: {fileID: 1996757277}
   - component: {fileID: 1996757276}
   - component: {fileID: 1996757275}
-  m_Layer: 7
+  m_Layer: 8
   m_Name: Cube
   m_TagString: Untagged
   m_Icon: {fileID: 0}
