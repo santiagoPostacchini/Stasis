@@ -45,7 +45,7 @@ namespace Player.Scripts.MovementFSM
                 _model.lastLandingTime = Time.time;
             }
 
-            _model.landedPending = false; 
+            _model.landedPending = false;
         }
 
         public void OnUpdate()

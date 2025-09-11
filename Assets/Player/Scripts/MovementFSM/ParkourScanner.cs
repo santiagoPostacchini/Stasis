@@ -40,16 +40,14 @@ namespace Player.Scripts.MovementFSM
 
         public static ParkourProbe None => new ParkourProbe { action = ParkourAction.None };
     }
-    
+
     [DefaultExecutionOrder(50)]
     public class ParkourScanner : MonoBehaviour
     {
-        [Header("References")] 
-        public Rigidbody rb;
+        [Header("References")] public Rigidbody rb;
         public Transform cameraHolder;
 
-        [Header("Layers")] 
-        public LayerMask environmentMask;
+        [Header("Layers")] public LayerMask environmentMask;
 
         public LayerMask groundMask;
 
@@ -120,11 +118,11 @@ namespace Player.Scripts.MovementFSM
                 Debug.LogWarning($"[Scanner] Falta referencia: capsule={capsule}, cameraHolder={cameraHolder}");
                 return ParkourProbe.None;
             }
-            
+
             if (TryDetectVault(out var vault)) return vault;
-            
+
             if (TryDetectClimb(out var climb)) return climb;
-            
+
             if (TryDetectWallrun(+1, out var wrRight)) return wrRight;
             if (TryDetectWallrun(-1, out var wrLeft)) return wrLeft;
 
@@ -365,8 +363,7 @@ namespace Player.Scripts.MovementFSM
         bool TryDetectWallrun(int side, out ParkourProbe result)
         {
             result = ParkourProbe.None;
-
-            // Cooldown de re-grab tras un walljump
+            
             var m = GetComponent<Model>();
             if (m && Time.time < m.blockWallrunUntil) return false;
 
@@ -374,18 +371,20 @@ namespace Player.Scripts.MovementFSM
 
             Vector3 fwd = GetPlanarForward();
             Vector3 sideDir = (side < 0 ? -transform.right : transform.right);
-            sideDir.y = 0f; sideDir.Normalize();
+            sideDir.y = 0f;
+            sideDir.Normalize();
 
             float mid = Mathf.Clamp(Height * 0.5f, 0.8f, 1.0f);
             Vector3 origin = transform.position + Vector3.up * mid;
 
-            if (!Physics.Raycast(origin, sideDir, out RaycastHit hit, wallCheckDistance, environmentMask, QueryTriggerInteraction.Ignore))
-                return false; // Debug.Log("WR: no side wall");
+            if (!Physics.Raycast(origin, sideDir, out RaycastHit hit, wallCheckDistance, environmentMask,
+                    QueryTriggerInteraction.Ignore))
+                return false;
 
             float upDot = Vector3.Dot(hit.normal, Vector3.up);
             if (Mathf.Abs(upDot) > Mathf.Sin(wallMaxSlopeDeg * Mathf.Deg2Rad))
-                return false; // Debug.Log("WR: wall too slanted");
-            
+                return false;
+
             Vector3 wallForward = Vector3.Cross(hit.normal, Vector3.up);
             if (Vector3.Dot(fwd, wallForward) < Vector3.Dot(fwd, -wallForward))
                 wallForward = -wallForward;
@@ -395,22 +394,35 @@ namespace Player.Scripts.MovementFSM
 
             Vector3 horizVel = rb ? new Vector3(rb.velocity.x, 0, rb.velocity.z) : Vector3.zero;
             if (horizVel.magnitude < wallMinSpeed)
-                return false; // Debug.Log($"WR: speed {horizVel.magnitude} < {wallMinSpeed}");
+                return false;
 
             Vector3 head = origin + Vector3.up * wallMinHeight;
             if (!HasClearanceCapsule(head, Radius * 2f))
-                return false; // Debug.Log("WR: no head clearance");
+                return false;
 
+            Vector3 fwdPlanar = GetPlanarForward();
+            Vector3 nPlanar = hit.normal;
+            nPlanar.y = 0f;
+            if (nPlanar.sqrMagnitude < 1e-6f)
+            {
+                return false;
+            }
+
+            nPlanar.Normalize();
+
+            float sideSign = Vector3.Dot(Vector3.Cross(fwdPlanar, -nPlanar), Vector3.up);
+            int resolvedSide = (sideSign >= 0f) ? +1 : -1;
+            
             result = new ParkourProbe
             {
-                action = side < 0 ? ParkourAction.WallrunLeft : ParkourAction.WallrunRight,
+                action = resolvedSide > 0 ? ParkourAction.WallrunRight : ParkourAction.WallrunLeft,
                 wallRunWallPoint = hit.point,
                 wallRunNormal = hit.normal,
-                wallSide = side
+                wallSide = resolvedSide
             };
             return true;
         }
-
+        
         #endregion
 
         #region Helpers

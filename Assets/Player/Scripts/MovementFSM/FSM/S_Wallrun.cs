@@ -9,9 +9,9 @@ namespace Player.Scripts.MovementFSM
         private readonly Model _model;
 
         private Rigidbody _rb;
-        private Transform _orient; // usamos cameraHolderTransform para dirección
+        private Transform _orient;
         private Vector3 _wallNormal;
-        private int _side; // -1 = izquierda, +1 = derecha
+        private int _side;
 
         private float _timer;
         private bool _exiting;
@@ -33,25 +33,25 @@ namespace Player.Scripts.MovementFSM
             var p = _model.probe;
             ReadProbe(p);
             _lastWallPoint = p.wallRunWallPoint;
-
+            
+            _model.WallrunEvent(_side);
+            
             _timer = _model.maxWallRunTime;
             _exiting = false;
             _enterTime = Time.time;
+            
         }
 
         public void OnUpdate()
         {
-            // salir si toca suelo
             if (_model.IsGroundedNow())
             {
                 _fsm.ChangeState(FSM.States.Grounded);
                 return;
             }
-
-            // refrescar datos desde el scanner cada frame
+            
             var p = _model.probe;
-
-            // si el scanner deja de ver wallrun válido -> a Air
+            
             if (p.action != ParkourAction.WallrunLeft && p.action != ParkourAction.WallrunRight)
             {
                 _fsm.ChangeState(FSM.States.Air);
@@ -60,8 +60,7 @@ namespace Player.Scripts.MovementFSM
 
             ReadProbe(p);
             _lastWallPoint = p.wallRunWallPoint;
-
-            // temporizador de permanencia
+            
             if (!_exiting)
             {
                 _timer -= Time.deltaTime;
@@ -86,9 +85,8 @@ namespace Player.Scripts.MovementFSM
 
         public void OnFixedUpdate()
         {
-            if (_exiting) return; // en “exiting” no aplicamos fuerzas
-
-            // seguridad: si perdemos pared entre Update y Fixed
+            if (_exiting) return;
+            
             var p = _model.probe;
             if (p.action != ParkourAction.WallrunLeft && p.action != ParkourAction.WallrunRight)
             {
@@ -101,17 +99,17 @@ namespace Player.Scripts.MovementFSM
 
         public void OnExit()
         {
+            
         }
 
         private void ReadProbe(in ParkourProbe p)
         {
-            _wallNormal = (p.action == ParkourAction.WallrunRight || p.action == ParkourAction.WallrunLeft)
-                ? p.wallRunNormal
-                : _wallNormal;
-
-            _side = p.wallSide;
+            if (p.action == ParkourAction.WallrunRight || p.action == ParkourAction.WallrunLeft)
+            {
+                _wallNormal = p.wallRunNormal;
+                _side = p.wallSide;
+            }
         }
-        
         float EnterBlend01()
         {
             return Mathf.Clamp01((Time.time - _enterTime) / Mathf.Max(0.01f, _model.wallEnterBlendTime));

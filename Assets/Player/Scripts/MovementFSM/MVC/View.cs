@@ -70,7 +70,7 @@ namespace Player.Scripts.MovementFSM.MVC
             Debug.Log("Jump Event");
             animator.SetTrigger(IsJumping);
             animator.SetBool(IsGrounded, false);
-            animator.CrossFade("Player_Leg_Jump", 1);
+            animator.CrossFade("Player_Leg_Jump", 0);
             animator.CrossFade("Player_Arm_Jump", 0);
             //EventManager.TriggerEvent("OnJump", gameObject);
         }
@@ -126,6 +126,12 @@ namespace Player.Scripts.MovementFSM.MVC
         public void OnSlideEndEvent()
         {
             Debug.Log("Slide End Event");
+        }
+
+        public void OnWallrunEvent(float dir)
+        {
+            Debug.Log($"Wall Slide Event with dir: {dir}");
+            animator.CrossFade(dir > 0 ? "Player_Leg_Wallrun_Left" : "Player_Leg_Wallrun_Right", 0);
         }
         
         public void OnDamageEvent()

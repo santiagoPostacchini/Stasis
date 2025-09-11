@@ -30,6 +30,7 @@ namespace Player.Scripts.MovementFSM
             _model.OnSlideEnd += _view.OnSlideEndEvent;
             _model.OnGetDamage += _view.OnDamageEvent;
             _model.OnDeath += _view.OnDeathEvent;
+            _model.OnWallrun += view.OnWallrunEvent;
         }
         
         public void OnUpdate()

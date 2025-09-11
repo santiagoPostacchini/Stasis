@@ -22,6 +22,7 @@ namespace Player.Scripts.MovementFSM.MVC
         public event Action OnClimbEnd = delegate { };
         public event Action OnSlideStart = delegate { };
         public event Action OnSlideEnd = delegate { };
+        public event Action<float> OnWallrun = delegate { };
         public event Action OnGetDamage = delegate { };
         public event Action OnDeath = delegate { };
 
@@ -170,7 +171,12 @@ namespace Player.Scripts.MovementFSM.MVC
             rb = GetComponent<Rigidbody>();
             _stair = GetComponent<StairStepper>();
             _scanner = GetComponent<ParkourScanner>();
-            probe = _scanner.Probe;
+        
+            if (_scanner)
+            {
+                _scanner.OnProbeUpdated += p => probe = p;
+                probe = _scanner.Probe;
+            }
 
             _fsm = new FSM();
             _fsm.CreateState(FSM.States.Grounded, new S_Grounded(_fsm, this, cameraHolderTransform));
@@ -186,12 +192,6 @@ namespace Player.Scripts.MovementFSM.MVC
         {
             _controller.OnUpdate();
             _fsm.ArtificialUpdate();
-            if (_scanner)
-            {
-                _scanner.OnProbeUpdated += p => probe = p;
-                probe = _scanner.Probe;
-            }
-
         }
 
         private void FixedUpdate()
@@ -242,6 +242,11 @@ namespace Player.Scripts.MovementFSM.MVC
         public void LandedEvent()
         {
             OnLand?.Invoke();
+        }
+
+        public void WallrunEvent(float dir)
+        {
+            OnWallrun?.Invoke(dir);
         }
         
         internal bool IsGroundedNow()
