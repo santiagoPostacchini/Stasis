@@ -48,6 +48,7 @@ public class SpiderFoot : MonoBehaviour
    
     public UnityEvent<bool> OnPlantedChange;
 
+    private TerrainDetector _detector;
  
     public bool IsStepping { get; private set; }
     public bool IsPlanted => !IsStepping;
