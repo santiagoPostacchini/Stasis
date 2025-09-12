@@ -16,15 +16,12 @@ public class Trigger1 : MonoBehaviour
     [SerializeField] private float delay = 0.3f;
 
 
-
-    private IEnumerator Start()
+    
+    private void Start()
     {
         _layerDefault = LayerMask.NameToLayer("Walkable");
         _layerInvisible = LayerMask.NameToLayer("Invisible");
 
-        // esperar un frame para que todos los FollowTargetController hagan su Start()
-        yield return new WaitForSeconds(2f);
-        InitPath();
     }
     private void OnTriggerEnter(Collider other)
     {

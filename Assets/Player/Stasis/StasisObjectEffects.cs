@@ -29,6 +29,7 @@ namespace Player.Stasis
         
         private void Update()
         {
+
             if (crosshair.sprite == crosshairStasis)
             {
                 crosshair.rectTransform.Rotate(Vector3.forward * (rotationSpeed * Time.deltaTime));
