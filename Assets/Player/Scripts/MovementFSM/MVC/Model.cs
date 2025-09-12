@@ -78,7 +78,7 @@ namespace Player.Scripts.MovementFSM.MVC
 
         [Header("Wallrun")]
         public LayerMask wallMask;
-        public LayerMask wallGroundMask;
+        public LayerMask groundMask;
         public float wallRunMaxSpeed = 8.0f;
         public float wallRunAccel    = 30.0f;
         public float wallStickForce  = 60.0f;
@@ -94,7 +94,7 @@ namespace Player.Scripts.MovementFSM.MVC
         public float wallIntoDamp        = 8f;
         public float wallAlignLerp       = 12f; 
         [HideInInspector] public float blockWallrunUntil = -999f;
-
+        
         [Tooltip("Fuerza hacia adelante a lo largo de la pared.")]
         public float wallRunForce = 25f;
         [Tooltip("Vel. vertical aplicada al mantener Shift (subir).")]
@@ -126,6 +126,23 @@ namespace Player.Scripts.MovementFSM.MVC
         public float pushToWallForce = 100f;
         [Tooltip("Ángulo máx. entre la dir. de avance y el eje de la pared.")]
         [Range(0f, 80f)] public float wallToForwardMaxAngle = 55f;
+        
+        [Header("Vault")]
+        public float vaultSpeed       = 6.0f;   // m/s horizontal objetivo
+        public float vaultMinDuration = 0.28f;  // duración mínima
+        public float vaultMaxDuration = 0.55f;  // duración máxima (para distancias largas)
+        public float vaultArcHeight   = 0.55f;  // altura extra del arco por encima del lerp Y
+        public float vaultExitSpeed   = 6.5f;   // velocidad horizontal al salir
+        public float vaultExitUpVel   = 1.2f;   // empuje vertical de salida
+        public float vaultFacingLerp  = 12f;    // qué tan rápido alinear el yaw al movimiento
+        public bool  vaultDisableCollisions = true; // desactivar colisiones mientras dura
+        public float vaultColliderRadiusScale = 0.75f; // (si querés spherecast de seguridad)
+
+        [Tooltip("Curva del arco vertical (0..1 -> 0..1). Sugerido: (0,0)-(0.5,1)-(1,0)")]
+        public AnimationCurve vaultYCurve = AnimationCurve.EaseInOut(0,0, 1,0);
+        [Tooltip("Curva del avance (ajusta aceleración/descenso del t horizontal)")]
+        public AnimationCurve vaultProgressCurve = AnimationCurve.EaseInOut(0,0, 1,1);
+
         
         // Compartidos entre estados (timestamps)
         [HideInInspector] public float lastJumpPressedTime = -999f;
@@ -247,6 +264,16 @@ namespace Player.Scripts.MovementFSM.MVC
         public void WallrunEvent(float dir)
         {
             OnWallrun?.Invoke(dir);
+        }
+        
+        public void VaultStartEvent()
+        {
+            OnVaultStart?.Invoke();
+        }
+        
+        public void VaultEndEvent()
+        {
+            OnVaultEnd?.Invoke();
         }
         
         internal bool IsGroundedNow()
