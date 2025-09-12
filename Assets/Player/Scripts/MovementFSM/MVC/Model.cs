@@ -70,7 +70,6 @@ namespace Player.Scripts.MovementFSM.MVC
         
         [Header("Landing Event")]
         public float landEventCooldown = 0.15f;
-        
         [HideInInspector] public bool  landedPending;
         [HideInInspector] public float lastAirTime;
         [HideInInspector] public float lastFallSpeed;   // v.y justo al salir del aire
@@ -128,21 +127,9 @@ namespace Player.Scripts.MovementFSM.MVC
         [Range(0f, 80f)] public float wallToForwardMaxAngle = 55f;
         
         [Header("Vault")]
-        public float vaultSpeed       = 6.0f;   // m/s horizontal objetivo
-        public float vaultMinDuration = 0.28f;  // duración mínima
-        public float vaultMaxDuration = 0.55f;  // duración máxima (para distancias largas)
-        public float vaultArcHeight   = 0.55f;  // altura extra del arco por encima del lerp Y
-        public float vaultExitSpeed   = 6.5f;   // velocidad horizontal al salir
-        public float vaultExitUpVel   = 1.2f;   // empuje vertical de salida
-        public float vaultFacingLerp  = 12f;    // qué tan rápido alinear el yaw al movimiento
-        public bool  vaultDisableCollisions = true; // desactivar colisiones mientras dura
-        public float vaultColliderRadiusScale = 0.75f; // (si querés spherecast de seguridad)
-
-        [Tooltip("Curva del arco vertical (0..1 -> 0..1). Sugerido: (0,0)-(0.5,1)-(1,0)")]
-        public AnimationCurve vaultYCurve = AnimationCurve.EaseInOut(0,0, 1,0);
-        [Tooltip("Curva del avance (ajusta aceleración/descenso del t horizontal)")]
-        public AnimationCurve vaultProgressCurve = AnimationCurve.EaseInOut(0,0, 1,1);
-
+        [HideInInspector] public float blockVaultUntil = -999f;
+        public float vaultRegrabCooldown = 0.25f;
+        public int avatarForwardSign = +1;
         
         // Compartidos entre estados (timestamps)
         [HideInInspector] public float lastJumpPressedTime = -999f;
