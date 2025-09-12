@@ -30,6 +30,11 @@ namespace Player.Scripts.MovementFSM
         public Vector3 vaultTopPoint; // punto en el "tapa" del obstáculo
         public Vector3 vaultLandPoint; // punto sugerido de aterrizaje
         public float vaultDistance; // dist. horizontal sobre el obstáculo
+        public Vector3 vaultStartPoint; // opcional, suele ser rb.position
+        public Vector3 vaultMidXZ; // centro xz de la tapa
+        public float vaultArcApex; // altura sugerida (puede ser 0, se recalcula en estado)}
+        public Collider vaultObstacle;
+        public Vector3 vaultForward;
 
         // Datos para CLIMB
         public Vector3 climbLedgePoint; // borde/ledge donde agarrarse
@@ -213,104 +218,116 @@ namespace Player.Scripts.MovementFSM
         bool TryDetectVault(out ParkourProbe result)
         {
             result = ParkourProbe.None;
+            var m = GetComponent<Model>();
+            if (m && Time.time < m.blockVaultUntil || !m.runningKeyPressed) return false;
 
-            Vector3 originFeet = transform.position + Vector3.up * Radius;
-            Vector3 forward = GetPlanarForward();
+            // Ajustes base
+            float r = Radius;
+            float h = Height;
 
-            float chest = Mathf.Clamp(Height * 0.55f, 0.8f, 1.1f);
-            Vector3 chestOrigin = transform.position + Vector3.up * chest;
+            // (A) Guardamos un "start" coherente para el vault (sirve para corregir forward)
+            Vector3 start = rb ? rb.position : transform.position;
 
-            // 1) Ray frontal
-            if (!Physics.Raycast(chestOrigin, forward, out RaycastHit frontHit,
-                    forwardCheckDistance, environmentMask, QueryTriggerInteraction.Ignore))
-            {
-                //Debug.Log("[Vault] No front hit");
+            Vector3 pos = transform.position;
+            Vector3 fwd = GetPlanarForward();
+            float chest = Mathf.Clamp(h * 0.55f, 0.8f, 1.1f);
+            Vector3 chestOrigin = pos + Vector3.up * chest;
+
+            // 1) Ray frontal: encontrar “cara” de obstáculo
+            if (!Physics.Raycast(chestOrigin, fwd, out var hitFront, forwardCheckDistance, environmentMask,
+                    QueryTriggerInteraction.Ignore))
                 return false;
-            }
 
-            // Debug del hit y capa
-            // Nota: LayerMask.NameToLayer devuelve índice, usamos LayerMask.LayerToName para el string
-            Debug.Log(
-                $"[Vault] Front hit: {frontHit.collider.name} (layer {LayerMask.LayerToName(frontHit.collider.gameObject.layer)})");
-
-            // 2) Top del obstáculo
-            if (!TopFromHit(frontHit, out float obstacleTopY))
-            {
-                Debug.Log("[Vault] TopFromHit falló (no encontró tapa sobre el hit)");
+            // 2) Encontrar Y de la tapa
+            if (!TopFromHit(hitFront, out float topY))
                 return false;
-            }
 
-            float height = obstacleTopY - originFeet.y;
-            Debug.Log($"[Vault] altura={height:F2} (min={vaultMinHeight} max={vaultMaxHeight})");
-
-            if (height < vaultMinHeight || height > vaultMaxHeight)
-            {
-                Debug.Log("[Vault] Altura fuera de rango");
+            // Altura útil
+            float feetY = (pos + Vector3.up * r).y;
+            float obsHeight = topY - feetY;
+            if (obsHeight < vaultMinHeight || obsHeight > vaultMaxHeight)
                 return false;
-            }
 
-            // 3) Punto exacto en tapa
-            Vector3 topProbeStart = new Vector3(frontHit.point.x, obstacleTopY + 0.02f, frontHit.point.z);
-            if (!Physics.Raycast(topProbeStart, Vector3.down, out RaycastHit topHit, 1.0f,
-                    environmentMask, QueryTriggerInteraction.Ignore))
-            {
-                Debug.Log("[Vault] No encontró tapa al bajar desde arriba");
+            // 3) Punto exacto en la tapa (bajar desde arriba del hit)
+            Vector3 topProbeStart = new Vector3(hitFront.point.x, topY + 0.02f, hitFront.point.z);
+            if (!Physics.Raycast(topProbeStart, Vector3.down, out var topHit, 1f, environmentMask,
+                    QueryTriggerInteraction.Ignore))
                 return false;
-            }
-
             Vector3 topPoint = topHit.point + Vector3.up * clearanceSkin;
 
-            // 4) Clearance sobre tapa
-            if (!HasClearanceCapsule(topPoint + Vector3.up * (vaultTopClearance * 0.5f), vaultTopClearance))
-            {
-                Debug.Log("[Vault] Sin clearance sobre tapa");
-                return false;
-            }
+            // 4) Centro XZ de la tapa
+            Vector3 midXZ = new Vector3(topPoint.x, topPoint.y, topPoint.z) + fwd * Mathf.Max(r * 0.6f, 0.2f);
+            midXZ.y = topPoint.y;
 
-            // 5) Buscar caída al otro lado
-            float minF = Mathf.Max(vaultMinForward, Radius * 1.2f);
-            float maxF = Mathf.Max(minF + 0.2f, vaultMaxForward);
+            // Clearance sobre la tapa
+            if (!HasClearanceCapsule(topPoint + Vector3.up * (vaultTopClearance * 0.5f), vaultTopClearance))
+                return false;
+
+            // 5) Buscar aterrizaje al otro lado
+            float minF = Mathf.Max(vaultMinForward, r * 1.2f);
+            float maxF = Mathf.Max(minF + 0.3f, vaultMaxForward);
+            LayerMask groundOrEnv = groundMask.value != 0 ? groundMask : environmentMask;
 
             Vector3 land = Vector3.zero;
-            float usedForward = 0f;
             bool foundLand = false;
-
-            for (float f = minF; f <= maxF + 0.001f; f += 0.1f)
+            for (float f = minF; f <= maxF + 0.0001f; f += 0.1f)
             {
-                Vector3 over = topPoint + forward * f + Vector3.up * 0.05f;
-                LayerMask groundOrEnv = groundMask.value != 0 ? groundMask : environmentMask;
-
-                if (Physics.Raycast(over, Vector3.down, out RaycastHit downHit, vaultDownCast, groundOrEnv,
+                Vector3 over = topPoint + fwd * f + Vector3.up * 0.05f;
+                if (Physics.Raycast(over, Vector3.down, out var downHit, vaultDownCast, groundOrEnv,
                         QueryTriggerInteraction.Ignore))
                 {
-                    Vector3 stand = downHit.point + Vector3.up * (Radius + clearanceSkin);
-                    if (HasClearanceCapsule(stand, Height - Radius * 2f))
+                    Vector3 stand = downHit.point + Vector3.up * (r + clearanceSkin);
+                    if (HasClearanceCapsule(stand, h - r * 2f))
                     {
                         land = stand;
-                        usedForward = f;
                         foundLand = true;
                         break;
                     }
                 }
             }
 
-            if (!foundLand)
-            {
-                Debug.Log("[Vault] No encontró zona de aterrizaje con clearance");
-                return false;
-            }
+            if (!foundLand) return false;
 
-            Debug.Log($"[Vault] OK. top={topPoint} land={land} forward={usedForward:F2}");
+            // (B) Forward base según tu cámara/cuerpo (como ya hacías)
+            Vector3 vaultFwd = GetPlanarForward();
+            if (vaultFwd.sqrMagnitude > 0f) vaultFwd.Normalize();
+
+            // (C) ***CORRECCIÓN DE SIGNO***: asegurar que vaultForward apunte de start -> land (en XZ)
+            Vector3 desired = land - start;
+            desired.y = 0f;
+            if (desired.sqrMagnitude > 1e-6f)
+            {
+                desired.Normalize();
+                Vector3 vf = vaultFwd;
+                vf.y = 0f;
+                if (vf.sqrMagnitude > 1e-6f && Vector3.Dot(vf.normalized, desired) < 0f)
+                    vaultFwd = -vaultFwd;
+            }
 
             result = new ParkourProbe
             {
                 action = ParkourAction.Vault,
-                hitPoint = frontHit.point,
-                hitNormal = frontHit.normal,
-                obstacleHeight = height,
+                hitPoint = hitFront.point,
+                hitNormal = hitFront.normal,
+                obstacleHeight = obsHeight,
+
                 vaultTopPoint = topPoint,
+                vaultMidXZ = midXZ,
                 vaultLandPoint = land,
-                vaultDistance = usedForward
+                vaultDistance = Vector3.Distance(
+                    new Vector3(topPoint.x, 0, topPoint.z),
+                    new Vector3(land.x, 0, land.z)
+                ),
+
+                // Importante: guardamos el start para que el estado pueda usarlo si quiere
+                vaultStartPoint = start,
+
+                playerRadius = r,
+                playerHeight = h,
+                vaultObstacle = hitFront.collider,
+
+                // vaultForward ya corregido de signo
+                vaultForward = vaultFwd
             };
             return true;
         }

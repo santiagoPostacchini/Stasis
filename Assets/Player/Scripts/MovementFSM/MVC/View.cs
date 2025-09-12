@@ -98,6 +98,9 @@ namespace Player.Scripts.MovementFSM.MVC
         public void OnVaultStartEvent()
         {
             Debug.Log("Vault Start Event");
+            animator.CrossFade("Player_Leg_Vault", 0.05f);
+            animator.CrossFade("Player_Arm_Vault", 0.05f);
+            animator.applyRootMotion = false;
             //animator.SetTrigger(_vaultHash);
         }
 

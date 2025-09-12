@@ -64,15 +64,14 @@ namespace Player.Scripts.MovementFSM
             _wasGrounded = grounded;
             
             var p = _model.probe;
-
-            // VAULT: adelante + hay vault
-            if (p.action == ParkourAction.Vault && _model.zAxis > 0.1f)
+            
+            if (p.action == ParkourAction.Vault && _model.zAxis > 0.05f)
             {
                 _fsm.ChangeState(FSM.States.Vault);
                 return;
             }
 
-            // CLIMB: adelante/jump + hay ledge
+            
             if (p.action == ParkourAction.Climb &&
                 (_model.zAxis > 0.1f || _model.jumpDownThisFrame))
             {

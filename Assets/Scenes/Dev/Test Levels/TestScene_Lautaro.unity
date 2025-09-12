@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 0.18028352, g: 0.22571376, b: 0.3069224, a: 1}
+  m_IndirectSpecularColor: {r: 0.18028378, g: 0.22571412, b: 0.30692285, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -3988,7 +3988,7 @@ GameObject:
   - component: {fileID: 1996757277}
   - component: {fileID: 1996757276}
   - component: {fileID: 1996757275}
-  m_Layer: 7
+  m_Layer: 8
   m_Name: Cube
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -6514,8 +6514,8 @@ MonoBehaviour:
   groundCheckDistance: 0.2
   maxGroundSlopeDeg: 55
   vaultMinHeight: 0.4
-  vaultMaxHeight: 1.2
-  vaultTopClearance: 0.25
+  vaultMaxHeight: 1.5
+  vaultTopClearance: 0.5
   vaultMinForward: 0.4
   vaultMaxForward: 2.2
   vaultDownCast: 2.5
@@ -10886,12 +10886,18 @@ MonoBehaviour:
   rb: {fileID: 6868952509273707298}
   probe:
     action: 0
+    playerRadius: 0
+    playerHeight: 0
     hitPoint: {x: 0, y: 0, z: 0}
     hitNormal: {x: 0, y: 0, z: 0}
     obstacleHeight: 0
     vaultTopPoint: {x: 0, y: 0, z: 0}
     vaultLandPoint: {x: 0, y: 0, z: 0}
     vaultDistance: 0
+    vaultStartPoint: {x: 0, y: 0, z: 0}
+    vaultMidXZ: {x: 0, y: 0, z: 0}
+    vaultArcApex: 0
+    vaultObstacle: {fileID: 0}
     climbLedgePoint: {x: 0, y: 0, z: 0}
     climbStandPoint: {x: 0, y: 0, z: 0}
     climbHeight: 0
@@ -10924,9 +10930,9 @@ MonoBehaviour:
   wallMask:
     serializedVersion: 2
     m_Bits: 16384
-  wallGroundMask:
+  groundMask:
     serializedVersion: 2
-    m_Bits: 128
+    m_Bits: 0
   wallRunMaxSpeed: 8
   wallRunAccel: 30
   wallStickForce: 60
@@ -10955,6 +10961,76 @@ MonoBehaviour:
   gravityCounterForce: 14
   pushToWallForce: 100
   wallToForwardMaxAngle: 55
+  vaultSpeed: 0.2
+  vaultMinTime: 0.5
+  vaultMaxTime: 2
+  vaultMask:
+    serializedVersion: 2
+    m_Bits: 256
+  vaultApexFactor: 0.55
+  vaultApexExtra: 0.2
+  vaultYawAlignLerp: 14
+  vaultEndForwardBoost: 3.5
+  vaultBlockCheckRadius: 0.25
+  vaultYCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  vaultProgressCurve:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 0.49166667
+      value: 1.0030453
+      inSlope: -0.0021199654
+      outSlope: -0.0021199654
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    - serializedVersion: 3
+      time: 1
+      value: -0.001413703
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  blockVaultUntil: -999
+  vaultRegrabCooldown: 0.4
   lastJumpPressedTime: -999
   lastLeftGroundTime: -999
   xAxis: 0
