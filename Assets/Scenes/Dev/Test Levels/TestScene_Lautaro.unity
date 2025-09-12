@@ -2724,7 +2724,7 @@ GameObject:
   - component: {fileID: 312390097}
   - component: {fileID: 312390096}
   - component: {fileID: 312390095}
-  m_Layer: 14
+  m_Layer: 16
   m_Name: Cube (1)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2811,7 +2811,7 @@ Transform:
   m_GameObject: {fileID: 312390094}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 4.13, z: 15.69}
+  m_LocalPosition: {x: 0, y: 2.18, z: 19.56}
   m_LocalScale: {x: 7.6257, y: 4.4803314, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -3529,6 +3529,111 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1361540180779824721}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1552721261
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1552721265}
+  - component: {fileID: 1552721264}
+  - component: {fileID: 1552721263}
+  - component: {fileID: 1552721262}
+  m_Layer: 8
+  m_Name: Cube (3)
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!65 &1552721262
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1552721261}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 1, y: 1, z: 1}
+  m_Center: {x: 0, y: 0, z: 0}
+--- !u!23 &1552721263
+MeshRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1552721261}
+  m_Enabled: 1
+  m_CastShadows: 1
+  m_ReceiveShadows: 1
+  m_DynamicOccludee: 1
+  m_StaticShadowCaster: 0
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_RayTracingMode: 2
+  m_RayTraceProcedural: 0
+  m_RenderingLayerMask: 1
+  m_RendererPriority: 0
+  m_Materials:
+  - {fileID: 2100000, guid: 31321ba15b8f8eb4c954353edc038b1d, type: 2}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_ReceiveGI: 1
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 1
+  m_SelectedEditorRenderState: 3
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+  m_AdditionalVertexStreams: {fileID: 0}
+--- !u!33 &1552721264
+MeshFilter:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1552721261}
+  m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!4 &1552721265
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1552721261}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0.67, z: 14.53}
+  m_LocalScale: {x: 7.6257, y: 1.7963, z: 4.6526}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1768396071
 GameObject:
@@ -6504,10 +6609,13 @@ MonoBehaviour:
   cameraHolder: {fileID: 5982852724907405388}
   environmentMask:
     serializedVersion: 2
-    m_Bits: 16640
+    m_Bits: 82176
   groundMask:
     serializedVersion: 2
     m_Bits: 128
+  climbMask:
+    serializedVersion: 2
+    m_Bits: 65536
   forwardCheckDistance: 1.2
   clearanceSkin: 0.06
   capsule: {fileID: 4503204794553716053}
@@ -6522,7 +6630,7 @@ MonoBehaviour:
   climbMinHeight: 1
   climbMaxHeight: 2.2
   climbForwardProbe: 0.25
-  climbTopClearance: 0.35
+  climbTopClearance: 0.01
   climbStandForward: 0.35
   wallCheckDistance: 1.5
   wallMinHeight: 1.4
@@ -10884,6 +10992,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   rb: {fileID: 6868952509273707298}
+  cameraHolderTransform: {fileID: 5982852724907405388}
   probe:
     action: 0
     playerRadius: 0
@@ -10898,6 +11007,7 @@ MonoBehaviour:
     vaultMidXZ: {x: 0, y: 0, z: 0}
     vaultArcApex: 0
     vaultObstacle: {fileID: 0}
+    vaultForward: {x: 0, y: 0, z: 0}
     climbLedgePoint: {x: 0, y: 0, z: 0}
     climbStandPoint: {x: 0, y: 0, z: 0}
     climbHeight: 0
@@ -10909,7 +11019,12 @@ MonoBehaviour:
   crouchKey: 306
   mouseLeft: 316
   mouseRight: 317
-  cameraHolderTransform: {fileID: 5982852724907405388}
+  groundMask:
+    serializedVersion: 2
+    m_Bits: 128
+  wallMask:
+    serializedVersion: 2
+    m_Bits: 81920
   walkingSpeed: 4
   runningSpeed: 8
   acceleration: 20
@@ -10927,15 +11042,15 @@ MonoBehaviour:
   lastAirTime: 0
   lastFallSpeed: 0
   lastLandingTime: -999
-  wallMask:
-    serializedVersion: 2
-    m_Bits: 16384
-  groundMask:
+  vaultRegrabCooldown: 0.4
+  blockVaultUntil: -999
+  climbRegrabCooldown: 0.25
+  blockClimbUntil: -999
+  climbMask:
     serializedVersion: 2
     m_Bits: 0
   wallRunMaxSpeed: 8
   wallRunAccel: 30
-  wallStickForce: 60
   wallRegrabCooldown: 0.25
   wallCruiseSpeed: 4
   wallCruiseAccel: 18
@@ -10953,84 +11068,10 @@ MonoBehaviour:
   wallDescendSpeed: 3.5
   maxWallRunTime: 1.5
   exitWallTime: 0.3
-  wallCheckDistance: 0.9
-  minJumpHeight: 0.6
   wallJumpUpForce: 7.5
   wallJumpSideForce: 6.5
   wallUseGravity: 1
   gravityCounterForce: 14
-  pushToWallForce: 100
-  wallToForwardMaxAngle: 55
-  vaultSpeed: 0.2
-  vaultMinTime: 0.5
-  vaultMaxTime: 2
-  vaultMask:
-    serializedVersion: 2
-    m_Bits: 256
-  vaultApexFactor: 0.55
-  vaultApexExtra: 0.2
-  vaultYawAlignLerp: 14
-  vaultEndForwardBoost: 3.5
-  vaultBlockCheckRadius: 0.25
-  vaultYCurve:
-    serializedVersion: 2
-    m_Curve:
-    - serializedVersion: 3
-      time: 0
-      value: 0
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0
-    - serializedVersion: 3
-      time: 1
-      value: 0
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0
-    m_PreInfinity: 2
-    m_PostInfinity: 2
-    m_RotationOrder: 4
-  vaultProgressCurve:
-    serializedVersion: 2
-    m_Curve:
-    - serializedVersion: 3
-      time: 0
-      value: 0
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0
-    - serializedVersion: 3
-      time: 0.49166667
-      value: 1.0030453
-      inSlope: -0.0021199654
-      outSlope: -0.0021199654
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0.33333334
-      outWeight: 0.33333334
-    - serializedVersion: 3
-      time: 1
-      value: -0.001413703
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 0
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0
-    m_PreInfinity: 2
-    m_PostInfinity: 2
-    m_RotationOrder: 4
-  blockVaultUntil: -999
-  vaultRegrabCooldown: 0.4
   lastJumpPressedTime: -999
   lastLeftGroundTime: -999
   xAxis: 0
@@ -16120,6 +16161,7 @@ SceneRoots:
   - {fileID: 160003985}
   - {fileID: 960557183}
   - {fileID: 1996757278}
+  - {fileID: 1552721265}
   - {fileID: 312390098}
   - {fileID: 220766438}
   - {fileID: 2051039246}

@@ -98,7 +98,6 @@ namespace Player.Scripts.MovementFSM
 
         public void OnUpdate()
         {
-            /* vacío, todo en FixedUpdate */
         }
 
         public void OnFixedUpdate()

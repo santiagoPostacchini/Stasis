@@ -62,22 +62,22 @@ namespace Player.Scripts.MovementFSM
                 return;
             }
             _wasGrounded = grounded;
-            
-            var p = _model.probe;
-            
-            if (p.action == ParkourAction.Vault && _model.zAxis > 0.05f)
-            {
-                _fsm.ChangeState(FSM.States.Vault);
-                return;
-            }
 
-            
+            var p = _model.probe;
+
             if (p.action == ParkourAction.Climb &&
                 (_model.zAxis > 0.1f || _model.jumpDownThisFrame))
             {
                 _fsm.ChangeState(FSM.States.Climb);
+                return;
+            }
+            
+            if (p.action == ParkourAction.Vault && _model.zAxis > 0.05f)
+            {
+                _fsm.ChangeState(FSM.States.Vault);
             }
         }
+
 
         public void OnFixedUpdate()
         {

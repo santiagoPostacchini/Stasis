@@ -52,12 +52,19 @@ namespace Player.Scripts.MovementFSM
             
             var p = _model.probe;
             
+            if (p.action == ParkourAction.Climb &&
+                (_model.zAxis > 0.1f || _model.jumpDownThisFrame))
+            {
+                _fsm.ChangeState(FSM.States.Climb);
+                return;
+            }
+            
             if (p.action != ParkourAction.WallrunLeft && p.action != ParkourAction.WallrunRight)
             {
                 _fsm.ChangeState(FSM.States.Air);
                 return;
             }
-
+            
             ReadProbe(p);
             _lastWallPoint = p.wallRunWallPoint;
             

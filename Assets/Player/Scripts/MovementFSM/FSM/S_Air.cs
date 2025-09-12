@@ -30,10 +30,21 @@ namespace Player.Scripts.MovementFSM
         public void OnUpdate()
         {
             _airTime += Time.deltaTime;
-            
+
             TryConsumeCoyoteOrBuffer();
-            
+
             var p = _model.probe;
+
+            // 👉 Climb desde el aire si hay ledge delante y empujo o salto
+            if (p.action == ParkourAction.Climb &&
+                (_model.zAxis > 0.1f || _model.jumpDownThisFrame))
+            {
+                _model.ClearJumpBuffer();
+                _fsm.ChangeState(FSM.States.Climb);
+                return;
+            }
+
+            // Wallrun (si preferís wallrun primero, poné este bloque arriba del de climb)
             if (p.action == ParkourAction.WallrunLeft ||
                 p.action == ParkourAction.WallrunRight)
             {
@@ -42,12 +53,12 @@ namespace Player.Scripts.MovementFSM
                 return;
             }
 
-            // 3) Aterrizar via Scanner
+            // Aterrizar
             if (_model.IsGroundedNow())
             {
                 bool shouldLand = (_airTime >= _model.minAirTime) &&
                                   (_model.rb.velocity.y <= _model.landVelThreshold);
-                
+
                 _model.ClearJumpBuffer();
                 _model.airEnteredFromGround = false;
                 _fsm.ChangeState(FSM.States.Grounded);

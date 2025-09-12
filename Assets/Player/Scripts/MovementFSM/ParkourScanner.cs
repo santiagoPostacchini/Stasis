@@ -55,9 +55,11 @@ namespace Player.Scripts.MovementFSM
         [Header("References")] public Rigidbody rb;
         public Transform cameraHolder;
 
-        [Header("Layers")] public LayerMask environmentMask;
-
+        [Header("Layers")] 
+        public LayerMask environmentMask;
         public LayerMask groundMask;
+        public LayerMask climbMask;
+        
 
         [Header("General")] [Tooltip("Distancia máx. al obstáculo para iniciar (m).")]
         public float forwardCheckDistance = 1.2f;
@@ -270,23 +272,97 @@ namespace Player.Scripts.MovementFSM
 
             Vector3 land = Vector3.zero;
             bool foundLand = false;
+
+            bool foundSameTop = false;
+            Vector3 landOnSameTop = Vector3.zero;
             for (float f = minF; f <= maxF + 0.0001f; f += 0.1f)
             {
                 Vector3 over = topPoint + fwd * f + Vector3.up * 0.05f;
-                if (Physics.Raycast(over, Vector3.down, out var downHit, vaultDownCast, groundOrEnv,
+                if (Physics.Raycast(over, Vector3.down, out var downHit, vaultDownCast, environmentMask,
                         QueryTriggerInteraction.Ignore))
                 {
-                    Vector3 stand = downHit.point + Vector3.up * (r + clearanceSkin);
-                    if (HasClearanceCapsule(stand, h - r * 2f))
+                    if (downHit.collider == hitFront.collider) // misma tapa
                     {
-                        land = stand;
-                        foundLand = true;
-                        break;
+                        Vector3 stand = downHit.point + Vector3.up * (r + clearanceSkin);
+                        if (HasClearanceCapsule(stand, h - r * 2f))
+                        {
+                            landOnSameTop = stand;
+                            foundSameTop = true;
+                            break;
+                        }
                     }
                 }
             }
 
+            Vector3 landFallback = Vector3.zero;
+            bool foundFallback = false;
+            if (!foundSameTop)
+            {
+                for (float f = minF; f <= maxF + 0.0001f; f += 0.1f)
+                {
+                    Vector3 over = topPoint + fwd * f + Vector3.up * 0.05f;
+                    if (Physics.Raycast(over, Vector3.down, out var downHit, vaultDownCast, groundOrEnv,
+                            QueryTriggerInteraction.Ignore))
+                    {
+                        Vector3 stand = downHit.point + Vector3.up * (r + clearanceSkin);
+                        if (HasClearanceCapsule(stand, h - r * 2f))
+                        {
+                            landFallback = stand;
+                            foundFallback = true;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (!foundSameTop && !foundFallback)
+            {
+                float f = maxF;
+                Vector3 probe = topPoint + fwd * f + Vector3.up * 0.5f;
+                if (Physics.Raycast(probe, Vector3.down, out var dTop, 2.0f, environmentMask,
+                        QueryTriggerInteraction.Ignore) && dTop.collider == hitFront.collider)
+                {
+                    Vector3 stand = dTop.point + Vector3.up * (r + clearanceSkin);
+                    if (HasClearanceCapsule(stand, h - r * 2f))
+                    {
+                        landOnSameTop = stand;
+                        foundSameTop = true;
+                    }
+                }
+                else
+                {
+                    Vector3 stand = new Vector3(topPoint.x, topY + (r + clearanceSkin), topPoint.z) + fwd * f;
+                    float backStep = 0.1f;
+                    float fTry = f;
+                    while (fTry >= minF)
+                    {
+                        Vector3 candidate = new Vector3(topPoint.x, topY + (r + clearanceSkin), topPoint.z) +
+                                            fwd * fTry;
+                        if (HasClearanceCapsule(candidate, h - r * 2f))
+                        {
+                            landOnSameTop = candidate;
+                            foundSameTop = true;
+                            break;
+                        }
+
+                        fTry -= backStep;
+                    }
+                }
+            }
+
+            if (foundSameTop)
+            {
+                land = landOnSameTop;
+                foundLand = true;
+            }
+            else if (foundFallback)
+            {
+                land = landFallback;
+                foundLand = true;
+            }
+
             if (!foundLand) return false;
+
 
             // (B) Forward base según tu cámara/cuerpo (como ya hacías)
             Vector3 vaultFwd = GetPlanarForward();
@@ -338,24 +414,30 @@ namespace Player.Scripts.MovementFSM
 
         bool TryDetectClimb(out ParkourProbe result)
         {
+            var m = GetComponent<Model>();
+            if (m && Time.time < m.blockClimbUntil)
+            {
+                result = ParkourProbe.None;
+                return false;
+            }
+
             result = ParkourProbe.None;
 
             Vector3 forward = GetPlanarForward();
 
-            // Pared inmediatamente delante
+            // usar climbMask si está seteada; si no, environmentMask
+            LayerMask maskClimb = (climbMask.value != 0) ? climbMask : environmentMask;
+
             float chest = Mathf.Clamp(Height * 0.55f, 0.8f, 1.1f);
             Vector3 chestOrigin = transform.position + Vector3.up * chest;
 
             if (!Physics.Raycast(chestOrigin, forward, out RaycastHit wallHit,
-                    forwardCheckDistance, environmentMask,
-                    QueryTriggerInteraction.Ignore))
+                    forwardCheckDistance, maskClimb, QueryTriggerInteraction.Ignore))
                 return false;
 
-            // Buscamos un ledge “arriba y un poco adelante”
             float minY = transform.position.y + Radius + climbMinHeight;
             float maxY = transform.position.y + Radius + climbMaxHeight;
 
-            // Muestreamos varios puntos verticales para encontrar un "quiebre" (borde)
             const int steps = 6;
             for (int i = 0; i <= steps; i++)
             {
@@ -363,24 +445,19 @@ namespace Player.Scripts.MovementFSM
                 Vector3 probeStart = new Vector3(transform.position.x, y, transform.position.z)
                                      + forward * (Radius + climbForwardProbe);
 
-                // Bajar para encontrar “tapa” hacia abajo
+                // ↓ también usar maskClimb
                 if (Physics.Raycast(probeStart, Vector3.down, out RaycastHit down,
-                        climbMaxHeight + 1.0f, environmentMask,
-                        QueryTriggerInteraction.Ignore))
+                        climbMaxHeight + 1.0f, maskClimb, QueryTriggerInteraction.Ignore))
                 {
                     float climbH = down.point.y - (transform.position.y + Radius);
                     if (climbH < climbMinHeight || climbH > climbMaxHeight) continue;
 
-                    // Clearance donde quedará la cabeza arriba
                     Vector3 headSpace = down.point + Vector3.up * (Radius + climbTopClearance);
-                    if (!HasClearanceCapsule(headSpace, Height - Radius * 2f))
-                        continue;
+                    if (!HasClearanceCapsule(headSpace, Height - Radius * 2f)) continue;
 
-                    // Punto sugerido para pararse
                     Vector3 stand = down.point + forward * Mathf.Max(0.05f, climbStandForward)
                                                + Vector3.up * (Radius + clearanceSkin);
-                    if (!HasClearanceCapsule(stand, Height - Radius * 2f))
-                        continue;
+                    if (!HasClearanceCapsule(stand, Height - Radius * 2f)) continue;
 
                     result = new ParkourProbe
                     {
