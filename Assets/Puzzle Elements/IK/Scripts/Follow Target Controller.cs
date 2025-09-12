@@ -162,6 +162,11 @@ public class FollowTargetController : MonoBehaviour
         }
     }
 
+    public void ResetObject()
+    {
+        atStart = false;
+        ChangePosition();
+    }
     // Alterna entre Start (ancla A) y Brother con animacion usando Rigidbody
     public void ChangePosition()
     {
