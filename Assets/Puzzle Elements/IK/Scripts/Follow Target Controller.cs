@@ -59,6 +59,7 @@ public class FollowTargetController : MonoBehaviour
     // Estado interno
     private Rigidbody rb;
     private Transform startAnchor; // ancla A
+    public Transform currentTip;
     private bool atStart = true;   // estamos en A?
     private Coroutine moveRoutine;
 
@@ -74,19 +75,25 @@ public class FollowTargetController : MonoBehaviour
     // Debug solo lectura
     public float dist { get; private set; }
 
+    
+
     private void Awake()
     {
         rb = GetComponent<Rigidbody>();
         rb.isKinematic = true;
         rb.interpolation = RigidbodyInterpolation.Interpolate;
+       
     }
 
     private void Start()
     {
         // Crear ancla A en la pose inicial del RB
         startAnchor = new GameObject(name + "_StartAnchor").transform;
+        currentTip = startAnchor;
         startAnchor.SetPositionAndRotation(rb.position, rb.rotation);
         atStart = true;
+
+       
 
         // Inicializar weight
         if (rig != null)
@@ -162,9 +169,12 @@ public class FollowTargetController : MonoBehaviour
 
         Transform to = atStart ? brother : startAnchor;
 
+        currentTip = to;
+
         if (moveRoutine != null) StopCoroutine(moveRoutine);
         moveRoutine = StartCoroutine(MoveRB_Pausable(to, moveDuration));
     }
+   
 
     // Corrutina pausable: no teletransporta al reactivar canMove
     private IEnumerator MoveRB_Pausable(Transform to, float totalDuration)

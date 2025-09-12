@@ -9,6 +9,23 @@ public class Trigger1 : MonoBehaviour
     public Material yellow, green;
     private bool _alreadyCollision = false;
 
+    private int _layerDefault;
+    private int _layerInvisible;
+
+    private List<Transform> transformsTipControllers = new List<Transform>();
+    [SerializeField] private float delay = 0.3f;
+
+
+
+    private IEnumerator Start()
+    {
+        _layerDefault = LayerMask.NameToLayer("Walkable");
+        _layerInvisible = LayerMask.NameToLayer("Invisible");
+
+        // esperar un frame para que todos los FollowTargetController hagan su Start()
+        yield return new WaitForSeconds(2f);
+        InitPath();
+    }
     private void OnTriggerEnter(Collider other)
     {
         if (_alreadyCollision) return;
@@ -47,12 +64,50 @@ public class Trigger1 : MonoBehaviour
             item.ChangePosition();
         }
         _alreadyCollision = true;
+        InitPath();
         ChangeMaterial();
+    }
+    public void InitPath()
+    {
+        foreach (var item in followTargetControllers)
+        {
+            Transform firstChild = item.currentTip.GetChild(0);
+            firstChild.gameObject.layer = _layerInvisible;
+        }
+        transformsTipControllers.Clear();
+        foreach (var item in followTargetControllers)
+        {
+            Transform firstChild = item.currentTip.GetChild(0);
+            transformsTipControllers.Add(firstChild);
+        }
+        TogglePath();
     }
     async void ChangeMaterial()
     {
         GetComponent<Renderer>().material = yellow;
         await Task.Delay(1000);
         GetComponent<Renderer>().material = green;
+    }
+
+
+    [ContextMenu("TogglePath")] // podés llamarlo con botón derecho en el inspector
+    public void TogglePath()
+    {
+        StopAllCoroutines(); // por si estaba corriendo antes
+        StartCoroutine(SwitchPathCoroutine());
+    }
+
+    private IEnumerator SwitchPathCoroutine()
+    {
+        foreach (var obj in transformsTipControllers)
+        {
+            if (obj != null)
+            {
+                // alterna entre Default e Invisible
+                obj.gameObject.layer = (obj.gameObject.layer== _layerDefault) ? _layerInvisible : _layerDefault;
+            }
+
+            yield return new WaitForSeconds(delay);
+        }
     }
 }
