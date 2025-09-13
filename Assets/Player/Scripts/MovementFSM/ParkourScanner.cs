@@ -55,11 +55,10 @@ namespace Player.Scripts.MovementFSM
         [Header("References")] public Rigidbody rb;
         public Transform cameraHolder;
 
-        [Header("Layers")] 
-        public LayerMask environmentMask;
+        [Header("Layers")] public LayerMask environmentMask;
         public LayerMask groundMask;
         public LayerMask climbMask;
-        
+
 
         [Header("General")] [Tooltip("Distancia máx. al obstáculo para iniciar (m).")]
         public float forwardCheckDistance = 1.2f;
@@ -428,36 +427,43 @@ namespace Player.Scripts.MovementFSM
             // usar climbMask si está seteada; si no, environmentMask
             LayerMask maskClimb = (climbMask.value != 0) ? climbMask : environmentMask;
 
+            // NUEVO: para chequear la “tapa” y clearance, usá ambas (pared y piso/entorno)
+            LayerMask maskTopAndClearance = maskClimb | environmentMask | groundMask;
+
             float chest = Mathf.Clamp(Height * 0.55f, 0.8f, 1.1f);
             Vector3 chestOrigin = transform.position + Vector3.up * chest;
 
+            // pared delante SOLO en climbMask (paredes trepables)
             if (!Physics.Raycast(chestOrigin, forward, out RaycastHit wallHit,
                     forwardCheckDistance, maskClimb, QueryTriggerInteraction.Ignore))
                 return false;
 
+            // *** SIN “límite duro” por climbMaxHeight ***
             float minY = transform.position.y + Radius + climbMinHeight;
-            float maxY = transform.position.y + Radius + climbMaxHeight;
+            // en vez de cortar en climbMaxHeight, damos un margen de búsqueda
+            float probeUpMax = Mathf.Max(climbMaxHeight, 2.5f);
+            float maxY = transform.position.y + Radius + probeUpMax;
 
-            const int steps = 6;
+            const int steps = 8;
             for (int i = 0; i <= steps; i++)
             {
                 float y = Mathf.Lerp(minY, maxY, i / (float)steps);
                 Vector3 probeStart = new Vector3(transform.position.x, y, transform.position.z)
                                      + forward * (Radius + climbForwardProbe);
 
-                // ↓ también usar maskClimb
+                // ↓ ahora con maskTopAndClearance (tapa puede ser ground/env)
                 if (Physics.Raycast(probeStart, Vector3.down, out RaycastHit down,
-                        climbMaxHeight + 1.0f, maskClimb, QueryTriggerInteraction.Ignore))
+                        probeUpMax + 1.0f, maskTopAndClearance, QueryTriggerInteraction.Ignore))
                 {
                     float climbH = down.point.y - (transform.position.y + Radius);
-                    if (climbH < climbMinHeight || climbH > climbMaxHeight) continue;
+                    if (climbH < climbMinHeight) continue; // quitamos el filtro ">" climbMaxHeight
 
                     Vector3 headSpace = down.point + Vector3.up * (Radius + climbTopClearance);
-                    if (!HasClearanceCapsule(headSpace, Height - Radius * 2f)) continue;
+                    if (!HasClearanceCapsule(headSpace, Height - Radius * 2f, maskTopAndClearance)) continue;
 
                     Vector3 stand = down.point + forward * Mathf.Max(0.05f, climbStandForward)
                                                + Vector3.up * (Radius + clearanceSkin);
-                    if (!HasClearanceCapsule(stand, Height - Radius * 2f)) continue;
+                    if (!HasClearanceCapsule(stand, Height - Radius * 2f, maskTopAndClearance)) continue;
 
                     result = new ParkourProbe
                     {
@@ -474,6 +480,19 @@ namespace Player.Scripts.MovementFSM
             }
 
             return false;
+        }
+
+// Sobrecarga que acepta máscara
+        bool HasClearanceCapsule(Vector3 center, float heightSegment, LayerMask mask)
+        {
+            float r = Radius - clearanceSkin * 0.5f;
+            float h = Mathf.Max(r * 2f + 0.01f, heightSegment);
+            float half = h * 0.5f - r;
+
+            Vector3 top = center + Vector3.up * half;
+            Vector3 bottom = center - Vector3.up * half;
+
+            return !Physics.CheckCapsule(top, bottom, r, mask, QueryTriggerInteraction.Ignore);
         }
 
         #endregion
