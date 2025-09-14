@@ -58,8 +58,7 @@ namespace Player.Scripts.MovementFSM
         [Header("Layers")] public LayerMask environmentMask;
         public LayerMask groundMask;
         public LayerMask climbMask;
-
-
+        
         [Header("General")] [Tooltip("Distancia máx. al obstáculo para iniciar (m).")]
         public float forwardCheckDistance = 1.2f;
 
@@ -102,8 +101,12 @@ namespace Player.Scripts.MovementFSM
         // Salida
         public ParkourProbe Probe { get; private set; }
         public event Action<ParkourProbe> OnProbeUpdated = delegate { };
+        
+        public event Action<bool, RaycastHit> OnGroundedChanged = delegate { };
+        
+        private bool _prevGrounded;
+        private RaycastHit _prevGroundHit;
 
-        // Cache
         float Radius => capsule ? Mathf.Max(0.05f, capsule.radius) : 0.3f;
         float Height => capsule ? capsule.height : 1.8f;
 
@@ -116,6 +119,14 @@ namespace Player.Scripts.MovementFSM
         void Update()
         {
             UpdateGrounding();
+            
+            if (Grounded != _prevGrounded)
+            {
+                OnGroundedChanged(Grounded, GroundHit);
+                _prevGrounded = Grounded;
+                _prevGroundHit = GroundHit;
+            }
+
             Probe = Evaluate();
             OnProbeUpdated(Probe);
         }

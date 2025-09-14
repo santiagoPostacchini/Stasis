@@ -31,21 +31,15 @@ namespace Player.Scripts.MovementFSM
         public void OnEnter()
         {
             _model.OnJump += OnJumpPressed;
-            _wasGrounded = _model.IsGroundedNow();
             
-            bool canFire =
-                _model.landedPending &&
-                (_model.lastAirTime   >= _model.minAirTime) &&
-                (_model.lastFallSpeed <= _model.landVelThreshold) &&
-                ((Time.time - _model.lastLandingTime) > _model.landEventCooldown);
-
-            if (canFire)
+            if (_model.landedPending)
             {
                 _model.LandedEvent();
                 _model.lastLandingTime = Time.time;
+                _model.landedPending   = false;
             }
-
-            _model.landedPending = false;
+            
+            _wasGrounded = _model.IsGroundedNow();
         }
 
         public void OnUpdate()
@@ -61,6 +55,12 @@ namespace Player.Scripts.MovementFSM
                 _wasGrounded = false;
                 return;
             }
+
+            if (!_wasGrounded && grounded)
+            {
+                _model.LandedEvent();
+            }
+            
             _wasGrounded = grounded;
 
             var p = _model.probe;

@@ -34,8 +34,7 @@ namespace Player.Scripts.MovementFSM
             TryConsumeCoyoteOrBuffer();
 
             var p = _model.probe;
-
-            // 👉 Climb desde el aire si hay ledge delante y empujo o salto
+            
             if (p.action == ParkourAction.Climb &&
                 (_model.zAxis > 0.1f || _model.jumpDownThisFrame))
             {
@@ -43,8 +42,7 @@ namespace Player.Scripts.MovementFSM
                 _fsm.ChangeState(FSM.States.Climb);
                 return;
             }
-
-            // Wallrun (si preferís wallrun primero, poné este bloque arriba del de climb)
+            
             if (p.action == ParkourAction.WallrunLeft ||
                 p.action == ParkourAction.WallrunRight)
             {
@@ -52,16 +50,14 @@ namespace Player.Scripts.MovementFSM
                 _fsm.ChangeState(FSM.States.Wallrun);
                 return;
             }
-
-            // Aterrizar
+            
             if (_model.IsGroundedNow())
             {
-                bool shouldLand = (_airTime >= _model.minAirTime) &&
-                                  (_model.rb.velocity.y <= _model.landVelThreshold);
-
                 _model.ClearJumpBuffer();
                 _model.airEnteredFromGround = false;
+                _model.landedPending = true;
                 _fsm.ChangeState(FSM.States.Grounded);
+                return;
             }
         }
 
@@ -90,10 +86,6 @@ namespace Player.Scripts.MovementFSM
         public void OnExit()
         {
             _model.OnJump -= OnJumpPressed;
-            
-            _model.lastAirTime   = _airTime;
-            _model.lastFallSpeed = _model.rb.velocity.y;
-            _model.landedPending = true;
         }
 
         private void OnJumpPressed()

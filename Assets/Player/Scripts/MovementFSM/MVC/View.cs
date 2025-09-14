@@ -73,7 +73,7 @@ namespace Player.Scripts.MovementFSM.MVC
             animator.SetBool(IsGrounded, false);
             animator.CrossFade("Player_Leg_Jump", 0);
             animator.CrossFade("Player_Arm_Jump", 0);
-            playerCam.ClearTilt();
+            //playerCam.ClearTilt();
             //EventManager.TriggerEvent("OnJump", gameObject);
         }
         
@@ -146,8 +146,6 @@ namespace Player.Scripts.MovementFSM.MVC
         {
             playerCam.ClearTilt();
         }
-        
-        
         
         public void OnDamageEvent()
         {

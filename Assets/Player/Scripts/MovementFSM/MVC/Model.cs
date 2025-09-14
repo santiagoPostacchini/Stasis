@@ -127,10 +127,7 @@ namespace Player.Scripts.MovementFSM.MVC
         public bool  wallUseGravity    = true;
         [Tooltip("Contrafuerza de gravedad durante wallrun.")]
         public float gravityCounterForce = 14f;
-
-        // =========================
-        // Shared timestamps / runtime state
-        // =========================
+        
         [Header("Runtime / Shared")]
         [HideInInspector] public float lastJumpPressedTime = -999f;
         [HideInInspector] public float lastLeftGroundTime  = -999f;
@@ -167,13 +164,17 @@ namespace Player.Scripts.MovementFSM.MVC
             rb          = GetComponent<Rigidbody>();
             _stair      = GetComponent<StairStepper>();
             _scanner    = GetComponent<ParkourScanner>();
-
+            
             if (_scanner)
             {
                 _scanner.OnProbeUpdated += p => probe = p;
                 probe = _scanner.Probe;
+
+                // suscribimos el detector de aterrizaje
+                _scanner.OnGroundedChanged += HandleGroundedChanged;
             }
 
+            
             _fsm = new FSM();
             _fsm.CreateState(FSM.States.Grounded, new S_Grounded(_fsm, this, cameraHolderTransform));
             _fsm.CreateState(FSM.States.Climb,    new S_Climb(_fsm, this));
@@ -183,18 +184,19 @@ namespace Player.Scripts.MovementFSM.MVC
             _fsm.CreateState(FSM.States.Wallrun,  new S_Wallrun(_fsm, this));
             _fsm.ChangeState(FSM.States.Grounded);
         }
-
+        
         private void Update()
         {
             _controller.OnUpdate();
             _fsm.ArtificialUpdate();
         }
-
+        
         private void FixedUpdate()
         {
+            lastFallSpeed = rb ? rb.velocity.y : 0f;
             _fsm.ArtificialFixedUpdate();
         }
-
+        
         private void LateUpdate()
         {
             jumpDownThisFrame = false;
@@ -221,5 +223,36 @@ namespace Player.Scripts.MovementFSM.MVC
         public void VaultEndEvent()   => OnVaultEnd?.Invoke();
 
         internal bool IsGroundedNow() => _scanner && _scanner.IsGrounded();
+        
+        private void HandleGroundedChanged(bool grounded, RaycastHit hit)
+        {
+            if (grounded)
+            {
+                float airTime   = Time.time - lastLeftGroundTime;
+                bool minAirOk   = airTime >= minAirTime;
+                bool impactOk   = lastFallSpeed <= landVelThreshold;
+                bool cooldownOk = (Time.time - lastLandingTime) > landEventCooldown;
+
+                if (cooldownOk && (minAirOk && impactOk))
+                {
+                    // Aterrizaje “fuerte” normal
+                    LandedEvent();
+                    lastLandingTime = Time.time;
+                    landedPending   = false;
+                }
+                else
+                {
+                    // Aterrizaje suave: dejá que el estado Grounded lo consuma al entrar
+                    landedPending = true;
+                }
+            }
+            else
+            {
+                lastLeftGroundTime    = Time.time;
+                airEnteredFromGround  = true;
+                // al salir del suelo, limpiamos el pending
+                landedPending         = false;
+            }
+        }
     }
 }
