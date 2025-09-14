@@ -192,7 +192,6 @@ namespace Player.Scripts.MovementFSM.MVC
         private void FixedUpdate()
         {
             _fsm.ArtificialFixedUpdate();
-            _stair.ManualFixedStep();
         }
 
         private void LateUpdate()

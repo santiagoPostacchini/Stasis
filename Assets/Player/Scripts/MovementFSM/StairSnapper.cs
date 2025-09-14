@@ -5,259 +5,256 @@ namespace Player.Scripts.MovementFSM
 {
     public class StairStepper : MonoBehaviour
     {
-        [Header("Máscara")]
-        public LayerMask walkableMask; // 0 => usa scanner.groundMask
+        [Header("Mask & geometry")] public LayerMask walkableMask;
+        public CapsuleCollider capsule; // si es null, lo busca
+        public Rigidbody rb; // si es null, lo busca
 
-        [Header("Alturas")]
-        public float maxStepUp   = 0.35f;
+        [Header("Step settings (CC-style)")] public float maxStepUp = 0.35f; // como stepOffset
         public float maxStepDown = 0.55f;
+        public float checkForward = 0.45f; // alcance del sondeo
+        public float ankleHeight = 0.12f; // altura del ray a riser
+        public float kneeHeight = 0.60f; // altura del ray a clearance
 
-        [Header("Sondeo (riser + tapa)")]
-        public float ankleHeight    = 0.12f; // >= 0.06
-        public float kneeHeight     = 0.60f; // 0.55–0.70
-        public float checkForward   = 0.45f;
-        public float riserOvershoot = 0.22f;
+        [Header("Forces")] public float liftDeltaVy = 0.75f; // Δv vertical instantáneo (m/s)
+        public float assistAccelXZ = 1.2f; // empuje XZ mientras dura el step (m/s^2)
+        public float maxUpVel = 1.3f; // límite v.y
+        public float slideBlend = 0.7f; // 0=frontal, 1=total tangencial
 
-        [Header("Ascenso (fluidez)")]
-        public float climbYRate = 1.2f;  // m/s vertical al subir
-        public float maxUpVel   = 1.2f;  // cap de v.y positiva
+        [Header("Gating")] [Range(0f, 1f)] public float approachDotMin = 0.35f; // dot(move,-normal)
+        [Range(0f, 0.6f)] public float maxRiserNormalY = 0.27f; // riser “vertical”
+        public float snapCooldown = 0.08f;
 
-        [Header("Movimiento de paso (feeling)")]
-        [Tooltip("Impulso XZ único al iniciar el step (consuma el escalón)")]
-        public float commitForward = 0.06f;          // m (una sola vez)
-        [Tooltip("Arrastre XZ POR SEGUNDO mientras dura el step")]
-        public float forwardWhileStepPerSec = 0.35f; // m/s (se multiplica por dt)
-        public float settleDampTime = 0.06f;         // para bajar
-        public float snapCooldown   = 0.12f;
-
-        [Header("Filtros / Estados")]
-        [Range(0f, 0.6f)] public float maxRiserNormalY = 0.27f;
-        public float minDownGap  = 0.03f;
-        public float deadbandY   = 0.012f;
-        public float freeFallVy  = -2.0f;
-
-        [Header("Requisito: caminar hacia el escalón")]
-        [Range(0f,1f)] public float approachDotMin = 0.40f; // dot(moveDir,-normalRiser)
-        public float inputSpeedMin = 0.6f;   // m/s desde input
-        public float inputToMps    = 4.0f;   // ≈ walkingSpeed
-
-        [Header("Base de movimiento (independiente del look)")]
-        public Transform cameraBasis;
+        [Header("Input (opcional)")] public Model model;
         public bool useRawAxes = true;
 
-        [Header("Integración con Scanner")]
-        public bool blockIfParkourOpportunity = true; // no interferir si hay Vault/Climb/Wallrun
+        [Header("Steer")] public float steerLerp = 10f;
+        public float speedForcesRef = 6f;
+
+        [Header("Input basis (opcional)")] public Transform cameraBasis;
+        public float inputToMps = 4f; // z/x [-1..1] -> m/s
+        
+        [Header("Intent gating")]
+        public bool requireMoveInput = true;     // exigir intención
+        public float minInputMps     = 0.45f;    // m/s deseados para habilitar step
+        public float minActualMps    = 0.35f;    // m/s reales (vel horizontal)
+        public float intentGrace     = 0.20f;
 
         [Header("Debug")] public bool debugDraw;
 
-        // ---- internos
-        Model _m; Rigidbody _rb; CapsuleCollider _cap;
-        ParkourScanner _scanner;
-
-        private const float Skin = 0.02f;
-        float _cosMaxSlope;
+        // internals
+        const float Skin = 0.02f;
         float _lastSnapTime = -999f;
-
-        // Latch del step
-        bool _isStepping, _didCommit;
-        float _targetTopY, _stepStartTime;
         Vector3 _stepDir;
-        public float stepTimeout = 0.6f;
+        float _stepEndTime;
+        bool _stepping;
+        Vector3 _riserNormal;
+        private float _lastMoveIntentTime = -999f;
 
         void Awake()
         {
-            _m       = GetComponent<Model>();
-            _scanner = GetComponent<ParkourScanner>();
-            _rb      = _scanner.rb;
-            _cap     = _scanner.capsule;
-
-            if (_scanner)
-            {
-                if (!_cap) _cap = _scanner.capsule;
-                _cosMaxSlope = Mathf.Cos(Mathf.Deg2Rad * Mathf.Clamp(_scanner.maxGroundSlopeDeg, 0f, 89f));
-            }
-            else
-            {
-                if (walkableMask.value == 0) walkableMask = _scanner.groundMask;
-                _cosMaxSlope = Mathf.Cos(Mathf.Deg2Rad * Mathf.Clamp(_scanner.maxGroundSlopeDeg, 0f, 89f));
-            }
-
-            _rb.interpolation = RigidbodyInterpolation.Interpolate;
-            _rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
+            if (!rb) rb = GetComponent<Rigidbody>();
+            if (!capsule) capsule = GetComponent<CapsuleCollider>();
+            rb.interpolation = RigidbodyInterpolation.Interpolate;
+            rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
         }
-        
-        public void ManualFixedStep()
-        {
-            bool grounded = _scanner ? _scanner.IsGrounded() : _m.IsGroundedNow();
 
-            if (_rb.velocity.y < freeFallVy && !grounded) { _isStepping = _didCommit = false; return; }
+        void FixedUpdate()
+        {
+            Vector3 moveDir = GetWishDir(out var wishSpeed);
             
-            if (blockIfParkourOpportunity && _scanner)
+            if (wishSpeed >= minInputMps) _lastMoveIntentTime = Time.time;
+            
+            float actualMps = new Vector3(rb.velocity.x, 0f, rb.velocity.z).magnitude;
+            bool hasRecentIntent = (Time.time - _lastMoveIntentTime) <= intentGrace;
+            bool allowStep = (!requireMoveInput) || hasRecentIntent || (actualMps >= minActualMps);
+
+            if (_stepping)
             {
-                var a = _scanner.Probe.action;
-                if (a == ParkourAction.Vault || a == ParkourAction.Climb || a == ParkourAction.WallrunLeft || a == ParkourAction.WallrunRight)
-                {
-                    _isStepping = _didCommit = false;
-                    return;
-                }
+                ContinueStep(moveDir);
+                return;
             }
 
-            GetMoveDirAndSpeedFromInput(out var moveDir, out var inputSpeed);
+            if (!allowStep) { TrySnapDown(moveDir); return; }
 
-            if (_isStepping) { ContinueLatchedStep(); return; }
+            Vector3 foot = BottomSphereCenter();
+            Vector3 ankle = foot + Vector3.up * (ankleHeight + Skin);
+            Vector3 knee = foot + Vector3.up * (kneeHeight + Skin);
 
-            bool walkingByInput = (moveDir != Vector3.zero) && (inputSpeed >= inputSpeedMin);
-            if (walkingByInput && (Time.time - _lastSnapTime) > snapCooldown)
+            if (!Physics.Raycast(ankle, moveDir, out RaycastHit riserHit, checkForward, walkableMask,
+                    QueryTriggerInteraction.Ignore))
             {
-                if (TryBeginLatchedStep(moveDir))
-                {
-                    _lastSnapTime = Time.time;
-                    ContinueLatchedStep();
-                    return;
-                }
+                TrySnapDown(moveDir);
+                return;
             }
 
-            TrySnapDown(moveDir);
+            // descartamos pendientes no-riser
+            if (riserHit.normal.y > maxRiserNormalY)
+            {
+                TrySnapDown(moveDir);
+                return;
+            }
+
+            // debe venir “de frente”
+            float approachDot = Vector3.Dot(moveDir, -riserHit.normal);
+            if (approachDot < approachDotMin)
+            {
+                TrySnapDown(moveDir);
+                return;
+            }
+
+            // 2) clearance a rodilla debe estar libre
+            if (Physics.Raycast(knee, moveDir, checkForward, walkableMask, QueryTriggerInteraction.Ignore))
+            {
+                TrySnapDown(moveDir);
+                return;
+            }
+
+            // 3) buscar la tapa por encima del borde
+            Vector3 over = riserHit.point + moveDir * 0.16f + Vector3.up * (maxStepUp + Skin);
+            if (!Physics.Raycast(over, Vector3.down, out RaycastHit top, maxStepUp + 2f * Skin, walkableMask,
+                    QueryTriggerInteraction.Ignore))
+            {
+                TrySnapDown(moveDir);
+                return;
+            }
+
+            // listo: hay step válido → subimos tipo CC
+            BeginStep(moveDir, riserHit.normal, top.point.y + Skin);
         }
 
-        bool TryBeginLatchedStep(Vector3 moveDir)
+        void BeginStep(Vector3 moveDir, Vector3 riserNormal, float topY)
         {
-            Vector3 footBase = BottomSphereCenter();
-            Vector3 ankle = footBase + Vector3.up * (ankleHeight + Skin);
-            Vector3 knee  = footBase + Vector3.up * (kneeHeight  + Skin);
+            // 1) micro-lift instantáneo
+            rb.AddForce(Vector3.up * liftDeltaVy, ForceMode.VelocityChange);
+            ClampUp();
 
-            if (!Physics.Raycast(ankle, moveDir, out RaycastHit riserHit, checkForward, walkableMask, QueryTriggerInteraction.Ignore))
-                return false;
-            if (riserHit.normal.y > maxRiserNormalY) return false;
+            // 2) guardar dirección “deslizante” (proyectada sobre el plano de la riser)
+            Vector3 tangential = moveDir - Vector3.Project(moveDir, riserNormal);
+            _stepDir = Vector3.Lerp(moveDir, tangential, slideBlend).normalized;
 
-            float approachDot = Vector3.Dot(moveDir, -riserHit.normal);
-            if (approachDot < approachDotMin) return false;
+            // 3) fijar una ventana corta de asistencia (como si CC te empujara un poco)
+            _stepEndTime =
+                Time.time + Mathf.Clamp((topY - rb.position.y) / Mathf.Max(0.08f, liftDeltaVy), 0.06f, 0.22f);
+            _stepping = true;
+            _lastSnapTime = Time.time;
 
-            if (Physics.Raycast(knee, moveDir, out _, checkForward, walkableMask, QueryTriggerInteraction.Ignore))
-                return false;
 
-            Vector3 overEdge = riserHit.point + moveDir * riserOvershoot + Vector3.up * (maxStepUp + Skin);
-            if (!Physics.Raycast(overEdge, Vector3.down, out RaycastHit top, maxStepUp + 2f * Skin, walkableMask, QueryTriggerInteraction.Ignore))
-                return false;
-
-            // pendiente válida según el ángulo del scanner / model
-            if (!SlopeOk(top.normal)) return false;
-
-            float targetY  = top.point.y + Skin;
-            if (Mathf.Abs(targetY - _rb.position.y) <= deadbandY) return false;
-
-            _isStepping   = true;
-            _didCommit    = false;
-            _targetTopY   = targetY;
-            _stepDir      = moveDir;
-            _stepStartTime = Time.time;
+            _riserNormal = riserNormal;
 
             if (debugDraw)
             {
-                float d = 0.12f;
-                Debug.DrawLine(ankle, riserHit.point, Color.cyan, d);
-                Debug.DrawLine(overEdge, top.point, Color.yellow, d);
-                Debug.DrawRay(top.point, top.normal * 0.25f, Color.green, d);
+                Debug.DrawRay(BottomSphereCenter() + Vector3.up * (ankleHeight + Skin), _stepDir * 0.35f, Color.cyan,
+                    0.1f);
+                Debug.DrawRay(rb.position, riserNormal * 0.25f, Color.magenta, 0.15f);
             }
-            return true;
         }
 
-        void ContinueLatchedStep()
+        void ContinueStep(Vector3 moveDir)
         {
-            // Y sube a rate constante
-            float y = Mathf.MoveTowards(_rb.position.y, _targetTopY, climbYRate * Time.fixedDeltaTime);
+            // 1) Reorientar suavemente la dirección de step hacia el input actual,
+            //    deslizándola sobre el plano de la riser para no empujar “de frente”.
+            Vector3 tangentialInput = moveDir - Vector3.Project(moveDir, _riserNormal);
+            Vector3 targetDir = tangentialInput.sqrMagnitude > 1e-5f ? tangentialInput.normalized : _stepDir;
 
-            // Commit XZ una sola vez
-            Vector3 commitXZ = (!_didCommit && commitForward > 0f) ? _stepDir * commitForward : Vector3.zero;
-            _didCommit = true;
+            _stepDir = Vector3.Slerp(_stepDir, targetDir, Mathf.Clamp01(steerLerp * Time.fixedDeltaTime));
 
-            // Drift XZ por segundo (¡escalado por dt!)
-            Vector3 driftXZ = _stepDir * (forwardWhileStepPerSec * Time.fixedDeltaTime);
+            // 2) Escalar la asistencia por velocidad deseada (wishSpeed)
+            GetWishDir(out var wishSpeed);
+            float speed01 = Mathf.Clamp01(wishSpeed / Mathf.Max(0.1f, speedForcesRef));
 
-            _rb.MovePosition(new Vector3(_rb.position.x, y, _rb.position.z) + commitXZ + driftXZ);
+            float accel = assistAccelXZ * Mathf.Lerp(0.5f, 1f, speed01);
+            rb.AddForce(_stepDir * accel, ForceMode.Acceleration);
 
-            // Limitar v.y
-            Vector3 v = _rb.velocity; v.y = Mathf.Clamp(v.y, -0.5f, maxUpVel); _rb.velocity = v;
+            // 3) Clamp vertical
+            ClampUp();
 
-            if (Mathf.Abs(_targetTopY - y) <= deadbandY || (Time.time - _stepStartTime) > stepTimeout)
-                _isStepping = _didCommit = false;
+            // 4) Terminar asistencia cuando vence la ventana
+            if (Time.time >= _stepEndTime)
+                _stepping = false;
         }
 
         void TrySnapDown(Vector3 moveDir)
         {
-            Vector3 lookAhead = (moveDir == Vector3.zero)
-                ? Vector3.ProjectOnPlane(transform.forward, Vector3.up).normalized
-                : moveDir;
+            if ((Time.time - _lastSnapTime) < snapCooldown) return;
 
-            Vector3 footBase = BottomSphereCenter();
-            Vector3 ahead = footBase + lookAhead * (checkForward * 0.6f) + Vector3.up * (maxStepDown + Skin);
-
-            if (!Physics.Raycast(ahead, Vector3.down, out RaycastHit down, maxStepDown + 2f * Skin, walkableMask, QueryTriggerInteraction.Ignore))
+            Vector3 foot = BottomSphereCenter();
+            Vector3 ahead = foot + moveDir * (checkForward * 0.6f) + Vector3.up * (maxStepDown + Skin);
+            if (!Physics.Raycast(ahead, Vector3.down, out RaycastHit hit, maxStepDown + 2f * Skin, walkableMask,
+                    QueryTriggerInteraction.Ignore))
                 return;
 
-            if (!SlopeOk(down.normal)) return;
+            float targetY = hit.point.y + Skin;
+            float dy = targetY - rb.position.y;
+            if (dy >= -0.03f) return; // no hay bajada suficiente
 
-            float targetY  = down.point.y + Skin;
-            float currentY = _rb.position.y;
-            if ((currentY - targetY) <= minDownGap) return;
-
-            float newY = Mathf.MoveTowards(currentY, targetY, (climbYRate * 1.25f) * Time.fixedDeltaTime);
-            _rb.MovePosition(new Vector3(_rb.position.x, newY, _rb.position.z));
-
-            Vector3 v = _rb.velocity; v.y = Mathf.Clamp(v.y, -2f, maxUpVel); _rb.velocity = v;
-
-            if (debugDraw)
-            {
-                float d = 0.12f;
-                Debug.DrawLine(ahead, down.point, Color.blue, d);
-                Debug.DrawRay(down.point, down.normal * 0.25f, Color.green, d);
-            }
-        }
-
-        bool SlopeOk(in Vector3 normal)
-        {
-            // Usa el límite del scanner si existe; si no, el del model.
-            if (_scanner) return normal.y >= Mathf.Cos(_scanner.maxGroundSlopeDeg * Mathf.Deg2Rad);
-            return normal.y >= _cosMaxSlope;
+            // Δv hacia abajo (controlado)
+            float downDeltaVy = Mathf.Clamp(dy / Time.fixedDeltaTime, -2.5f, 0f);
+            rb.AddForce(Vector3.up * downDeltaVy, ForceMode.VelocityChange);
+            _lastSnapTime = Time.time;
         }
 
         Vector3 BottomSphereCenter()
         {
-            var cap = _cap;
-            if (!cap && _scanner) cap = _scanner.capsule;
-            if (!cap) cap = GetComponent<CapsuleCollider>(); // último fallback
-
+            var cap = capsule ? capsule : GetComponent<CapsuleCollider>();
             float r = cap.radius;
             float half = cap.height * 0.5f - r;
             Vector3 c = transform.TransformPoint(cap.center);
             return new Vector3(c.x, c.y - half, c.z);
         }
 
-        void GetMoveDirAndSpeedFromInput(out Vector3 moveDir, out float inputSpeedMps)
+        Vector3 GetWishDir(out float wishSpeed)
         {
-            float x = useRawAxes ? _m.rawX : _m.xAxis;
-            float z = useRawAxes ? _m.rawZ : _m.zAxis;
+            float x = 0f, z = 0f;
+
+            if (model)
+            {
+                x = useRawAxes ? model.rawX : model.xAxis;
+                z = useRawAxes ? model.rawZ : model.zAxis;
+            }
 
             Transform basis = cameraBasis ? cameraBasis : transform;
             Vector3 f = Vector3.ProjectOnPlane(basis.forward, Vector3.up).normalized;
-            Vector3 r = Vector3.ProjectOnPlane(basis.right,   Vector3.up).normalized;
+            Vector3 r = Vector3.ProjectOnPlane(basis.right, Vector3.up).normalized;
 
-            Vector3 wish = f * z + r * x; float mag = wish.magnitude;
-            if (mag > 0.0001f) { moveDir = wish / mag; inputSpeedMps = mag * inputToMps; }
-            else               { Vector3 hv = _rb.velocity; hv.y = 0f; moveDir = hv.sqrMagnitude>0.0001f? hv.normalized:Vector3.zero; inputSpeedMps = hv.magnitude; }
+            Vector3 wish = f * z + r * x;
+            if (wish.sqrMagnitude > 1e-5f)
+            {
+                wishSpeed = Mathf.Clamp01(wish.magnitude) * inputToMps; // [-1..1] -> m/s
+                return wish.normalized;
+            }
+
+            // Sin input: usa la vel horizontal para mantener dirección
+            Vector3 hv = rb.velocity;
+            hv.y = 0f;
+            if (hv.sqrMagnitude > 1e-5f)
+            {
+                wishSpeed = hv.magnitude;
+                return hv.normalized;
+            }
+
+            wishSpeed = 0f;
+            return basis.forward; // fallback estable
+        }
+
+        void ClampUp()
+        {
+            var v = rb.velocity;
+            if (v.y > maxUpVel)
+            {
+                v.y = maxUpVel;
+                rb.velocity = v;
+            }
         }
 
         void OnValidate()
         {
-            ankleHeight    = Mathf.Max(-0.3f, ankleHeight);
-            kneeHeight     = Mathf.Max(0.30f, kneeHeight);
-            checkForward   = Mathf.Max(0.1f, checkForward);
-            riserOvershoot = Mathf.Max(0.05f, riserOvershoot);
-            forwardWhileStepPerSec = Mathf.Clamp(forwardWhileStepPerSec, 0f, 1.0f);
-            commitForward  = Mathf.Clamp(commitForward, 0f, 0.20f);
-            maxStepDown    = Mathf.Max(maxStepUp + 0.05f, maxStepDown);
-            deadbandY      = Mathf.Clamp(deadbandY, 0.005f, 0.03f);
-            inputToMps     = Mathf.Max(0.1f, inputToMps);
+            maxStepDown = Mathf.Max(maxStepDown, maxStepUp + 0.05f);
+            checkForward = Mathf.Max(0.1f, checkForward);
+            ankleHeight = Mathf.Max(-0.3f, ankleHeight);
+            kneeHeight = Mathf.Max(0.5f, kneeHeight);
+            assistAccelXZ = Mathf.Max(0f, assistAccelXZ);
+            liftDeltaVy = Mathf.Max(0.05f, liftDeltaVy);
+            maxUpVel = Mathf.Max(0.6f, maxUpVel);
         }
     }
 }
