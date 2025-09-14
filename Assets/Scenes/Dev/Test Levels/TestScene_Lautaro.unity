@@ -2635,6 +2635,12 @@ MonoBehaviour:
   clampUp: 75
   useSmoothing: 1
   invertY: 0
+  maxWallrunTilt: 14
+  vaultTilt: 8
+  rollInSpeed: 10
+  rollOutSpeed: 8
+  vaultAsPulse: 1
+  vaultHoldTime: 0.2
 --- !u!1 &305349819
 GameObject:
   m_ObjectHideFlags: 0
@@ -6252,6 +6258,12 @@ MonoBehaviour:
   clampUp: 75
   useSmoothing: 1
   invertY: 0
+  maxWallrunTilt: 10
+  vaultTilt: 8
+  rollInSpeed: 30
+  rollOutSpeed: 30
+  vaultAsPulse: 0
+  vaultHoldTime: 0.2
 --- !u!114 &296415432458492369
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -11049,7 +11061,7 @@ MonoBehaviour:
   blockClimbUntil: -999
   climbMask:
     serializedVersion: 2
-    m_Bits: 0
+    m_Bits: 65536
   wallRunMaxSpeed: 8
   wallRunAccel: 30
   wallRegrabCooldown: 0.25
@@ -12060,7 +12072,7 @@ Transform:
   m_GameObject: {fileID: 2708914016416235355}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: -15, z: -5}
+  m_LocalPosition: {x: 0, y: -0.5, z: 0.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -13249,6 +13261,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   animator: {fileID: 0}
+  playerCam: {fileID: 259625913310379320}
   animLerpSpeed: 8
 --- !u!4 &6679789237522484518
 Transform:
@@ -15715,9 +15728,10 @@ GameObject:
   - component: {fileID: 4503204794553716053}
   - component: {fileID: 296415432458492369}
   - component: {fileID: 4704884032734329139}
-  - component: {fileID: 6670118889853380192}
   - component: {fileID: 3936472895959194352}
   - component: {fileID: 563598133460615336}
+  - component: {fileID: 6670118889853380192}
+  - component: {fileID: 8919779156073533470}
   m_Layer: 9
   m_Name: PlayerGroupNew
   m_TagString: Untagged
@@ -15725,6 +15739,28 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
+--- !u!114 &8919779156073533470
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8919779156073533469}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b674082618d0d95409107ecc94a51288, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  vcam: {fileID: 5988858819630108719}
+  maxWallrunTilt: 25
+  vaultTilt: 15
+  tiltInSpeed: 10
+  tiltOutSpeed: 8
+  vaultAsPulse: 1
+  vaultHoldTime: 0.2
+  _targetDutch: 0
+  _currentDutch: 0
+  _vaultTimer: 0
 --- !u!1 &8941156558127547775
 GameObject:
   m_ObjectHideFlags: 0

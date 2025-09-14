@@ -34,7 +34,7 @@ namespace Player.Scripts.MovementFSM
             ReadProbe(p);
             _lastWallPoint = p.wallRunWallPoint;
             
-            _model.WallrunEvent(_side);
+            _model.WallrunStartEvent(_side);
             
             _timer = _model.maxWallRunTime;
             _exiting = false;
@@ -106,7 +106,7 @@ namespace Player.Scripts.MovementFSM
 
         public void OnExit()
         {
-            
+            _model.WallrunEndEvent();
         }
 
         private void ReadProbe(in ParkourProbe p)

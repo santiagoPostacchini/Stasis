@@ -22,7 +22,8 @@ namespace Player.Scripts.MovementFSM.MVC
         public event Action OnClimbEnd = delegate { };
         public event Action OnSlideStart = delegate { };
         public event Action OnSlideEnd = delegate { };
-        public event Action<float> OnWallrun = delegate { };
+        public event Action<float> OnWallrunStart = delegate { };
+        public event Action OnWallrunEnd = delegate { };
         public event Action OnGetDamage = delegate { };
         public event Action OnDeath = delegate { };
         
@@ -214,7 +215,8 @@ namespace Player.Scripts.MovementFSM.MVC
         public void UpdateIsRunning(bool run) => OnRun?.Invoke(run);
 
         public void LandedEvent() => OnLand?.Invoke();
-        public void WallrunEvent(float dir) => OnWallrun?.Invoke(dir);
+        public void WallrunStartEvent(float dir) => OnWallrunStart?.Invoke(dir);
+        public void WallrunEndEvent() => OnWallrunEnd?.Invoke();
         public void VaultStartEvent() => OnVaultStart?.Invoke();
         public void VaultEndEvent()   => OnVaultEnd?.Invoke();
 

@@ -11,6 +11,7 @@ namespace Player.Scripts.MovementFSM.MVC
         private static readonly int IsGrounded = Animator.StringToHash("IsGrounded");
         
         [SerializeField] private Animator animator;
+        [SerializeField] private FirstPersonCamera playerCam;
         
         [Header("<color=yellow>Animator Settings</color>")]
         
@@ -62,7 +63,7 @@ namespace Player.Scripts.MovementFSM.MVC
             Debug.Log("Landed Event");
             animator.SetBool(IsJumping, false);
             animator.SetBool(IsGrounded, true);
-            //animator.SetTrigger(_landHash);
+            playerCam.ClearTilt();
         }
         
         public void OnJumpEvent()
@@ -72,6 +73,7 @@ namespace Player.Scripts.MovementFSM.MVC
             animator.SetBool(IsGrounded, false);
             animator.CrossFade("Player_Leg_Jump", 0);
             animator.CrossFade("Player_Arm_Jump", 0);
+            playerCam.ClearTilt();
             //EventManager.TriggerEvent("OnJump", gameObject);
         }
         
@@ -101,12 +103,14 @@ namespace Player.Scripts.MovementFSM.MVC
             animator.CrossFade("Player_Leg_Vault", 0.05f);
             animator.CrossFade("Player_Arm_Vault", 0.05f);
             animator.applyRootMotion = false;
+            playerCam.SetVaultTiltRandom();
             //animator.SetTrigger(_vaultHash);
         }
 
         public void OnVaultEndEvent()
         {
             Debug.Log("Vault End Event");
+            playerCam.ClearTilt();
         }
 
         public void OnClimbStartEvent()
@@ -131,11 +135,19 @@ namespace Player.Scripts.MovementFSM.MVC
             Debug.Log("Slide End Event");
         }
 
-        public void OnWallrunEvent(float dir)
+        public void OnWallrunStartEvent(float dir)
         {
             Debug.Log($"Wall Slide Event with dir: {dir}");
             animator.CrossFade(dir > 0 ? "Player_Leg_Wallrun_Left" : "Player_Leg_Wallrun_Right", 0);
+            playerCam.SetWallrunTilt(dir);
         }
+        
+        public void OnWallrunEndEvent()
+        {
+            playerCam.ClearTilt();
+        }
+        
+        
         
         public void OnDamageEvent()
         {
