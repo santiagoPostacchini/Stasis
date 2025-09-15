@@ -2000,7 +2000,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &7432224108826428000
 Transform:
   m_ObjectHideFlags: 0
@@ -2100,7 +2100,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5357fc6db3982be42af18de1c28fd930, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _stasisTipControllerPlatformRotation: {fileID: 4454717697293916906}
+  _stasisTipControllerPlatformRotation: {fileID: 0}
 --- !u!1 &3694959475526310977
 GameObject:
   m_ObjectHideFlags: 0
@@ -5766,6 +5766,7 @@ Transform:
   m_Children:
   - {fileID: 7432224108826428000}
   - {fileID: 145304580163428460}
+  - {fileID: 4932968651330690773}
   m_Father: {fileID: 6449489577299647243}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &9085616606940798479
@@ -6040,6 +6041,103 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _stasisTipControllerPlatformRotation: {fileID: 4454717697293916906}
+--- !u!1001 &4899869834047224126
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 6158883772576265490}
+    m_Modifications:
+    - target: {fileID: -8679921383154817045, guid: f8fac4198f87cec43817c1474bd7ec96,
+        type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0.268
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: f8fac4198f87cec43817c1474bd7ec96,
+        type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -0.23
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: f8fac4198f87cec43817c1474bd7ec96,
+        type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0.065
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: f8fac4198f87cec43817c1474bd7ec96,
+        type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.8660259
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: f8fac4198f87cec43817c1474bd7ec96,
+        type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0.21650586
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: f8fac4198f87cec43817c1474bd7ec96,
+        type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0.124999925
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: f8fac4198f87cec43817c1474bd7ec96,
+        type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0.433012
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: f8fac4198f87cec43817c1474bd7ec96,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: -28.898
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: f8fac4198f87cec43817c1474bd7ec96,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 1.899
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: f8fac4198f87cec43817c1474bd7ec96,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 52.641
+      objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: f8fac4198f87cec43817c1474bd7ec96,
+        type: 3}
+      propertyPath: m_Name
+      value: mod_base_mechanicArm
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: f8fac4198f87cec43817c1474bd7ec96,
+        type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 6225210437526650508}
+  m_SourcePrefab: {fileID: 100100000, guid: f8fac4198f87cec43817c1474bd7ec96, type: 3}
+--- !u!4 &4932968651330690773 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: f8fac4198f87cec43817c1474bd7ec96,
+    type: 3}
+  m_PrefabInstance: {fileID: 4899869834047224126}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &5710208595430491247 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: f8fac4198f87cec43817c1474bd7ec96,
+    type: 3}
+  m_PrefabInstance: {fileID: 4899869834047224126}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &6225210437526650508
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5710208595430491247}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5357fc6db3982be42af18de1c28fd930, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _stasisTipControllerPlatformRotation: {fileID: 0}
 --- !u!1001 &5977491930127441089
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -6241,7 +6339,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5357fc6db3982be42af18de1c28fd930, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _stasisTipControllerPlatformRotation: {fileID: 4454717697293916906}
+  _stasisTipControllerPlatformRotation: {fileID: 0}
 --- !u!4 &2663719522739048678 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 8503710853527292967, guid: 4fca59ea6c24f20448129b8ed347a6b3,
@@ -6287,7 +6385,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5357fc6db3982be42af18de1c28fd930, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _stasisTipControllerPlatformRotation: {fileID: 4454717697293916906}
+  _stasisTipControllerPlatformRotation: {fileID: 0}
 --- !u!23 &6533628983220453095 stripped
 MeshRenderer:
   m_CorrespondingSourceObject: {fileID: 601316088957870630, guid: 4fca59ea6c24f20448129b8ed347a6b3,
@@ -6339,7 +6437,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5357fc6db3982be42af18de1c28fd930, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _stasisTipControllerPlatformRotation: {fileID: 4454717697293916906}
+  _stasisTipControllerPlatformRotation: {fileID: 0}
 --- !u!1001 &6721978705501364320
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -6535,7 +6633,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5357fc6db3982be42af18de1c28fd930, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _stasisTipControllerPlatformRotation: {fileID: 4454717697293916906}
+  _stasisTipControllerPlatformRotation: {fileID: 0}
 --- !u!23 &1496414320976195365 stripped
 MeshRenderer:
   m_CorrespondingSourceObject: {fileID: 5299910895704592197, guid: 4fca59ea6c24f20448129b8ed347a6b3,
@@ -6587,7 +6685,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5357fc6db3982be42af18de1c28fd930, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _stasisTipControllerPlatformRotation: {fileID: 4454717697293916906}
+  _stasisTipControllerPlatformRotation: {fileID: 0}
 --- !u!23 &6129691325264134726 stripped
 MeshRenderer:
   m_CorrespondingSourceObject: {fileID: 601316088957870630, guid: 4fca59ea6c24f20448129b8ed347a6b3,
@@ -6639,7 +6737,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5357fc6db3982be42af18de1c28fd930, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _stasisTipControllerPlatformRotation: {fileID: 4454717697293916906}
+  _stasisTipControllerPlatformRotation: {fileID: 0}
 --- !u!1001 &8360658146351393867
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -6841,7 +6939,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5357fc6db3982be42af18de1c28fd930, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _stasisTipControllerPlatformRotation: {fileID: 4454717697293916906}
+  _stasisTipControllerPlatformRotation: {fileID: 0}
 --- !u!23 &4434381696903799566 stripped
 MeshRenderer:
   m_CorrespondingSourceObject: {fileID: 5299910895704592197, guid: 4fca59ea6c24f20448129b8ed347a6b3,
@@ -6893,7 +6991,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5357fc6db3982be42af18de1c28fd930, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _stasisTipControllerPlatformRotation: {fileID: 4454717697293916906}
+  _stasisTipControllerPlatformRotation: {fileID: 0}
 --- !u!1 &7747383883908708949 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 2270723309789697566, guid: 4fca59ea6c24f20448129b8ed347a6b3,
@@ -6933,7 +7031,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5357fc6db3982be42af18de1c28fd930, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _stasisTipControllerPlatformRotation: {fileID: 4454717697293916906}
+  _stasisTipControllerPlatformRotation: {fileID: 0}
 --- !u!23 &8961964820740935277 stripped
 MeshRenderer:
   m_CorrespondingSourceObject: {fileID: 601316088957870630, guid: 4fca59ea6c24f20448129b8ed347a6b3,

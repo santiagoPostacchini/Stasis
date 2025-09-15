@@ -41,6 +41,7 @@ public class Trigger1 : MonoBehaviour
             item.ChangePosition();
         }
         _alreadyCollision = true;
+        ChangeMaterial();
         StartCoroutine(wait());
     }
     IEnumerator wait()
@@ -61,7 +62,7 @@ public class Trigger1 : MonoBehaviour
             item.ChangePosition();
         }
         _alreadyCollision = true;
-        InitPath();
+        //InitPath();
         ChangeMaterial();
     }
     public void InitPath()
