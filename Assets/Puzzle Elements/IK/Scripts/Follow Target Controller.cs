@@ -60,6 +60,12 @@ public class FollowTargetController : MonoBehaviour
 
     private void Start()
     {
+        if(GameManager.Instance != null)
+        {
+            player = GameManager.Instance.player;
+        }
+        
+
         aPos = rb.position;
         aRot = rb.rotation;
 
