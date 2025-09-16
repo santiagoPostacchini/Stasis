@@ -25,24 +25,26 @@ namespace Puzzle_Elements.Button.Scripts
             EventManager.TriggerEvent("Click", gameObject);
         }
         
-        private void OnTriggerStay(Collider other)
+       
+        private void OnCollisionStay(Collision collision)
         {
-            Model player = other.GetComponent<Model>();
+            Model player = collision.gameObject.GetComponent<Model>();
             if (player)
             {
                 if (!textInteract.gameObject.activeSelf)
                     textInteract.gameObject.SetActive(true);
             }
         }
-        private void OnTriggerExit(Collider other)
+        private void OnCollisionExit(Collision collision)
         {
-            Model player = other.GetComponent<Model>();
+            Model player = collision.gameObject.GetComponent<Model>();
             if (player)
             {
                 textInteract.gameObject.SetActive(false);
             }
 
         }
+        
     }
 
     
