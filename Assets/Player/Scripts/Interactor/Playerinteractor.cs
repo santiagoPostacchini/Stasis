@@ -76,7 +76,7 @@ namespace Player.Scripts.Interactor
             if (Physics.Raycast(stasisGun.mainCam.transform.position, stasisGun.mainCam.transform.forward, out RaycastHit hit1))
             {
                 var objectStasis = hit1.collider.GetComponent<IStasis>();
-                stasisEffects.HandleVisualStasisFeedback(objectStasis ?? null, stasisGun.mainCam, hit1);
+                //stasisEffects.HandleVisualStasisFeedback(objectStasis ?? null, stasisGun.mainCam, hit1);
             }
             
             if (Input.GetKeyDown(KeyCode.E))
