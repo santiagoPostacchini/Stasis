@@ -31,7 +31,7 @@ namespace Player.Scripts.MovementFSM.MVC
         private StasisGun _stasisGun;
         private PlayerInteractor _interactor;
         private StairStepper _stair;
-        private ParkourScanner _scanner;
+        internal ParkourScanner _scanner;
         private FSM _fsm;
         
         [Header("References")]
