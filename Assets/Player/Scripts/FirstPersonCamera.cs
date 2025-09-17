@@ -66,8 +66,12 @@ namespace Player.Scripts
 
         float _rigPitchC; // ángulo actual aplicado al rigTarget
         float _rigPitchVel; // para smooth
+#if UNITY_EDITOR
+        public float blockinputTimer = 1f;
+#endif
+        
 
-        void Awake()
+    void Awake()
         {
             _cam = GetComponentInChildren<UnityEngine.Camera>();
             if (!_cam) _cam = GetComponent<UnityEngine.Camera>();
@@ -109,6 +113,13 @@ namespace Player.Scripts
 
         void Update()
         {
+#if UNITY_EDITOR
+            if (blockinputTimer > 0f)
+            {
+                blockinputTimer -= Time.deltaTime;
+                return;
+            }
+#endif
             float mx = Input.GetAxisRaw("Mouse X") * sensitivity;
             float my = Input.GetAxisRaw("Mouse Y") * sensitivity * (invertY ? 1f : -1f);
 

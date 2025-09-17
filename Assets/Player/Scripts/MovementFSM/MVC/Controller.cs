@@ -32,10 +32,12 @@ namespace Player.Scripts.MovementFSM
             _model.OnDeath += _view.OnDeathEvent;
             _model.OnWallrunStart += view.OnWallrunStartEvent;
             _model.OnWallrunEnd += view.OnWallrunEndEvent;
+
         }
-        
-        public void OnUpdate()
+
+    public void OnUpdate()
         {
+
             float xAxis = Mathf.Clamp(Input.GetAxis("Horizontal"), -1f, 1f);
             float zAxis = Mathf.Clamp(Input.GetAxis("Vertical"), -1f, 1f);
             
