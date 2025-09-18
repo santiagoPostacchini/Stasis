@@ -2,8 +2,9 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Player.Stasis;
+using IKSuite;
 
-public class StasisPartArmIKPlatformRotation : MonoBehaviour, IStasis
+public class StasisPartArmIKPlatformRotation : MonoBehaviour, IStasis, IStasisPartIK
 {
     public bool IsFreezed => _isFreezed;
     private bool _isFreezed = false;
@@ -44,4 +45,12 @@ public class StasisPartArmIKPlatformRotation : MonoBehaviour, IStasis
         }
     }
 
+    public void SetTipController(Component tipController)
+    {
+        var a = tipController.GetComponent<StasisTipControllerPlatformRotation>();
+        if (a != null)
+        {
+            _stasisTipControllerPlatformRotation = a;
+        }
+    }
 }

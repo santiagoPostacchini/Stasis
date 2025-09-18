@@ -2,8 +2,9 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Player.Stasis;
+using IKSuite;
 
-public class StasisPartArmIKPlatformMovement : MonoBehaviour,IStasis
+public class StasisPartArmIKPlatformMovement : MonoBehaviour,IStasis,IStasisPartIK
 {
     public bool IsFreezed => _isFreezed;
     private bool _isFreezed = false;
@@ -52,6 +53,15 @@ public class StasisPartArmIKPlatformMovement : MonoBehaviour,IStasis
         if (Input.GetKeyDown(KeyCode.K))
         {
             StatisEffectDeactivate();
+        }
+    }
+
+    public void SetTipController(Component tipController)
+    {
+        var a = tipController.GetComponent<StasisTipControllerPlatformMovement>();
+        if (a != null)
+        {
+            _stasisTipControllerPlatformMovement = a;
         }
     }
 }

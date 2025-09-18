@@ -2,8 +2,9 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Player.Stasis;
+using IKSuite;
 
-public class StasisPartArmIK : MonoBehaviour,IStasis
+public class StasisPartArmIK : MonoBehaviour,IStasis,IStasisPartIK
 {
     public bool IsFreezed => _isFreezed;
     private bool _isFreezed = false;
@@ -44,5 +45,15 @@ public class StasisPartArmIK : MonoBehaviour,IStasis
     private void Update()
     {
        
+    }
+
+    public void SetTipController(Component tipController)
+    {
+        var a = tipController.GetComponent<StasisTipController>();
+        if(a!= null)
+        {
+            _stasisTipController = a;
+        }
+        
     }
 }

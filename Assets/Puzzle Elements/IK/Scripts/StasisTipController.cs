@@ -16,12 +16,14 @@ public class StasisTipController : MonoBehaviour,IStasis
 
     // Soporta múltiples renderers
     public Renderer[] renderers;
+   // public List<Renderer> rendererss = new List<Renderer>();
 
     public event Action OnFreezeEvent;
     public event Action OnUnFreezeEvent;
 
     [SerializeField] private FollowTargetController _followTargetController;
-    
+
+    [SerializeField] private Transform _root;
 
     // Start is called before the first frame update
     void Start()
@@ -35,6 +37,18 @@ public class StasisTipController : MonoBehaviour,IStasis
     {
         
     }
+    //public void AddElementsToRenderer()
+    //{
+    //    foreach (Transform hijo in _root)
+    //    {
+    //        StasisPartArmIK stasisPart = hijo.GetComponent<StasisPartArmIK>();
+    //        if(stasisPart != null)
+    //        {
+    //            MeshRenderer mesh = hijo.GetComponent<MeshRenderer>();
+    //            rendererss.Add(mesh);
+    //        }
+    //    }
+    //}
     public void EventPositiveTipController()
     {
         if(!IsFreezed)
