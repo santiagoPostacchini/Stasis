@@ -35,6 +35,8 @@ namespace Player.Stasis
 
         private View _view;
 
+        [SerializeField] private GameObject _particleStasisMissed;
+
         void Start()
         {
             _playerInteractor = GetComponent<PlayerInteractor>();
@@ -100,8 +102,25 @@ namespace Player.Stasis
                     }
 
                     if (staseable != null)
+                    {
                         Debug.Log("El objeto staseable es " + objStaseable);
-                    StartCoroutine(WaitStasisEffect(objStaseable, staseable));
+                        StartCoroutine(WaitStasisEffect(objStaseable, staseable));
+                    }
+                    
+                       
+                }
+                else
+                {
+                    if (_particleStasisMissed == null) return;
+
+                    float offset = 0.2f; // pequeño offset para que no quede dentro de la pared
+                    Vector3 spawnPos = hit.point + hit.normal * offset;
+
+                    GameObject testEffect = Instantiate(_particleStasisMissed, spawnPos, Quaternion.LookRotation(hit.normal));
+                    testEffect.SetActive(true); // asegúrate que está activo
+                    ParticleSystem particle = testEffect.GetComponent<ParticleSystem>();
+                    particle.Play();
+                    Destroy(testEffect, 5f);
                 }
 
 
@@ -113,12 +132,12 @@ namespace Player.Stasis
                 OnShoot();
                 StartCoroutine(WaitShot(hit, stasisHit));
             }
+            
             //if (Physics.Raycast(origin, direction, out RaycastHit hit, Mathf.Infinity, layer))
             //{
                 
             //}
         }
-
         private IEnumerator WaitStasisEffect(GameObject hitObject,IStasis stasisComponent)
         {
             yield return new WaitForSeconds(0.1f);
