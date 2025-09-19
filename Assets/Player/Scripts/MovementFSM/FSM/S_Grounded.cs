@@ -31,14 +31,21 @@ namespace Player.Scripts.MovementFSM
         public void OnEnter()
         {
             _model.OnJump += OnJumpPressed;
+
+            // 1) Si hay jump buffer, saltar inmediatamente y no consumir landing
+            if (_model.HasJumpBuffered())
+            {
+                _model.ClearJumpBuffer();
+                PerformJumpAndGoAir();
+                return;
+            }
             
             if (_model.landedPending)
             {
-                _model.LandedEvent();
                 _model.lastLandingTime = Time.time;
                 _model.landedPending   = false;
             }
-            
+
             _wasGrounded = _model.IsGroundedNow();
         }
 
@@ -54,11 +61,6 @@ namespace Player.Scripts.MovementFSM
                 _fsm.ChangeState(FSM.States.Air);
                 _wasGrounded = false;
                 return;
-            }
-
-            if (!_wasGrounded && grounded)
-            {
-                _model.LandedEvent();
             }
             
             _wasGrounded = grounded;
@@ -228,13 +230,15 @@ namespace Player.Scripts.MovementFSM
             float h = Mathf.Max(0.01f, _model.jumpHeight);
             float jumpVel = Mathf.Sqrt(2f * Mathf.Abs(g) * h);
 
-            var v = _model.rb.velocity;
-            v.y = 0f;
-            _model.rb.velocity = v;
-
+            var v = _model.rb.velocity; v.y = 0f; _model.rb.velocity = v;
             _model.rb.AddForce(Vector3.up * jumpVel, ForceMode.VelocityChange);
 
-            _model.airEnteredFromGround = false;
+            // Bloquear cualquier grounded/land por un ratito:
+            _model.groundedIgnoreUntil = Time.time + _model.groundedIgnoreAfterJump;
+
+            _model.lastLeftGroundTime = Time.time;
+            _model.airEnteredFromGround = false; // IMPORTANTÍSIMO: NO habilitar coyote tras un salto
+
             _fsm.ChangeState(FSM.States.Air);
         }
     }

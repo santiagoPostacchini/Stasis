@@ -71314,6 +71314,8 @@ MonoBehaviour:
   wallIntoDamp: 8
   wallAlignLerp: 12
   blockWallrunUntil: -999
+  groundedIgnoreAfterJump: 0.08
+  groundedIgnoreUntil: -999
   wallRunForce: 25
   wallClimbSpeed: 3.5
   wallDescendSpeed: 3.5
@@ -71683,7 +71685,10 @@ MonoBehaviour:
   wallMinSpeed: 1
   requireAirForWallrun: 1
   drawGizmos: 1
-  verboseLogs: 1
+  verboseLogs: 0
+  groundSnapDistance: 0.08
+  groundLeaveGrace: 0
+  fallProbeVelocityMul: 0.035
 --- !u!33 &8514771519138081819
 MeshFilter:
   m_ObjectHideFlags: 0

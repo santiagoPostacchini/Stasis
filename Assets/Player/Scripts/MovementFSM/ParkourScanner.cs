@@ -70,9 +70,9 @@ namespace Player.Scripts.MovementFSM
         public float groundCheckDistance = 0.2f;
         [Range(0f, 80f)] public float maxGroundSlopeDeg = 55f;
 
-        public bool Grounded { get; private set; }
-        public RaycastHit GroundHit { get; private set; }
-        public float GroundSlopeDeg { get; private set; }
+        private bool Grounded { get; set; }
+        private RaycastHit GroundHit { get; set; }
+        private float GroundSlopeDeg { get; set; }
 
         public bool IsGrounded() => Grounded;
 
@@ -177,80 +177,148 @@ namespace Player.Scripts.MovementFSM
 
         #region GROUNDING
 
+        [Header("Grounding (Tuning)")] [Tooltip("Distancia máx. a la superficie para 'pegar' al suelo (m).")]
+        public float groundSnapDistance = 0.08f;
+
+        [Tooltip("Aumenta el alcance del cast según la caída.")]
+        public float fallProbeVelocityMul = 0.035f;
+
+        [Header("Grounding Stability")]
+        [Tooltip("Tiempo que debe sostenerse el contacto antes de reportar Grounded=true.")]
+        public float groundEnterStability = 0.05f; // 50 ms va bien (0.04–0.07)
+
+        [Tooltip("Retraso al soltar suelo. 0 para salida inmediata.")]
+        public float groundExitStability = 0.00f; // dejalo en 0
+
+        private bool _rawGrounded;
+        private float _rawChangeTime;
+        private RaycastHit _rawHit;
+        private float _rawSlope;
+
+        private float _lastGroundTrueTime;
+
+        void GetCapsuleWorld(out Vector3 top, out Vector3 bottom, out float r)
+        {
+            const float skin = 0.02f;
+            r = Mathf.Max(0.01f, (capsule ? capsule.radius : 0.3f) - skin);
+            Vector3 center = transform.TransformPoint(capsule ? capsule.center : Vector3.zero);
+            float height = capsule ? capsule.height : 1.8f;
+            float half = height * 0.5f - r;
+            top = center + Vector3.up * half;
+            bottom = center - Vector3.up * half;
+        }
+
+        bool IsValidGroundHit(in RaycastHit hit)
+        {
+            if (hit.collider == null) return false;
+            float slope = Vector3.Angle(hit.normal, Vector3.up);
+            if (slope > maxGroundSlopeDeg) return false;
+
+            // Debe estar “debajo” razonablemente cerca
+            float dy = (transform.position.y) - hit.point.y;
+            if (dy < -0.05f) return false; // golpe por arriba (techo) no es suelo
+            return true;
+        }
+
         void UpdateGrounding()
         {
-            Grounded = false;
-            GroundSlopeDeg = 0f;
+            // 1) Medimos "raw" sin histéresis (igual que antes)
+            bool raw = false;
+            RaycastHit rawHit = default;
+            float rawSlope = 0f;
 
-            if (!capsule) return;
-
-            const float skin = 0.02f;
-            float r = Mathf.Max(0.01f, capsule.radius - skin);
-            Vector3 center = transform.TransformPoint(capsule.center);
-            float half = capsule.height * 0.5f - r;
-
-            Vector3 top = center + Vector3.up * half;
-            Vector3 bottom = center - Vector3.up * half;
-
-            var cols = Physics.OverlapCapsule(top, bottom, r + skin, groundMask, QueryTriggerInteraction.Ignore);
-            foreach (var col in cols)
+            if (!capsule)
             {
-                if (!col) continue;
-                if (Physics.Raycast(center, Vector3.down, out var rh, half + groundCheckDistance + 0.5f,
-                        groundMask, QueryTriggerInteraction.Ignore))
+                Grounded = false;
+                return;
+            }
+
+            GetCapsuleWorld(out var top, out var bottom, out var r);
+            Vector3 sphereOrigin = bottom + Vector3.up * 0.01f;
+
+            float extraByFall = (rb && rb.velocity.y < 0f)
+                ? Mathf.Clamp(-rb.velocity.y * fallProbeVelocityMul, 0f, 0.3f)
+                : 0f;
+
+            float castDist = Mathf.Max(groundCheckDistance, groundSnapDistance) + extraByFall + 0.02f;
+
+            if (Physics.SphereCast(sphereOrigin, r, Vector3.down, out var hitS, castDist, groundMask,
+                    QueryTriggerInteraction.Ignore)
+                && IsValidGroundHit(hitS))
+            {
+                float dist = Mathf.Max(0f, (sphereOrigin.y - r) - hitS.point.y);
+                if (dist <= groundSnapDistance + extraByFall)
                 {
-                    float slope = Vector3.Angle(rh.normal, Vector3.up);
-                    if (slope <= maxGroundSlopeDeg)
+                    raw = true;
+                    rawHit = hitS;
+                    rawSlope = Vector3.Angle(hitS.normal, Vector3.up);
+                }
+            }
+
+            if (!raw)
+            {
+                if (Physics.CapsuleCast(top, bottom, r, Vector3.down, out var hitC, castDist, groundMask,
+                        QueryTriggerInteraction.Ignore)
+                    && IsValidGroundHit(hitC))
+                {
+                    float baseY = (bottom.y - r);
+                    float dist = Mathf.Max(0f, baseY - hitC.point.y);
+                    if (dist <= groundSnapDistance + extraByFall)
                     {
-                        Grounded = true;
-                        GroundHit = rh;
-                        GroundSlopeDeg = slope;
-                        return;
+                        raw = true;
+                        rawHit = hitC;
+                        rawSlope = Vector3.Angle(hitC.normal, Vector3.up);
                     }
                 }
-                else
+            }
+
+            // 2) Histéresis temporal
+            if (raw != _rawGrounded)
+            {
+                _rawGrounded = raw;
+                _rawChangeTime = Time.time;
+                if (raw)
                 {
-                    Grounded = true;
-                    GroundHit = new RaycastHit { point = bottom, normal = Vector3.up };
+                    _rawHit = rawHit;
+                    _rawSlope = rawSlope;
+                } // guardamos el último hit bueno
+            }
+
+            bool want = Grounded; // estado estable actual
+
+            if (_rawGrounded)
+            {
+                // Para entrar a true, exigir estabilidad temporal
+                if (!Grounded && (Time.time - _rawChangeTime) >= groundEnterStability)
+                {
+                    want = true;
+                    GroundHit = _rawHit;
+                    GroundSlopeDeg = _rawSlope;
+                }
+                else if (Grounded)
+                {
+                    // ya estamos en true: refrescamos datos
+                    GroundHit = _rawHit;
+                    GroundSlopeDeg = _rawSlope;
+                }
+            }
+            else
+            {
+                // Salida a false (con opcional groundExitStability)
+                if (Grounded && (Time.time - _rawChangeTime) >= groundExitStability)
+                {
+                    want = false;
+                    GroundHit = default;
                     GroundSlopeDeg = 0f;
-                    return;
                 }
             }
 
-            Vector3 bottomSphereCenter = bottom;
-            float castDist = Mathf.Max(0.05f, groundCheckDistance);
-            if (Physics.SphereCast(bottomSphereCenter + Vector3.up * 0.01f, r, Vector3.down,
-                    out var hitS, castDist + 0.02f, groundMask, QueryTriggerInteraction.Ignore))
-            {
-                float slope = Vector3.Angle(hitS.normal, Vector3.up);
-                if (slope <= maxGroundSlopeDeg)
-                {
-                    Grounded = true;
-                    GroundHit = hitS;
-                    GroundSlopeDeg = slope;
-                    return;
-                }
-            }
-
-            if (Physics.CapsuleCast(top, bottom, r, Vector3.down, out var hitC,
-                    castDist, groundMask, QueryTriggerInteraction.Ignore))
-            {
-                float slope = Vector3.Angle(hitC.normal, Vector3.up);
-                if (slope <= maxGroundSlopeDeg)
-                {
-                    Grounded = true;
-                    GroundHit = hitC;
-                    GroundSlopeDeg = slope;
-                }
-            }
+            Grounded = want;
         }
 
         #endregion
 
         #region VAULT
-
-        // --- dentro de ParkourScanner ---
-// reemplazá TODO el método TryDetectVault por este:
 
         bool TryDetectVault(out ParkourProbe result)
         {
@@ -404,13 +472,6 @@ namespace Player.Scripts.MovementFSM
             if (!foundLand)
             {
                 if (verboseLogs) Debug.Log($"[VaultProbe] No land found.");
-                return false;
-            }
-
-            // Requerir RUN solo si no es misma tapa
-            if (!runHeld && !foundSameTop)
-            {
-                if (verboseLogs) Debug.Log($"[VaultProbe] RUN required for far-side vault.");
                 return false;
             }
 
@@ -745,17 +806,6 @@ namespace Player.Scripts.MovementFSM
             Gizmos.color = Color.cyan;
             Gizmos.DrawLine(sideOrigin, sideOrigin + transform.right * wallCheckDistance);
             Gizmos.DrawLine(sideOrigin, sideOrigin - transform.right * wallCheckDistance);
-        }
-
-        bool IsSameObstacle(Collider a, Collider b)
-        {
-            if (!a || !b) return false;
-            if (a == b) return true;
-
-            Transform ta = a.attachedRigidbody ? a.attachedRigidbody.transform : a.transform;
-            Transform tb = b.attachedRigidbody ? b.attachedRigidbody.transform : b.transform;
-
-            return ta == tb || ta.root == tb.root;
         }
 
         #endregion

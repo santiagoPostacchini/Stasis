@@ -181,7 +181,7 @@ namespace Player.Scripts.MovementFSM
 
             // Step-up si es misma tapa o si excede el max forward
             _stepUpMode = p.vaultLandOnSameCollider ||
-                          p.vaultDistance > (_m._scanner ? _m._scanner.vaultMaxForward : 2.2f);
+                          p.vaultDistance > (_m.Scanner ? _m.Scanner.vaultMaxForward : 2.2f);
 
             if (_stepUpMode)
             {

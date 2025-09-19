@@ -58,19 +58,15 @@ namespace Player.Scripts.MovementFSM.MVC
             _isStopping = stp;
         }
 
-        public void OnLandEvent()
+        public void GroundedChangedEvent(bool val)
         {
-            Debug.Log("Landed Event");
-            animator.SetBool(IsJumping, false);
-            animator.SetBool(IsGrounded, true);
-            playerCam.ClearTilt();
+            Debug.Log("Grounded Changed Event");
+            animator.SetBool(IsGrounded, val);
         }
         
         public void OnJumpEvent()
         {
             Debug.Log("Jump Event");
-            animator.SetTrigger(IsJumping);
-            animator.SetBool(IsGrounded, false);
             animator.CrossFade("Player_Leg_Jump", 0);
             animator.CrossFade("Player_Arm_Jump", 0);
             //playerCam.ClearTilt();

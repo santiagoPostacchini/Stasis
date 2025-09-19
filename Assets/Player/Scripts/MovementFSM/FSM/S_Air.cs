@@ -22,8 +22,8 @@ namespace Player.Scripts.MovementFSM
         public void OnEnter()
         {
             _model.OnJump += OnJumpPressed;
+            _enteredFromGround = _model.airEnteredFromGround;
             _model.airEnteredFromGround = false;
-            _model.ClearJumpBuffer();
             _airTime = 0f;
         }
 
@@ -53,11 +53,12 @@ namespace Player.Scripts.MovementFSM
             
             if (_model.IsGroundedNow())
             {
+                if (_airTime < _model.minAirTime) return;
+
                 _model.ClearJumpBuffer();
                 _model.airEnteredFromGround = false;
                 _model.landedPending = true;
                 _fsm.ChangeState(FSM.States.Grounded);
-                return;
             }
         }
 
@@ -86,6 +87,7 @@ namespace Player.Scripts.MovementFSM
         public void OnExit()
         {
             _model.OnJump -= OnJumpPressed;
+            Debug.Log("Air EXIT");
         }
 
         private void OnJumpPressed()
