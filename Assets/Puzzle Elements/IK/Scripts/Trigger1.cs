@@ -6,7 +6,7 @@ using UnityEngine;
 public class Trigger1 : MonoBehaviour
 {
     public List<FollowTargetController> followTargetControllers;
-    public Material yellow, green;
+    //public Material yellow, green;
     private bool _alreadyCollision = false;
 
     private int _layerDefault;
@@ -32,7 +32,7 @@ public class Trigger1 : MonoBehaviour
             item.ChangePosition();
         }
         _alreadyCollision = true;
-        ChangeMaterial();
+        //ChangeMaterial();
     }
     public void EventButton()
     {
@@ -41,7 +41,6 @@ public class Trigger1 : MonoBehaviour
             item.ChangePosition();
         }
         _alreadyCollision = true;
-        ChangeMaterial();
         StartCoroutine(wait());
     }
     IEnumerator wait()
@@ -63,7 +62,6 @@ public class Trigger1 : MonoBehaviour
         }
         _alreadyCollision = true;
         //InitPath();
-        ChangeMaterial();
     }
     public void InitPath()
     {
@@ -80,12 +78,12 @@ public class Trigger1 : MonoBehaviour
         }
         TogglePath();
     }
-    async void ChangeMaterial()
-    {
-        GetComponent<Renderer>().material = yellow;
-        await Task.Delay(1000);
-        GetComponent<Renderer>().material = green;
-    }
+    //async void ChangeMaterial()
+    //{
+    //    GetComponent<Renderer>().material = yellow;
+    //    await Task.Delay(1000);
+    //    GetComponent<Renderer>().material = green;
+    //}
 
 
     [ContextMenu("TogglePath")] // podés llamarlo con botón derecho en el inspector

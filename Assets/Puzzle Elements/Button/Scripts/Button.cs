@@ -6,6 +6,7 @@ using Managers.Events;
 using Player.FullBody_Scripts.MovementFSM;
 using Player.Scripts.MovementFSM;
 using Player.Scripts.MovementFSM.MVC;
+using System.Threading.Tasks;
 
 namespace Puzzle_Elements.Button.Scripts
 {
@@ -18,10 +19,12 @@ namespace Puzzle_Elements.Button.Scripts
         public UnityEvent onPressed;
         [Tooltip("Texto que aparece al entrar en colision con el boton")]
         [SerializeField] private TextMeshProUGUI textInteract;
+        public Material yellow, green;
         public void Interact()
         {
             animator.SetTrigger(Click);
             onPressed?.Invoke();
+            ChangeMaterial();
             EventManager.TriggerEvent("Click", gameObject);
         }
         
@@ -44,7 +47,13 @@ namespace Puzzle_Elements.Button.Scripts
             }
 
         }
-        
+        async void ChangeMaterial()
+        {
+            GetComponent<Renderer>().material = yellow;
+            await Task.Delay(1000);
+            GetComponent<Renderer>().material = green;
+        }
+
     }
 
     
