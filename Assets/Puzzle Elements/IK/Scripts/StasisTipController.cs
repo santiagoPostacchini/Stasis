@@ -15,8 +15,7 @@ public class StasisTipController : MonoBehaviour,IStasis
 
 
     // Soporta múltiples renderers
-    public Renderer[] renderers;
-   // public List<Renderer> rendererss = new List<Renderer>();
+    public List<Renderer> renderers = new List<Renderer>();
 
     public event Action OnFreezeEvent;
     public event Action OnUnFreezeEvent;
@@ -30,6 +29,7 @@ public class StasisTipController : MonoBehaviour,IStasis
     {
         _mpb = new MaterialPropertyBlock();
         _followTargetController = GetComponent<FollowTargetController>();
+        StartCoroutine(wait());
     }
 
     // Update is called once per frame
@@ -37,18 +37,32 @@ public class StasisTipController : MonoBehaviour,IStasis
     {
         
     }
-    //public void AddElementsToRenderer()
-    //{
-    //    foreach (Transform hijo in _root)
-    //    {
-    //        StasisPartArmIK stasisPart = hijo.GetComponent<StasisPartArmIK>();
-    //        if(stasisPart != null)
-    //        {
-    //            MeshRenderer mesh = hijo.GetComponent<MeshRenderer>();
-    //            rendererss.Add(mesh);
-    //        }
-    //    }
-    //}
+    IEnumerator wait()
+    {
+        yield return new WaitForSeconds(2f);
+        AddElementsToRenderer();
+    }
+    public void AddElementsToRenderer()
+    {
+        if (renderers.Count > 4) return;
+
+        Renderer[] allRenderers = _root.GetComponentsInChildren<Renderer>();
+
+        foreach (Renderer mesh in allRenderers)
+        {
+            // Evita duplicados si ya lo agregaste
+            if (!renderers.Contains(mesh))
+                renderers.Add(mesh);
+        }
+        Renderer[] allRenderers2 = GetComponentsInChildren<Renderer>();
+        foreach (Renderer mesh in allRenderers2)
+        {
+            // Evita duplicados si ya lo agregaste
+            if (!renderers.Contains(mesh))
+                renderers.Add(mesh);
+        }
+
+    }
     public void EventPositiveTipController()
     {
         if(!IsFreezed)

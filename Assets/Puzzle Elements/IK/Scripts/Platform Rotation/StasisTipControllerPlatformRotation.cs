@@ -15,7 +15,8 @@ public class StasisTipControllerPlatformRotation : MonoBehaviour, IStasis
     public MaterialPropertyBlock _mpb;
 
     // Soporta múltiples renderers
-    public Renderer[] renderers;
+    public List<Renderer> renderers = new List<Renderer>();
+    [SerializeField] private Transform _root;
 
     public event Action OnFreezeEvent;
     public event Action OnUnFreezeEvent;
@@ -25,12 +26,18 @@ public class StasisTipControllerPlatformRotation : MonoBehaviour, IStasis
     {
         _mpb = new MaterialPropertyBlock();
         _followMultipleTargetController = GetComponent<FollowMultipleTargetController>();
+        StartCoroutine(wait());
     }
     public void StatisEffectActivate()
     {
 
         FreezeObject();
         _followMultipleTargetController.CanMove = false;
+    }
+    IEnumerator wait()
+    {
+        yield return new WaitForSeconds(2f);
+        AddElementsToRenderer();
     }
     public void EventPositiveTipControllerRotation()
     {
@@ -46,7 +53,27 @@ public class StasisTipControllerPlatformRotation : MonoBehaviour, IStasis
         _followMultipleTargetController.CanMove = true;
     }
 
-  
+    public void AddElementsToRenderer()
+    {
+        if (renderers.Count > 4) return;
+
+        Renderer[] allRenderers = _root.GetComponentsInChildren<Renderer>();
+
+        foreach (Renderer mesh in allRenderers)
+        {
+            // Evita duplicados si ya lo agregaste
+            if (!renderers.Contains(mesh))
+                renderers.Add(mesh);
+        }
+        Renderer[] allRenderers2 = GetComponentsInChildren<Renderer>();
+        foreach (Renderer mesh in allRenderers2)
+        {
+            // Evita duplicados si ya lo agregaste
+            if (!renderers.Contains(mesh))
+                renderers.Add(mesh);
+        }
+
+    }
     private void FreezeObject()
     {
         if (!_isFreezed)

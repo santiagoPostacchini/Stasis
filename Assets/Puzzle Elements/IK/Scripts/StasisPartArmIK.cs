@@ -15,8 +15,12 @@ public class StasisPartArmIK : MonoBehaviour,IStasis,IStasisPartIK
     // Start is called before the first frame update
     void Start()
     {
-        _stasisTipController.OnFreezeEvent += StatisEffectActivate;
-        _stasisTipController.OnUnFreezeEvent += StatisEffectDeactivate;
+        if(_stasisTipController != null)
+        {
+            _stasisTipController.OnFreezeEvent += StatisEffectActivate;
+            _stasisTipController.OnUnFreezeEvent += StatisEffectDeactivate;
+        }
+      
     }
 
 

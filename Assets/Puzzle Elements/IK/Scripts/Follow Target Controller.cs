@@ -29,7 +29,8 @@ public class FollowTargetController : MonoBehaviour
 
     [Header("Movimiento ChangePosition")]
     public float moveDuration = 1f;
-
+    [Header("Seguridad de movimiento")]
+    public float maxMoveSpeed = 5f;
     [Header("Control")]
     public bool canMove = true;
 
@@ -227,8 +228,7 @@ public class FollowTargetController : MonoBehaviour
             midRot = Quaternion.Slerp(aRot, refRot, 0.5f);
         }
 
-        float t = currentWeight;
-        t = Mathf.Clamp01(t);
+        float t = Mathf.Clamp01(currentWeight);
 
         Vector3 p;
         Quaternion r;
@@ -246,10 +246,18 @@ public class FollowTargetController : MonoBehaviour
             r = Quaternion.SlerpUnclamped(midRot, destRot, u);
         }
 
+        Vector3 desiredMove = p - rb.position;
+        float maxStep = maxMoveSpeed * Time.fixedDeltaTime;
+
+        if (desiredMove.magnitude > maxStep)
+        {
+            desiredMove = desiredMove.normalized * maxStep;
+            p = rb.position + desiredMove;
+        }
+
         rb.MovePosition(p);
         rb.MoveRotation(r);
     }
-
     private void OnDisable()
     {
         if (moveRoutine != null)

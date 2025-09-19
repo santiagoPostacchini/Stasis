@@ -16,8 +16,8 @@ public class StasisTipControllerPlatformMovement : MonoBehaviour, IStasis
     private Rigidbody _rb;
 
     // Soporta múltiples renderers
-    public Renderer[] renderers;
-
+    public List<Renderer> renderers = new List<Renderer>();
+    [SerializeField] private Transform _root;
     public event Action OnFreezeEvent;
     public event Action OnUnFreezeEvent;
 
@@ -30,11 +30,38 @@ public class StasisTipControllerPlatformMovement : MonoBehaviour, IStasis
         _mpb = new MaterialPropertyBlock();
         _pathFollower1 = GetComponent<PathFollower1>();
         _rb = GetComponent<Rigidbody>();
+        StartCoroutine(wait());
     }
 
     // Update is called once per frame
     void Update()
     {
+
+    }
+    IEnumerator wait()
+    {
+        yield return new WaitForSeconds(2f);
+        AddElementsToRenderer();
+    }
+    public void AddElementsToRenderer()
+    {
+        if (renderers.Count > 4) return;
+
+        Renderer[] allRenderers = _root.GetComponentsInChildren<Renderer>();
+
+        foreach (Renderer mesh in allRenderers)
+        {
+            // Evita duplicados si ya lo agregaste
+            if (!renderers.Contains(mesh))
+                renderers.Add(mesh);
+        }
+        Renderer[] allRenderers2 = GetComponentsInChildren<Renderer>();
+        foreach (Renderer mesh in allRenderers2)
+        {
+            // Evita duplicados si ya lo agregaste
+            if (!renderers.Contains(mesh))
+                renderers.Add(mesh);
+        }
 
     }
     public void EventPositiveTipPlatformMovement()
