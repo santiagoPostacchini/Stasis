@@ -50509,6 +50509,7 @@ GameObject:
   - component: {fileID: 3539874522837402769}
   - component: {fileID: 6004702935724346934}
   - component: {fileID: 6414005083301077403}
+  - component: {fileID: 6414005083301077404}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -66048,7 +66049,24 @@ MonoBehaviour:
   snapWhenEnabled: 0
   yawPivot: {fileID: 6733321245123330103}
   visualRoot: {fileID: 6042252986095634621}
-  turnLerp: 0.2
+  turnLerp: 0.05
+--- !u!114 &6414005083301077404
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1828374356898241344}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 33215963f7d88cf42acfc76a9d4cea2a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  yawFollower: {fileID: 6414005083301077403}
+  animator: {fileID: 3539874522837402769}
+  playerRb: {fileID: 4674414538794847727}
+  idleVelocityThreshold: 0.05
+  turnSpeedThreshold: 5
 --- !u!23 &6423624174828696476
 MeshRenderer:
   m_ObjectHideFlags: 0
