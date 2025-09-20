@@ -68,7 +68,7 @@ namespace Player.Scripts.MovementFSM.MVC
         {
             Debug.Log("Jump Event");
             animator.CrossFade("Player_Leg_Jump", 0);
-            animator.CrossFade("Player_Arm_Jump", 0);
+            animator.CrossFade("Player_Arm_Jump", 0.25f);
             //playerCam.ClearTilt();
             //EventManager.TriggerEvent("OnJump", gameObject);
         }
