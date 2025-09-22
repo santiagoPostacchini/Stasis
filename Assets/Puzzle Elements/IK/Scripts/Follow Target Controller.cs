@@ -34,6 +34,10 @@ public class FollowTargetController : MonoBehaviour
     [Header("Control")]
     public bool canMove = true;
 
+    [Header("Brother settings")]
+    [Range(0f, 1f)] public float brotherMinWeight = 0.6f;
+    public float brotherApproachSmooth = 0.2f;
+
     private Rigidbody rb;
     private Transform startAnchor;
     public Transform currentTip;
@@ -46,11 +50,12 @@ public class FollowTargetController : MonoBehaviour
 
     private float distRaw;
     private float distFiltered;
-
     public float dist { get; private set; }
 
     private Vector3 aPos;
     private Quaternion aRot;
+
+    private float brotherCurrentMin = 0f;
 
     private void Awake()
     {
@@ -61,11 +66,8 @@ public class FollowTargetController : MonoBehaviour
 
     private void Start()
     {
-        if(GameManager.Instance != null)
-        {
+        if (GameManager.Instance != null)
             player = GameManager.Instance.player;
-        }
-        
 
         aPos = rb.position;
         aRot = rb.rotation;
@@ -92,6 +94,7 @@ public class FollowTargetController : MonoBehaviour
 
     private void FixedUpdate()
     {
+        // Distancia filtrada
         if (player != null)
         {
             Vector3 delta = player.position - rb.position;
@@ -119,10 +122,31 @@ public class FollowTargetController : MonoBehaviour
 
         float raw = math.remap(inMin, inMax, outMin, outMax, distFiltered);
         float curved = remapLerp.Evaluate(raw);
-        targetWeight = Mathf.Clamp01(curved);
+
+        // Nueva lógica estable
+        if (currentTip == startAnchor)
+        {
+            targetWeight = Mathf.Clamp01(curved);
+            brotherCurrentMin = 0f; // reset
+        }
+        else if (currentTip == brother)
+        {
+            brotherCurrentMin = Mathf.MoveTowards(
+                brotherCurrentMin,
+                brotherMinWeight,
+                Time.fixedDeltaTime / Mathf.Max(0.0001f, brotherApproachSmooth)
+            );
+
+            targetWeight = Mathf.Max(curved, brotherCurrentMin);
+        }
+        else
+        {
+            targetWeight = Mathf.Clamp01(curved);
+            brotherCurrentMin = 0f;
+        }
 
         float desired = targetWeight;
-        if (Mathf.Abs(desired - currentWeight) < weightDeadZone)
+        if (Mathf.Approximately(desired, currentWeight) || Mathf.Abs(desired - currentWeight) < weightDeadZone)
             desired = currentWeight;
 
         if (rig != null)
@@ -146,7 +170,6 @@ public class FollowTargetController : MonoBehaviour
         if (brother == null) return;
 
         Transform to = atStart ? brother : startAnchor;
-
         currentTip = to;
 
         if (moveRoutine != null) StopCoroutine(moveRoutine);
@@ -198,6 +221,11 @@ public class FollowTargetController : MonoBehaviour
         }
 
         atStart = (to == startAnchor);
+
+        // Actualizar punto A al llegar
+        aPos = rb.position;
+        aRot = rb.rotation;
+
         moveRoutine = null;
     }
 
@@ -258,6 +286,7 @@ public class FollowTargetController : MonoBehaviour
         rb.MovePosition(p);
         rb.MoveRotation(r);
     }
+
     private void OnDisable()
     {
         if (moveRoutine != null)

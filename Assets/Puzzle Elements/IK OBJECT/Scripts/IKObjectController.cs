@@ -17,9 +17,6 @@ namespace IKSuite
         [Header("<color=green>Scriptable Object</color>")]
         public IKObjectPreset preset;
 
-
-
-
         [Header("<color=red>Se mira y no se toca</color>")]
         // Scene refs (asignar en Inspector)
         public Transform arm;        // Debe tener Animator + RigBuilder (INSTANCIA EN ESCENA)
@@ -159,18 +156,21 @@ namespace IKSuite
 #endif
             BuildArm(!Application.isPlaying);
 
-            // Hook para AddElementsToRenderer (no tocamos tu lógica interna)
+            // Hook para AddElementsToRenderer:
+            // En Editor NO reparentamos (evita errores de prefab instance), en Play sí.
             var stasisTC = GetStasisTipControllerForMode(preset.systemType);
-            CallAddElementsWithTemporaryParent(stasisTC);
+            if (Application.isPlaying) CallAddElementsWithTemporaryParent(stasisTC);
+            else SafeCallAddElements(stasisTC);
 
-            // En Play, para Distance/Inverse: target en A y solver activo
+            // En Play, para Distance/Inverse: target en A y solver activo,
+            // PERO rig weight lo controla FollowTargetController => rig queda en 0
             if (Application.isPlaying &&
                 (preset.systemType == IKSystemType.IK_Distance || preset.systemType == IKSystemType.IK_DistanceInverse))
             {
                 ApplyDistanceRuntimeInit();
             }
 
-            // Rebind opcional (ayuda a binds en runtime)
+            // Rebind opcional
             var anim = arm ? arm.GetComponent<Animator>() : null;
             if (anim && Application.isPlaying) anim.Rebind();
         }
@@ -255,11 +255,12 @@ namespace IKSuite
             data.target = target;
             _chain.data = data;
 
-            // Editor: Distance/Inverse sin solver (para mover a mano)
-            if (!Application.isPlaying &&
-                (preset.systemType == IKSystemType.IK_Distance || preset.systemType == IKSystemType.IK_DistanceInverse))
+            // Pesos:
+            // Distance/Inverse: rig siempre 0 (editor y play). ChainIK activo (1).
+            // Movement/Rotation: rig 1 como venías usando.
+            if (preset.systemType == IKSystemType.IK_Distance || preset.systemType == IKSystemType.IK_DistanceInverse)
             {
-                _chain.weight = 0f;
+                _chain.weight = 1f;
                 _rig.weight = 0f;
             }
             else
@@ -271,9 +272,18 @@ namespace IKSuite
             // Sanear RigBuilder y recién ahí Build
             EnsureRigComponents();
             _rigBuilder.Build();
+
+            // Para Distance modes, asegurar que el FollowTargetController del target apunte a ESTE rig
+            if (preset.systemType == IKSystemType.IK_Distance || preset.systemType == IKSystemType.IK_DistanceInverse)
+            {
+                AssignRigToFollowTargetController(target, _rig);
+            }
         }
 
-        // En Play, iniciar Distance/Inverse con target en A y solver activo
+        // En Play, iniciar Distance/Inverse:
+        // - target = pose de TIP (A)
+        // - ChainIK = 1
+        // - Rig = 0 (peso controlado por FollowTargetController)
         void ApplyDistanceRuntimeInit()
         {
             var target = GetTargetForMode(preset.systemType);
@@ -283,7 +293,16 @@ namespace IKSuite
             target.rotation = _generatedTip.rotation;
 
             if (_chain != null) _chain.weight = 1f;
-            if (_rig != null) _rig.weight = 1f;
+            if (_rig != null) _rig.weight = 0f; // *** clave: el weight lo maneja FollowTargetController
+        }
+
+        // Vincula el rig al FollowTargetController en el target (si existe)
+        static void AssignRigToFollowTargetController(Transform target, Rig rig)
+        {
+            if (!target || !rig) return;
+            var ft = target.GetComponent<FollowTargetController>();
+            if (!ft) return;
+            ft.rig = rig;
         }
 
         // =====================================================================
@@ -336,7 +355,6 @@ namespace IKSuite
                 var parentT = GetSafeParent(parent != null ? parent : root);
                 // Instanciar con parent DIRECTO para no hacer SetParent luego (evita el error)
                 var obj = PrefabUtility.InstantiatePrefab(prefab, parentT) as GameObject;
-                // Si por algún motivo parentT es nulo, abortamos
                 if (obj == null) return null;
                 obj.AddComponent<IKGeneratedTag>();
                 Undo.RegisterCreatedObjectUndo(obj, "Create Bone");
@@ -367,22 +385,24 @@ namespace IKSuite
         }
 
         // =====================================================================
-        // Hook AddElementsToRenderer (no modificamos tus scripts)
+        // Hook AddElementsToRenderer
         // =====================================================================
         void CallAddElementsWithTemporaryParent(Component controller)
         {
             if (controller == null || root == null) return;
+
+            // En Play sí podemos reparentar temporalmente
             var ctrlT = controller.transform;
             var origParent = root.parent;
             var wp = root.position; var wr = root.rotation; var ws = root.lossyScale;
 
             root.SetParent(ctrlT, true);
-            CallAddElementsToRenderer(controller);
+            SafeCallAddElements(controller);
             root.SetParent(origParent, true);
             root.position = wp; root.rotation = wr; SetWorldScale(root, ws);
         }
 
-        static void CallAddElementsToRenderer(Component controller)
+        static void SafeCallAddElements(Component controller)
         {
             if (controller == null) return;
             var m = controller.GetType().GetMethod("AddElementsToRenderer",
@@ -580,7 +600,7 @@ namespace IKSuite
         }
 
         // =====================================================================
-        // Validación (clave para evitar TransformStreamHandle errors)
+        // Validación
         // =====================================================================
         bool ValidateSetup()
         {
