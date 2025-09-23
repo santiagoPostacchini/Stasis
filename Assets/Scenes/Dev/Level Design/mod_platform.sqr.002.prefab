@@ -11,8 +11,8 @@ GameObject:
   - component: {fileID: 4845196158216436597}
   - component: {fileID: 5981051671938215028}
   - component: {fileID: 405137416672894140}
-  - component: {fileID: 1213465559985361235}
-  m_Layer: 8
+  - component: {fileID: 192087989380326767}
+  m_Layer: 7
   m_Name: mod_platform.sqr.002
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -85,8 +85,8 @@ MeshRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_AdditionalVertexStreams: {fileID: 0}
---- !u!64 &1213465559985361235
-MeshCollider:
+--- !u!65 &192087989380326767
+BoxCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -103,10 +103,9 @@ MeshCollider:
   m_IsTrigger: 0
   m_ProvidesContacts: 0
   m_Enabled: 1
-  serializedVersion: 5
-  m_Convex: 0
-  m_CookingOptions: 30
-  m_Mesh: {fileID: 7668044792455193828, guid: 84eaa08d4b0dc634fa944f07e4edca56, type: 3}
+  serializedVersion: 3
+  m_Size: {x: 3, y: 0.19999999, z: 2.3999996}
+  m_Center: {x: 0, y: 0.099999994, z: 0.21249992}
 --- !u!1 &8061435723450113639
 GameObject:
   m_ObjectHideFlags: 0

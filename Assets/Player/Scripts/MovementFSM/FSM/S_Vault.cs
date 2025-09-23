@@ -29,8 +29,17 @@ namespace Player.Scripts.MovementFSM
         float _entryHorizSpeed, _pathHorizSpeed;
         float _lockedYawDeg;
 
+        // --- NUEVO: cap de altura para “pegarse” a la tapa ---
+        float _yTopCap;
+
         // === Tunables ===
-        const float ReleaseBlendStart = 0.60f;   // <- release al 60%
+        const float ReleaseBlendStart = 0.60f;   // soltamos desde el 60%
+
+        // Top-hug: cuánto y cuándo pegarnos a la tapa
+        const float TopHugEnd = 0.58f;           // hasta ~58% apretamos hacia la tapa
+        const float TopHugExtraUp = 0.015f;      // margen por encima de la tapa (m)
+        const float TopHugBlendPower = 1.0f;     // 1.0 = mezcla completa hacia el cap
+
         const float Kp = 80f, Kd = 16f, MaxAccel = 120f;
         const bool UprightWhileVault = true;
         const float UprightSettleDegPerSec = 9999f;
@@ -39,7 +48,7 @@ namespace Player.Scripts.MovementFSM
         const float ApexFactor = 0.5f, ApexExtra = 0.25f;
         const float NormalClearance = 0.06f, StartUpNudge = 0.02f;
 
-        // step-up suavizado (sin impulso extra)
+        // step-up suavizado
         const float StepUpInset   = 0.12f;
         const float StepUpExtraUp = 0.045f;
         const float StepUpApexCap = 0.26f;
@@ -53,14 +62,12 @@ namespace Player.Scripts.MovementFSM
             _scanner = _m.GetComponent<ParkourScanner>();
             var p = _m.probe;
 
-            // vel de entrada (solo horizontal)
             Vector3 vIn = _rb.velocity; vIn.y = 0f;
             _entryHorizSpeed = vIn.magnitude;
 
-            // physics setup
             _oldUseGravity = _rb.useGravity;
-            _rb.useGravity = false;            // controlaremos cuándo vuelve
-            _rb.velocity = Vector3.zero;       // arrancamos desde curva
+            _rb.useGravity = false;
+            _rb.velocity = Vector3.zero;
             _rb.angularVelocity = Vector3.zero;
 
             _gravityRestored = false;
@@ -72,7 +79,7 @@ namespace Player.Scripts.MovementFSM
 
             _lockedYawDeg = YawDeg(_rb.rotation);
 
-            // *** SIEMPRE ignorar colisión con el obstáculo durante TODO el vault ***
+            // Ignorar obstáculo todo el vault
             if (_capsule && p.vaultObstacle)
             {
                 Physics.IgnoreCollision(_capsule, p.vaultObstacle, true);
@@ -81,7 +88,6 @@ namespace Player.Scripts.MovementFSM
             }
             else
             {
-                // fallback si no tenemos collider de obstáculo
                 _rb.detectCollisions = false;
                 _collisionsOff = true;
                 if (LogOn) Debug.Log("[VaultState] detectCollisions OFF (no obstacle/capsule).");
@@ -90,10 +96,7 @@ namespace Player.Scripts.MovementFSM
             BuildVaultCurve(p);
 
             if (UprightWhileVault)
-            {
-                var target = Quaternion.Euler(0f, _lockedYawDeg, 0f);
-                _rb.MoveRotation(target);
-            }
+                _rb.MoveRotation(Quaternion.Euler(0f, _lockedYawDeg, 0f));
 
             _m.VaultStartEvent();
             _t = 0f;
@@ -111,29 +114,42 @@ namespace Player.Scripts.MovementFSM
 
             Vector3 posNow  = Bezier2(_p0, _p1, _p2, sNow);
             Vector3 posNext = Bezier2(_p0, _p1, _p2, sNext);
+
+            // --------- NUEVO: TOP-HUG PRE-RELEASE ----------
+            if (_t <= TopHugEnd)
+            {
+                // mezcla progresiva hacia el cap de Y
+                float k = Smooth01(_t / TopHugEnd);
+                float yCap = _yTopCap;
+
+                float yNowClamped  = Mathf.Min(posNow.y,  yCap);
+                float yNextClamped = Mathf.Min(posNext.y, yCap);
+
+                posNow.y  = Mathf.Lerp(posNow.y,  yNowClamped,  Mathf.Pow(k, TopHugBlendPower));
+                posNext.y = Mathf.Lerp(posNext.y, yNextClamped, Mathf.Pow(k, TopHugBlendPower));
+            }
+            // -----------------------------------------------
+
             Vector3 velDesired = (posNext - posNow) / dt;
 
-            // release desde el 60% de la curva
+            // release desde 0.60
             float gain = 1f;
             if (_t >= ReleaseBlendStart)
             {
                 if (!_gravityRestored)
                 {
-                    _rb.useGravity = true;     // cae “natural”
+                    _rb.useGravity = true;
                     _gravityRestored = true;
                     if (LogOn) Debug.Log($"[VaultState] Gravity ON at t={_t:F2}");
                 }
-
                 float u = Mathf.InverseLerp(ReleaseBlendStart, 1f, _t);
-                gain = 1f - (u * u * (3f - 2f * u)); // 1 - smoothstep(u)
+                gain = 1f - (u * u * (3f - 2f * u));
             }
 
-            // PD sin saturar
             Vector3 posErr = posNow - _rb.position;
             Vector3 velErr = velDesired - _rb.velocity;
 
-            // Al final, no empujar hacia ARRIBA (evita “segunda patada”)
-            if (_t >= 0.94f) velErr.y = Mathf.Min(velErr.y, 0f);
+            if (_t >= 0.94f) velErr.y = Mathf.Min(velErr.y, 0f); // sin segunda patada arriba
 
             Vector3 accel = (Kp * posErr + Kd * velErr) * gain;
             float aMag = accel.magnitude;
@@ -155,7 +171,6 @@ namespace Player.Scripts.MovementFSM
 
         public void OnExit()
         {
-            // Rehabilitar colisiones recién al salir del estado
             if (_ignoredObstacle && _capsule)
                 Physics.IgnoreCollision(_capsule, _ignoredObstacle, false);
 
@@ -179,9 +194,11 @@ namespace Player.Scripts.MovementFSM
             _p0 = _rb.position + Vector3.up * StartUpNudge;
             _p2 = p.vaultLandPoint;
 
-            // Step-up si es misma tapa o si excede el max forward
             _stepUpMode = p.vaultLandOnSameCollider ||
                           p.vaultDistance > (_m.Scanner ? _m.Scanner.vaultMaxForward : 2.2f);
+
+            // --- definimos el CAP de Y justo sobre la tapa ---
+            _yTopCap = p.vaultTopPoint.y + radius + NormalClearance + TopHugExtraUp;
 
             if (_stepUpMode)
             {
@@ -190,10 +207,9 @@ namespace Player.Scripts.MovementFSM
                         ? new Vector3(p.vaultForward.x, 0f, p.vaultForward.z).normalized
                         : (_m.transform.forward - Vector3.Project(_m.transform.forward, Vector3.up)).normalized;
 
-                float minStepUpY = p.vaultTopPoint.y + radius + NormalClearance + StepUpExtraUp;
-
+                float minY = _yTopCap; // ya incluye radio + clearance + extra
                 _p2 = p.vaultTopPoint + insetDir * StepUpInset;
-                _p2.y = Mathf.Max(_p2.y, minStepUpY);
+                _p2.y = Mathf.Max(_p2.y, minY);
             }
 
             Vector3 intended = _p2 - _p0; intended.y = 0f;
@@ -214,23 +230,28 @@ namespace Player.Scripts.MovementFSM
                 new Vector3(_p0.x, 0, _p0.z),
                 new Vector3(_p2.x, 0, _p2.z));
 
-            // velocidad objetivo del trayecto
             float minVaultSpeed = Mathf.Max(1f, _m.walkingSpeed * 0.85f);
             float maxVaultSpeed = Mathf.Max(minVaultSpeed + 0.1f, _m.runningSpeed * 1.25f);
             _pathHorizSpeed = Mathf.Clamp(_entryHorizSpeed, minVaultSpeed, maxVaultSpeed);
 
-            _dur = Mathf.Clamp(dxz / Mathf.Max(0.1f, _pathHorizSpeed), VaultMinTime, VaultMaxTime);
+            _dur = Mathf.Clamp(dxz / Mathf.Max(0.1f, _pathHorizSpeed),
+                               VaultMinTime,
+                               VaultMaxTime);
 
-            // apex: más bajo en step-up
+            // apex base
             float apexY = Mathf.Max(0.15f, p.obstacleHeight * ApexFactor + ApexExtra);
             if (_stepUpMode) apexY = Mathf.Min(apexY, StepUpApexCap);
 
             float sep = radius + NormalClearance;
 
-            Vector3 midXZ = p.vaultMidXZ;
+            Vector3 midXZ = p.vaultMidXZ; // midXZ.y == top y
+            // --- CAP del apex para que nunca supere el top cap + pequeño margen ---
+            float apexCapRelative = Mathf.Max(0.02f, (_yTopCap + 0.04f) - midXZ.y);
+            apexY = Mathf.Min(apexY, apexCapRelative);
+
             _p1 = midXZ + p.hitNormal * sep + Vector3.up * apexY;
 
-            // Asegurar tangente inicial hacia adelante
+            // Ajustar tangente inicial
             Vector3 tan0 = Bezier2Tangent(_p0, _p1, _p2, 0.001f);
             tan0.y = 0f;
             if (Vector3.Dot(tan0, landDir) <= 0f)
@@ -240,18 +261,15 @@ namespace Player.Scripts.MovementFSM
             }
 
             if (LogOn)
-                Debug.Log($"[VaultState] Curve built | stepUp={_stepUpMode} dxz={dxz:F2} dur={_dur:F2} apexY={apexY:F2} p0={_p0:F3} p1={_p1:F3} p2={_p2:F3}");
+                Debug.Log($"[VaultState] Curve built | stepUp={_stepUpMode} yCap={_yTopCap:F3} dxz={dxz:F2} dur={_dur:F2} apexY={apexY:F2} p0={_p0:F3} p1={_p1:F3} p2={_p2:F3}");
         }
 
         private void ExitToGrounded()
         {
-            // No añadimos “turbo” ni tocamos vel.y; solo aseguramos gravedad ON
             _rb.useGravity = true;
 
-            // (opcional) limpiar micro-zigzags numéricos
-            Vector3 v = _rb.velocity;
-            if (float.IsNaN(v.x) || float.IsNaN(v.y) || float.IsNaN(v.z))
-                v = Vector3.zero;
+            var v = _rb.velocity;
+            if (float.IsNaN(v.x) || float.IsNaN(v.y) || float.IsNaN(v.z)) v = Vector3.zero;
             _rb.velocity = v;
 
             _m.blockVaultUntil = Time.time + _m.vaultRegrabCooldown;
@@ -268,6 +286,9 @@ namespace Player.Scripts.MovementFSM
 
         static float EaseInOutCubic(float t)
             => (t < 0.5f) ? 4f * t * t * t : 1f - Mathf.Pow(-2f * t + 2f, 3f) * 0.5f;
+
+        static float Smooth01(float x) // smoothstep 0..1
+            => Mathf.Clamp01(x) * Mathf.Clamp01(x) * (3f - 2f * Mathf.Clamp01(x));
 
         static Vector3 Bezier2(Vector3 p0, Vector3 p1, Vector3 p2, float s)
         {
