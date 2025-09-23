@@ -151,24 +151,19 @@ namespace Player.Scripts.MovementFSM
 
         void ContinueStep(Vector3 moveDir)
         {
-            // 1) Reorientar suavemente la dirección de step hacia el input actual,
-            //    deslizándola sobre el plano de la riser para no empujar “de frente”.
             Vector3 tangentialInput = moveDir - Vector3.Project(moveDir, _riserNormal);
             Vector3 targetDir = tangentialInput.sqrMagnitude > 1e-5f ? tangentialInput.normalized : _stepDir;
 
             _stepDir = Vector3.Slerp(_stepDir, targetDir, Mathf.Clamp01(steerLerp * Time.fixedDeltaTime));
-
-            // 2) Escalar la asistencia por velocidad deseada (wishSpeed)
+            
             GetWishDir(out var wishSpeed);
             float speed01 = Mathf.Clamp01(wishSpeed / Mathf.Max(0.1f, speedForcesRef));
 
             float accel = assistAccelXZ * Mathf.Lerp(0.5f, 1f, speed01);
             rb.AddForce(_stepDir * accel, ForceMode.Acceleration);
-
-            // 3) Clamp vertical
+            
             ClampUp();
-
-            // 4) Terminar asistencia cuando vence la ventana
+            
             if (Time.time >= _stepEndTime)
                 _stepping = false;
         }
@@ -185,9 +180,8 @@ namespace Player.Scripts.MovementFSM
 
             float targetY = hit.point.y + Skin;
             float dy = targetY - rb.position.y;
-            if (dy >= -0.03f) return; // no hay bajada suficiente
-
-            // Δv hacia abajo (controlado)
+            if (dy >= -0.03f) return;
+            
             float downDeltaVy = Mathf.Clamp(dy / Time.fixedDeltaTime, -2.5f, 0f);
             rb.AddForce(Vector3.up * downDeltaVy, ForceMode.VelocityChange);
             _lastSnapTime = Time.time;
@@ -219,11 +213,10 @@ namespace Player.Scripts.MovementFSM
             Vector3 wish = f * z + r * x;
             if (wish.sqrMagnitude > 1e-5f)
             {
-                wishSpeed = Mathf.Clamp01(wish.magnitude) * inputToMps; // [-1..1] -> m/s
+                wishSpeed = Mathf.Clamp01(wish.magnitude) * inputToMps;
                 return wish.normalized;
             }
-
-            // Sin input: usa la vel horizontal para mantener dirección
+            
             Vector3 hv = rb.velocity;
             hv.y = 0f;
             if (hv.sqrMagnitude > 1e-5f)
@@ -233,7 +226,7 @@ namespace Player.Scripts.MovementFSM
             }
 
             wishSpeed = 0f;
-            return basis.forward; // fallback estable
+            return basis.forward;
         }
 
         void ClampUp()
