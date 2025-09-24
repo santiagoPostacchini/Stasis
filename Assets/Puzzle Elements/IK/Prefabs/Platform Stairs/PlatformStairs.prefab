@@ -1016,7 +1016,6 @@ GameObject:
   - component: {fileID: 4319082688119360261}
   - component: {fileID: 5112139253019838706}
   - component: {fileID: 5295526102323024197}
-  - component: {fileID: 3157515899745338821}
   - component: {fileID: 1387150813848918088}
   m_Layer: 8
   m_Name: Cube
@@ -1112,28 +1111,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!64 &3157515899745338821
-MeshCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3207547874711028195}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 5
-  m_Convex: 1
-  m_CookingOptions: 30
-  m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
 --- !u!114 &1387150813848918088
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3285,7 +3262,7 @@ BoxCollider:
   m_LayerOverridePriority: 0
   m_IsTrigger: 0
   m_ProvidesContacts: 0
-  m_Enabled: 0
+  m_Enabled: 1
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
@@ -3318,7 +3295,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 9089994157031324128}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5357fc6db3982be42af18de1c28fd930, type: 3}
   m_Name: 
@@ -3486,7 +3463,7 @@ PrefabInstance:
     - target: {fileID: 271248607144351517, guid: fb40bb5579772034fba5fabbf1fbb263,
         type: 3}
       propertyPath: m_VersionIndex
-      value: 2002
+      value: 2005
       objectReference: {fileID: 0}
     - target: {fileID: 1733190091986166885, guid: fb40bb5579772034fba5fabbf1fbb263,
         type: 3}
@@ -3631,7 +3608,7 @@ PrefabInstance:
     - target: {fileID: 271248607144351517, guid: fb40bb5579772034fba5fabbf1fbb263,
         type: 3}
       propertyPath: m_VersionIndex
-      value: 2002
+      value: 2005
       objectReference: {fileID: 0}
     - target: {fileID: 1733190091986166885, guid: fb40bb5579772034fba5fabbf1fbb263,
         type: 3}

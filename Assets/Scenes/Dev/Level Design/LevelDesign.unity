@@ -10569,7 +10569,7 @@ PrefabInstance:
     - target: {fileID: 2265527125286121670, guid: 363d41857ad23b048a28404114a1811c,
         type: 3}
       propertyPath: brothers.Array.size
-      value: 3
+      value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 2265527125286121670, guid: 363d41857ad23b048a28404114a1811c,
         type: 3}
@@ -14116,7 +14116,7 @@ PrefabInstance:
     - target: {fileID: 4697607203385341884, guid: 0ce858e940b158147b3ef2f04efc5f23,
         type: 3}
       propertyPath: brotherMinWeight
-      value: 0.8
+      value: 0.6
       objectReference: {fileID: 0}
     - target: {fileID: 4697607203385341884, guid: 0ce858e940b158147b3ef2f04efc5f23,
         type: 3}
@@ -15817,7 +15817,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 854389600}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.12708262, y: -0.090849645, z: 0.23739813, w: 0.95876926}
+  m_LocalRotation: {x: 0.49255577, y: -0.7724697, z: 0.2261696, w: 0.33094826}
   m_LocalPosition: {x: 0, y: -3, z: -0.09999999}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -45759,7 +45759,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: -0, y: 0, z: 0}
-  m_LocalScale: {x: 2, y: 1, z: 2}
+  m_LocalScale: {x: 2.08, y: 1, z: 2}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 486367382061454234}
@@ -47913,6 +47913,7 @@ GameObject:
   - component: {fileID: 7683633898504316282}
   - component: {fileID: 7193807567834170042}
   - component: {fileID: 5937843067684714072}
+  - component: {fileID: 7683633898504316283}
   m_Layer: 7
   m_Name: ESTRUCTURA.009
   m_TagString: Untagged
@@ -54384,7 +54385,7 @@ Transform:
   m_GameObject: {fileID: 2597147519005434500}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 0.04, y: 1.057, z: -28.287}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -65948,6 +65949,28 @@ Transform:
   m_Children: []
   m_Father: {fileID: 486367382061454234}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!64 &7683633898504316283
+MeshCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2672158303583757515}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 5
+  m_Convex: 0
+  m_CookingOptions: 30
+  m_Mesh: {fileID: -5308401711082471859, guid: 2c39a68e81ffdc34eb0550a3f31f05b3, type: 3}
 --- !u!4 &7688404114218565335
 Transform:
   m_ObjectHideFlags: 0
