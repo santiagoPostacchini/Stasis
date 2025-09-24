@@ -7,83 +7,65 @@ namespace Puzzle_Elements.LaunchPlate.Scripts
     [RequireComponent(typeof(Collider))]
     public class LaunchPlate : MonoBehaviour
     {
-        [Header("Trajectories (use children as control points)")]
-        [SerializeField] private Transform playerTrajectoryParent;
+        // ====== (tus campos iguales) ======
+        [Header("Trajectories (children are checkpoints)")] [SerializeField]
+        private Transform playerTrajectoryParent;
+
         [SerializeField] private Transform objectTrajectoryParent;
 
-        [Header("Motion")]
-        [Tooltip("Muestras por segmento para construir la tabla de arco (suavidad).")]
-        [SerializeField, Range(8, 128)] private int samplesPerSegment = 32;
-        [Tooltip("Velocidad extra opcional en la dirección del impulso inicial.")]
-        [SerializeField] private float exitSpeedBoost;
+        [Header("Launch")] [SerializeField] private bool useFixedLaunchOrigin = true;
+        [SerializeField] private Transform launchOrigin;
+        [SerializeField] private bool snapBodyToOrigin;
 
-        [Header("Lanzamiento (Portal-like)")]
-        [Tooltip("Velocidad inicial mínima deseada (m/s). El sistema buscará un T que cumpla v0 >= este valor.")]
-        [SerializeField] private float minInitialSpeed = 16f;
-        [Tooltip("Búsqueda de T: mínimo y máximo en segundos.")]
-        [SerializeField] private float tmin = 0.06f;
-        [SerializeField] private float tmax = 6f;
-        [Tooltip("Iteraciones de búsqueda numérica para T.")]
-        [SerializeField, Range(8, 80)] private int searchIterations = 40;
-        [Tooltip("Prefiere la rama lenta (T mayor) cuando hay dos soluciones con la misma velocidad.")]
-        [SerializeField] private bool preferSlowerBranch = true;
+        [SerializeField] private float minInitialSpeed = 18f;
 
-        [Header("Correcciones suaves (nudges)")]
-        [Tooltip("Cuántos 'nodos' temporales para pequeñas correcciones.")]
-        [SerializeField, Range(0, 16)] private int nudgeNodes = 6;
-        [Tooltip("Ganancia de posición del nudge (baja).")]
-        [SerializeField] private float nudgeKp = 2.0f;
-        [Tooltip("Ganancia de velocidad del nudge (baja).")]
-        [SerializeField] private float nudgeKd = 0.5f;
-        [Tooltip("Fuerza máxima por nudge (N).")]
-        [SerializeField] private float maxNudgeForce = 200f;
-        [Tooltip("Ventana temporal alrededor del nodo en la que se aplica el nudge.")]
+        [SerializeField, Range(5f, 45f)]
+        private float maxElevationDeg = 25f; // opcional: si querés limitar elevación, podés clamplear v0 luego.
+
+        [SerializeField] private float tMin = 0.15f, tMax = 2.0f;
+        [SerializeField, Range(8, 64)] private int tSearchIterations = 32;
+        [SerializeField] private bool preferSlowerBranch;
+
+        [Header("Discrete Nudges (very light)")] [SerializeField, Range(0, 32)]
+        private int overrideCheckpointCount = 0;
+
         [SerializeField] private float nudgeTimeWindow = 0.12f;
+        [SerializeField] private float nudgeProximity = 1.25f;
+        [SerializeField] private float nudgeKp = 1.8f, nudgeKd = 0.45f;
+        [SerializeField] private float maxNudgeForce = 120f;
+        [SerializeField] private bool lateralOnly = true;
 
-        [Header("Cooldown")]
-        [SerializeField] private float cooldown = 0.35f;
-        [Tooltip("Evita relanzar mientras hay un lanzamiento activo.")]
+        [Header("Cooldown")] [SerializeField] private float cooldown = 0.25f;
         [SerializeField] private bool singleFireWhileActive = true;
 
-        [Header("Gizmos")]
-        [SerializeField] private bool drawGizmos = true;
-        [SerializeField] private bool alwaysDraw; // si false, dibuja sólo cuando está seleccionado
-        [SerializeField, Range(8, 128)] private int gizmoTrajectoryDetail = 48;
+        [Header("Gizmos")] [SerializeField] private bool drawGizmos = true, alwaysDraw = false;
+        [SerializeField, Range(8, 128)] private int gizmoDetail = 48;
+        [SerializeField] private Color playerColor = new(0.25f, 0.9f, 0.35f);
+        [SerializeField] private Color objectColor = new(0.2f, 0.55f, 1.0f);
+        [SerializeField] private Color ballisticColor = new(1.0f, 0.85f, 0.2f);
+        [SerializeField] private Color nudgeColor = new(1.0f, 0.8f, 0.2f);
 
-        private bool _canLaunch = true;
+        private bool _busy;
 
-        // ====== Cache para gizmos y depuración ======
-        private Vector3 _lastStart;
-        private Vector3 _lastEnd;
-        private Vector3 _lastV0;
-        private float _lastT;
-        private List<Vector3> _lastSplineSamplesPlayer;
-        private List<Vector3> _lastSplineSamplesObject;
-        private List<Vector3> _lastBallisticPath; // muestreo de la parábola prevista
-        private List<Vector3> _lastNudgeMarks;    // posiciones previstas de nodos (sobre la spline activa)
-
-        private void Awake()
+        void Awake()
         {
             var col = GetComponent<Collider>();
             col.isTrigger = true;
         }
 
-        private void OnValidate()
+        void OnValidate()
         {
-            samplesPerSegment = Mathf.Clamp(samplesPerSegment, 8, 128);
-            nudgeNodes = Mathf.Clamp(nudgeNodes, 0, 16);
-            nudgeKp = Mathf.Max(0f, nudgeKp);
-            nudgeKd = Mathf.Max(0f, nudgeKd);
-            maxNudgeForce = Mathf.Max(0f, maxNudgeForce);
-            nudgeTimeWindow = Mathf.Max(0.01f, nudgeTimeWindow);
-            tmin = Mathf.Max(0.02f, tmin);
-            tmax = Mathf.Max(tmin + 0.1f, tmax);
+            tMin = Mathf.Max(0.05f, tMin);
+            tMax = Mathf.Max(tMin + 0.05f, tMax);
+            nudgeTimeWindow = Mathf.Clamp(nudgeTimeWindow, 0.02f, 0.6f);
+            nudgeProximity = Mathf.Max(0.05f, nudgeProximity);
+            maxNudgeForce = Mathf.Max(1f, maxNudgeForce);
             minInitialSpeed = Mathf.Max(0f, minInitialSpeed);
         }
 
-        private void OnTriggerEnter(Collider other)
+        void OnTriggerEnter(Collider other)
         {
-            if (!_canLaunch && singleFireWhileActive) return;
+            if (_busy && singleFireWhileActive) return;
 
             var rb = other.attachedRigidbody ?? other.GetComponentInParent<Rigidbody>();
             if (!rb) return;
@@ -92,393 +74,351 @@ namespace Puzzle_Elements.LaunchPlate.Scripts
             Transform parent = (isPlayer && playerTrajectoryParent) ? playerTrajectoryParent : objectTrajectoryParent;
             if (!parent || parent.childCount < 2) return;
 
-            var spline = new ArcLengthSpline(parent, samplesPerSegment);
-            if (spline.TotalLength <= 1e-4f) return;
+            var checkpoints = BuildCheckpoints(parent, overrideCheckpointCount);
+            Vector3 end = checkpoints[^1];
 
-            // Calcular plan de vuelo usando velocidad mínima
-            var plan = BuildFlightPlan_MinInitialSpeed(rb.position, spline);
+            // >>>>> START ROBUSTO:
+            // Si snappeás: usá origen fijo. Si NO snappeás: siempre planificá desde la posición actual para que el plan coincida con la realidad.
+            Vector3 start = (snapBodyToOrigin && useFixedLaunchOrigin)
+                ? ResolveOrigin(parent)
+                : (!snapBodyToOrigin ? rb.position : (useFixedLaunchOrigin ? ResolveOrigin(parent) : rb.position));
+
+            if (snapBodyToOrigin && useFixedLaunchOrigin)
+            {
+                rb.position = start;
+                rb.velocity = Vector3.zero;
+                rb.angularVelocity = Vector3.zero;
+            }
+
+            // >>>>> PLAN: Elegir T que mejor “ajuste” TODOS los hijos (y caiga exacto en end)
+            var plan = ComputeBallisticPlanFitToCheckpoints(start, end, checkpoints, minInitialSpeed, tMin, tMax,
+                tSearchIterations, preferSlowerBranch);
             if (plan.T <= 0f) return;
 
-            // Guardar cache para gizmos
-            CacheForGizmos(rb.position, plan, spline, isPlayer);
+            // Impulso inicial invariante respecto a cómo llega
+            rb.AddForce(plan.v0 - rb.velocity, ForceMode.VelocityChange);
 
-            StartCoroutine(LaunchBallisticWithNudges(rb, spline, plan));
+            // t* por cercanía para cada checkpoint (mejora los pequeños empujes)
+            var schedule = BuildNudgeSchedule(checkpoints, start, plan);
+
+            StartCoroutine(FlyWithDiscreteNudges(rb, plan, schedule));
+
+            //CacheForGizmos(start, end, plan, checkpoints, schedule, isPlayer);
+
+            _busy = true;
+            StartCoroutine(ClearBusyAfter(cooldown));
         }
 
-        // ========= Plan de vuelo con velocidad inicial mínima =========
-        private FlightPlan BuildFlightPlan_MinInitialSpeed(Vector3 start, ArcLengthSpline spline)
+        // ---------- Plan: T que minimiza error a checkpoints (end exacto) ----------
+        struct BallisticPlan
         {
-            Vector3 end = spline.PointAtArc(spline.TotalLength);
+            public Vector3 v0;
+            public float T;
+        }
+
+        BallisticPlan ComputeBallisticPlanFitToCheckpoints(
+            Vector3 start, Vector3 end, List<Vector3> checkpoints,
+            float minSpeed, float Tmin, float Tmax, int iters, bool preferSlow)
+        {
             Vector3 g = Physics.gravity;
 
-            // Funciones locales: v0(T) y |v0(T)|
-            Vector3 V0OfT(float T)
+            // Alphas por longitud de arco (0=start, 1=end)
+            int n = checkpoints.Count;
+            var alphas = new float[n];
+            float L = 0f;
+            var cum = new float[n];
+            cum[0] = 0f;
+            for (int i = 1; i < n; i++)
             {
-                T = Mathf.Max(T, 1e-4f);
-                return (end - start - 0.5f * g * (T * T)) / T;
+                L += Vector3.Distance(checkpoints[i - 1], checkpoints[i]);
+                cum[i] = L;
             }
+
+            for (int i = 0; i < n; i++) alphas[i] = L > 1e-4f ? (cum[i] / L) : (i / (float)(n - 1));
+
+            Vector3 V0OfT(float T) => (end - start - 0.5f * g * (T * T)) / Mathf.Max(T, 1e-4f);
             float SpeedOfT(float T) => V0OfT(T).magnitude;
 
-            // 1) Encontrar T* que minimiza |v0| (búsqueda ternaria)
-            float tA = tmin, tB = tmax;
-            for (int i = 0; i < searchIterations; i++)
+            // Función objetivo: SSE a TODOS los puntos excepto el final (que ya es exacto)
+            float Cost(float T)
             {
-                float l = Mathf.Lerp(tA, tB, 1f / 3f);
-                float r = Mathf.Lerp(tA, tB, 2f / 3f);
-                if (SpeedOfT(l) < SpeedOfT(r)) tB = r; else tA = l;
-            }
-            float minSpeed = 0.5f * (tA + tB);
-            float vmin = SpeedOfT(minSpeed);
+                // penaliza si no alcanza velocidad mínima
+                float sp = SpeedOfT(T);
+                float penalty = (minSpeed > 0f && sp < minSpeed) ? Mathf.Pow((minSpeed - sp) * 20f, 2f) : 0f;
 
-            float targetSpeed = Mathf.Max(minInitialSpeed, vmin);
-
-            // 2) Si targetSpeed==vmin, usamos T_minSpeed. Si no, buscamos T con |v0(T)|=targetSpeed.
-            float chosenT = minSpeed;
-
-            if (targetSpeed > vmin + 1e-3f)
-            {
-                // |v0(T)| tiene forma de U: decrece hasta T_minSpeed y luego crece.
-                // Para |v0| = targetSpeed hay dos soluciones; elegimos rama según preferencia.
-                // Buscamos cada rama por bisección.
-
-                bool FindRoot(float a, float b, out float root)
+                Vector3 v0 = V0OfT(T);
+                float sse = 0f;
+                for (int i = 1; i < n - 1; i++) // sin el 0 (start) ni el último (end exacto)
                 {
-                    float fa = SpeedOfT(a) - targetSpeed;
-                    float fb = SpeedOfT(b) - targetSpeed;
-                    // Necesitamos cambio de signo
-                    if (fa * fb > 0f) { root = 0f; return false; }
-                    for (int i = 0; i < searchIterations; i++)
-                    {
-                        float m = 0.5f * (a + b);
-                        float fm = SpeedOfT(m) - targetSpeed;
-                        if (fa * fm <= 0f) { b = m;
-                        }
-                        else { a = m; fa = fm; }
-                    }
-                    root = 0.5f * (a + b);
-                    return true;
+                    float ti = alphas[i] * T;
+                    Vector3 pi = start + v0 * ti + 0.5f * g * ti * ti;
+                    float di2 = (pi - checkpoints[i]).sqrMagnitude;
+                    // pesos suaves: damos un poquito más a medianos
+                    float w = 1f;
+                    sse += w * di2;
                 }
 
-                bool hasLeft = FindRoot(tmin, minSpeed, out var leftRoot);
-                bool hasRight = FindRoot(minSpeed, tmax, out var rightRoot);
-
-                if (preferSlowerBranch && hasRight) chosenT = rightRoot;
-                else if (!preferSlowerBranch && hasLeft) chosenT = leftRoot;
-                else if (hasRight) chosenT = rightRoot;
-                else if (hasLeft) chosenT = leftRoot;
-                else chosenT = minSpeed; // fallback (no debería pasar si los rangos están bien)
+                return sse + penalty;
             }
 
-            Vector3 v0 = V0OfT(chosenT);
-            if (exitSpeedBoost > 0f)
-                v0 += v0.normalized * exitSpeedBoost;
+            // Búsqueda 1D (golden/ternaria)
+            float a = Tmin, b = Tmax;
+            for (int i = 0; i < iters; i++)
+            {
+                float l = Mathf.Lerp(a, b, 1f / 3f);
+                float r = Mathf.Lerp(a, b, 2f / 3f);
+                if (Cost(l) < Cost(r)) b = r;
+                else a = l;
+            }
 
-            return new FlightPlan { V0 = v0, T = chosenT };
+            float Tbest = 0.5f * (a + b);
+
+            // Opcional: si hay dos ramas con misma speed, preferimos lenta/rápida.
+            // (Acá ya minimizamos SSE; si querés, podés ajustar Tbest hacia la rama preferida si el coste es similar.)
+            Vector3 v0best = V0OfT(Tbest);
+
+            // Si querés clamplear elevación para “feel” jump-pad sin desarmar el ajuste, solo rota dirección
+            // conservando magnitud (pequeño toque, opcional):
+            if (maxElevationDeg > 0f)
+            {
+                float sp = v0best.magnitude;
+                if (sp > 1e-4f)
+                {
+                    Vector3 dir = v0best.normalized;
+                    float maxSin = Mathf.Sin(maxElevationDeg * Mathf.Deg2Rad);
+                    float vy = Mathf.Clamp(dir.y, -maxSin, maxSin);
+                    float vxz = Mathf.Sqrt(Mathf.Max(0f, 1f - vy * vy));
+                    Vector3 horiz = Vector3.ProjectOnPlane(dir, Vector3.up).normalized;
+                    if (horiz.sqrMagnitude < 1e-6f) horiz = Vector3.forward;
+                    dir = horiz * vxz + Vector3.up * vy;
+                    v0best = dir * sp;
+                }
+            }
+
+            return new BallisticPlan { v0 = v0best, T = Tbest };
         }
 
-        private IEnumerator LaunchBallisticWithNudges(Rigidbody rb, ArcLengthSpline spline, FlightPlan plan)
+        // ---------- Nudges (idénticos a tu versión mejorada) ----------
+        struct Nudge
         {
-            _canLaunch = false;
+            public float t;
+            public Vector3 point;
+            public Vector3 vDesired;
+            public bool fired;
+        }
 
-            var prevInterp = rb.interpolation;
-            var prevCcd = rb.collisionDetectionMode;
+        List<Nudge> BuildNudgeSchedule(List<Vector3> checkpoints, Vector3 start, BallisticPlan plan)
+        {
+            int n = checkpoints.Count;
+            var list = new List<Nudge>(n - 1);
+            float pathLen = EstimatePolylineLength(checkpoints);
 
-            rb.interpolation = RigidbodyInterpolation.Interpolate;
-            rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+            for (int i = 1; i < n; i++)
+            {
+                Vector3 P = checkpoints[i];
+                float tStar = ClosestTimeToPoint(start, plan.v0, Physics.gravity, plan.T, P, 18);
 
-            // 1) Impulso inicial limpio (no teletransporta)
-            rb.AddForce(plan.V0 - rb.velocity, ForceMode.VelocityChange);
+                Vector3 next = (i < n - 1) ? checkpoints[i + 1] : checkpoints[^1];
+                Vector3 vDesDir = (next - P);
+                vDesDir = vDesDir.sqrMagnitude > 1e-6f ? vDesDir.normalized : Vector3.forward;
+                float vMag = pathLen / Mathf.Max(0.05f, plan.T);
 
-            // 2) Programar nudges pequeñitos (opcional)
-            var marks = BuildNudgeSchedule(spline, plan.T, nudgeNodes);
+                list.Add(new Nudge { t = tStar, point = P, vDesired = vDesDir * vMag, fired = false });
+            }
 
+            return list;
+        }
+
+        static float ClosestTimeToPoint(Vector3 s, Vector3 v0, Vector3 g, float T, Vector3 P, int iters)
+        {
+            float a = 0f, b = T;
+
+            float F(float t)
+            {
+                Vector3 x = s + v0 * t + 0.5f * g * t * t;
+                return (x - P).sqrMagnitude;
+            }
+
+            for (int i = 0; i < iters; i++)
+            {
+                float l = Mathf.Lerp(a, b, 1f / 3f);
+                float r = Mathf.Lerp(a, b, 2f / 3f);
+                if (F(l) < F(r)) b = r;
+                else a = l;
+            }
+
+            return 0.5f * (a + b);
+        }
+
+        IEnumerator FlyWithDiscreteNudges(Rigidbody rb, BallisticPlan plan, List<Nudge> schedule)
+        {
             float elapsed = 0f;
+
             while (elapsed < plan.T)
             {
                 yield return new WaitForFixedUpdate();
                 elapsed += Time.fixedDeltaTime;
 
-                if (marks.Count == 0) continue;
-
-                for (int i = 0; i < marks.Count; i++)
+                for (int i = 0; i < schedule.Count; i++)
                 {
-                    var m = marks[i];
-                    if (m.Done) continue;
+                    var n = schedule[i];
+                    if (n.fired) continue;
 
-                    if (Mathf.Abs(elapsed - m.T) <= nudgeTimeWindow)
+                    float dt = elapsed - n.t;
+                    float timeWeight = Mathf.Exp(-(dt * dt) / (2f * nudgeTimeWindow * nudgeTimeWindow));
+                    if (timeWeight < 0.03f) continue;
+
+                    float dist = Vector3.Distance(rb.position, n.point);
+                    float spaceWeight = Mathf.Exp(-(dist * dist) / (2f * nudgeProximity * nudgeProximity));
+
+                    Vector3 posErr = (n.point - rb.position);
+                    Vector3 velErr = (n.vDesired - rb.velocity);
+                    Vector3 force = (nudgeKp * posErr + nudgeKd * velErr) * rb.mass;
+
+                    if (lateralOnly && rb.velocity.sqrMagnitude > 1e-6f)
                     {
-                        float s = Mathf.Clamp01(m.Alpha) * spline.TotalLength;
-                        Vector3 pDesired = spline.PointAtArc(s);
+                        Vector3 vN = rb.velocity.normalized;
+                        force -= Vector3.Project(force, vN);
+                    }
 
-                        // PD MUY SUAVE (solo para ayudar, no para forzar trayecto)
-                        Vector3 posErr = pDesired - rb.position;
-                        Vector3 velErr = m.VDesired - rb.velocity;
+                    float w = Mathf.Clamp01(timeWeight * spaceWeight);
+                    if (w > 0.001f)
+                        rb.AddForce(Vector3.ClampMagnitude(force, maxNudgeForce) * w, ForceMode.Force);
 
-                        Vector3 force = (nudgeKp * posErr + nudgeKd * velErr) * rb.mass;
-                        rb.AddForce(Vector3.ClampMagnitude(force, maxNudgeForce), ForceMode.Force);
-
-                        m.Done = true;
-                        marks[i] = m;
+                    if (elapsed > n.t + nudgeTimeWindow * 1.6f)
+                    {
+                        n.fired = true;
+                        schedule[i] = n;
                     }
                 }
             }
-
-            // 3) Nudge final suave para cerrar cerca del objetivo
-            {
-                Vector3 pF = spline.PointAtArc(spline.TotalLength);
-                Vector3 posErr = pF - rb.position;
-                Vector3 velErr = Vector3.zero - rb.velocity;
-                Vector3 force = (nudgeKp * posErr + nudgeKd * velErr) * rb.mass;
-                rb.AddForce(Vector3.ClampMagnitude(force, maxNudgeForce), ForceMode.Force);
-            }
-
-            rb.interpolation = prevInterp;
-            rb.collisionDetectionMode = prevCcd;
-
-            yield return new WaitForSeconds(cooldown);
-            _canLaunch = true;
         }
 
-        private struct FlightPlan
+        // ---------- Utilidades ----------
+        static List<Vector3> BuildCheckpoints(Transform parent, int overrideCount)
         {
-            public Vector3 V0;
-            public float T;
+            var pts = new List<Vector3>(Mathf.Max(2, parent.childCount));
+            for (int i = 0; i < parent.childCount; i++) pts.Add(parent.GetChild(i).position);
+            if (overrideCount <= 0 || overrideCount >= pts.Count) return pts;
+
+            float L = 0f;
+            var cum = new List<float> { 0f };
+            for (int i = 1; i < pts.Count; i++)
+            {
+                L += Vector3.Distance(pts[i - 1], pts[i]);
+                cum.Add(L);
+            }
+
+            var outPts = new List<Vector3>(overrideCount);
+            for (int k = 0; k < overrideCount; k++)
+            {
+                float s = (L * k) / (overrideCount - 1);
+                int idx = 0;
+                while (idx < cum.Count - 1 && cum[idx + 1] < s) idx++;
+                float s0 = cum[idx], s1 = cum[Mathf.Min(idx + 1, cum.Count - 1)];
+                float u = (s1 > s0) ? (s - s0) / (s1 - s0) : 0f;
+                Vector3 p = Vector3.Lerp(pts[idx], pts[Mathf.Min(idx + 1, pts.Count - 1)], u);
+                outPts.Add(p);
+            }
+
+            return outPts;
         }
 
-        private struct NudgeMark
+        static float EstimatePolylineLength(List<Vector3> pts)
         {
-            public float T;       // tiempo objetivo del nudge
-            public float Alpha;   // 0..1 para mapear a arco
-            public Vector3 VDesired;
-            public bool Done;
+            float L = 0f;
+            for (int i = 1; i < pts.Count; i++) L += Vector3.Distance(pts[i - 1], pts[i]);
+            return Mathf.Max(L, 0.01f);
         }
 
-        private List<NudgeMark> BuildNudgeSchedule(ArcLengthSpline spline, float T, int count)
+        Vector3 ResolveOrigin(Transform activeParent)
         {
-            var list = new List<NudgeMark>(count);
-            if (count <= 0) return list;
-
-            for (int i = 1; i <= count; i++)
-            {
-                float alpha = i / (float)(count + 1); // evita extremos
-                float t = alpha * T;
-
-                Vector3 tan = spline.TangentAtArc(alpha * spline.TotalLength).normalized;
-                Vector3 vDes = tan * (spline.TotalLength / Mathf.Max(0.0001f, T));
-
-                list.Add(new NudgeMark { T = t, Alpha = alpha, VDesired = vDes, Done = false });
-            }
-            return list;
+            if (launchOrigin) return launchOrigin.position;
+            if (activeParent && activeParent.childCount > 0) return activeParent.GetChild(0).position;
+            return transform.position;
         }
 
-        // ======= GIZMOS =======
-        private void CacheForGizmos(Vector3 start, FlightPlan plan, ArcLengthSpline spline, bool isPlayer)
+        IEnumerator ClearBusyAfter(float t)
         {
-            _lastStart = start;
-            _lastEnd = spline.PointAtArc(spline.TotalLength);
-            _lastV0 = plan.V0;
-            _lastT = plan.T;
-
-            // Cache spline samples
-            var samples = SampleSplineWorld(spline, gizmoTrajectoryDetail);
-            if (isPlayer)
-            {
-                _lastSplineSamplesPlayer = samples;
-            }
-            else
-            {
-                _lastSplineSamplesObject = samples;
-            }
-
-            // Cache ballistic path predicted
-            _lastBallisticPath = SampleBallistic(start, plan.V0, plan.T, gizmoTrajectoryDetail);
-
-            // Cache nudge marks (posiciones esperadas)
-            _lastNudgeMarks = new List<Vector3>();
-            if (nudgeNodes > 0)
-            {
-                for (int i = 1; i <= nudgeNodes; i++)
-                {
-                    float alpha = i / (float)(nudgeNodes + 1);
-                    _lastNudgeMarks.Add(spline.PointAtArc(alpha * spline.TotalLength));
-                }
-            }
+            yield return new WaitForSeconds(t);
+            _busy = false;
         }
 
-        private List<Vector3> SampleSplineWorld(ArcLengthSpline spline, int detail)
-        {
-            var pts = new List<Vector3>(detail + 1);
-            for (int i = 0; i <= detail; i++)
-            {
-                float s = spline.TotalLength * (i / (float)detail);
-                pts.Add(spline.PointAtArc(s));
-            }
-            return pts;
-        }
-
-        private List<Vector3> SampleBallistic(Vector3 start, Vector3 v0, float T, int detail)
-        {
-            var pts = new List<Vector3>(detail + 1);
-            Vector3 g = Physics.gravity;
-            for (int i = 0; i <= detail; i++)
-            {
-                float t = Mathf.Lerp(0f, T, i / (float)detail);
-                Vector3 p = start + v0 * t + 0.5f * g * t * t;
-                pts.Add(p);
-            }
-            return pts;
-        }
-
+        // ---------- Gizmos ----------
 #if UNITY_EDITOR
-        private void OnDrawGizmos()
+        Vector3 _gStart, _gEnd;
+        BallisticPlan _gPlan;
+        List<Vector3> _gCheckpoints, _gBallistic;
+        List<float> _gTimes;
+
+        void CacheForGizmos(Vector3 start, Vector3 end, BallisticPlan plan, List<Vector3> checkpoints, List<Nudge> sched,
+            bool isPlayer)
+        {
+            _gStart = start;
+            _gEnd = end;
+            _gPlan = plan;
+            _gCheckpoints = checkpoints;
+            _gTimes = new List<float>(sched.Count);
+            foreach (var n in sched) _gTimes.Add(n.t);
+
+            int N = Mathf.Max(8, gizmoDetail);
+            _gBallistic = new List<Vector3>(N + 1);
+            for (int i = 0; i <= N; i++)
+            {
+                float t = Mathf.Lerp(0f, plan.T, i / (float)N);
+                Vector3 p = start + plan.v0 * t + 0.5f * Physics.gravity * t * t;
+                _gBallistic.Add(p);
+            }
+        }
+
+        void OnDrawGizmos()
         {
             if (!drawGizmos) return;
             if (!alwaysDraw && !UnityEditor.Selection.Contains(gameObject)) return;
 
-            // Dibujar hijos (control points) y splines
-            DrawParentSpline(playerTrajectoryParent, new Color(0.25f, 0.9f, 0.35f), ref _lastSplineSamplesPlayer);
-            DrawParentSpline(objectTrajectoryParent, new Color(0.2f, 0.55f, 1.0f), ref _lastSplineSamplesObject);
+            DrawParent(playerTrajectoryParent, playerColor);
+            DrawParent(objectTrajectoryParent, objectColor);
 
-            // Dibujar trayectoria balística prevista (si hay plan cacheado)
-            if (_lastBallisticPath is { Count: > 1 })
+            if (_gBallistic != null && _gBallistic.Count > 1)
             {
-                Gizmos.color = new Color(1.0f, 0.85f, 0.2f);
-                for (int i = 0; i < _lastBallisticPath.Count - 1; i++)
-                    Gizmos.DrawLine(_lastBallisticPath[i], _lastBallisticPath[i + 1]);
+                Gizmos.color = ballisticColor;
+                for (int i = 0; i < _gBallistic.Count - 1; i++)
+                    Gizmos.DrawLine(_gBallistic[i], _gBallistic[i + 1]);
 
-                // Inicio/fin
-                Gizmos.color = new Color(1.0f, 0.5f, 0.1f);
-                Gizmos.DrawSphere(_lastStart, 0.06f);
-                Gizmos.color = new Color(1.0f, 0.3f, 0.0f);
-                Gizmos.DrawSphere(_lastEnd, 0.06f);
+                Gizmos.color = new Color(1f, 0.5f, 0.1f);
+                Gizmos.DrawSphere(_gStart, 0.05f);
+                Gizmos.color = new Color(1f, 0.3f, 0f);
+                Gizmos.DrawSphere(_gEnd, 0.05f);
 
-                // Vector v0
-                Gizmos.color = new Color(1.0f, 0.7f, 0.1f);
-                Gizmos.DrawLine(_lastStart, _lastStart + _lastV0 * 0.1f);
-            }
+                // checkpoints + punto de parabola en t*
+                for (int i = 0; i < _gCheckpoints.Count; i++)
+                {
+                    Gizmos.color = Color.yellow;
+                    Gizmos.DrawSphere(_gCheckpoints[i], 0.045f);
 
-            // Marcas de nudge
-            if (_lastNudgeMarks != null)
-            {
-                Gizmos.color = Color.yellow;
-                foreach (var p in _lastNudgeMarks)
-                    Gizmos.DrawSphere(p, 0.05f);
+                    if (_gTimes != null && i > 0 && i - 1 < _gTimes.Count)
+                    {
+                        float t = _gTimes[i - 1];
+                        Vector3 p = _gStart + _gPlan.v0 * t + 0.5f * Physics.gravity * t * t;
+                        Gizmos.color = nudgeColor;
+                        Gizmos.DrawWireSphere(p, 0.05f);
+                    }
+                }
             }
         }
 
-        private void DrawParentSpline(Transform parent, Color c, ref List<Vector3> cache)
+        void DrawParent(Transform parent, Color c)
         {
             if (!parent || parent.childCount < 2) return;
 
-            // Puntos de control
             Gizmos.color = new Color(c.r, c.g, c.b, 0.9f);
             for (int i = 0; i < parent.childCount; i++)
             {
                 var p = parent.GetChild(i).position;
-                Gizmos.DrawSphere(p, 0.05f);
-                if (i > 0)
-                {
-                    var p0 = parent.GetChild(i - 1).position;
-                    Gizmos.DrawLine(p0, p);
-                }
+                Gizmos.DrawSphere(p, 0.045f);
+                if (i > 0) Gizmos.DrawLine(parent.GetChild(i - 1).position, p);
             }
-
-            // Spline muestreada (si no hay cache, rehacer rápido)
-            if (cache == null || cache.Count == 0)
-            {
-                var spline = new ArcLengthSpline(parent, samplesPerSegment);
-                cache = SampleSplineWorld(spline, gizmoTrajectoryDetail);
-            }
-
-            // Trazar la curva final
-            Gizmos.color = c;
-            for (int i = 0; i < cache.Count - 1; i++)
-                Gizmos.DrawLine(cache[i], cache[i + 1]);
         }
 #endif
-
-        // ========= Spline con tabla de arco =========
-        private class ArcLengthSpline
-        {
-            private readonly List<Vector3> _ctrl = new();
-            private readonly List<Vector3> _samples = new();
-            private readonly List<float> _cumLen = new();
-            public float TotalLength { get; private set; }
-
-            public ArcLengthSpline(Transform parent, int stepsPerSegment)
-            {
-                var basePts = new List<Vector3>(parent.childCount);
-                for (int i = 0; i < parent.childCount; i++) basePts.Add(parent.GetChild(i).position);
-                if (basePts.Count < 2) { TotalLength = 0f; return; }
-
-                Vector3 pre = basePts[0] + (basePts[0] - basePts[1]);
-                Vector3 post = basePts[^1] + (basePts[^1] - basePts[^2]);
-                _ctrl.Add(pre); _ctrl.AddRange(basePts); _ctrl.Add(post);
-
-                _samples.Clear(); _cumLen.Clear();
-                float acc = 0f;
-                _samples.Add(CR(_ctrl[0], _ctrl[1], _ctrl[2], _ctrl[3], 0f));
-                _cumLen.Add(0f);
-
-                int segs = _ctrl.Count - 3;
-                for (int s = 0; s < segs; s++)
-                {
-                    Vector3 prev = CR(_ctrl[s], _ctrl[s + 1], _ctrl[s + 2], _ctrl[s + 3], 0f);
-                    int steps = Mathf.Max(2, stepsPerSegment);
-                    for (int j = 1; j <= steps; j++)
-                    {
-                        float t = j / (float)steps;
-                        Vector3 p = CR(_ctrl[s], _ctrl[s + 1], _ctrl[s + 2], _ctrl[s + 3], t);
-                        acc += Vector3.Distance(prev, p);
-                        _samples.Add(p);
-                        _cumLen.Add(acc);
-                        prev = p;
-                    }
-                }
-                TotalLength = Mathf.Max(acc, 1e-4f);
-            }
-
-            public Vector3 PointAtArc(float s)
-            {
-                if (_samples.Count == 0) return Vector3.zero;
-                s = Mathf.Clamp(s, 0f, TotalLength);
-                int idx = FindIndexByArc(s);
-                if (idx >= _samples.Count - 1) return _samples[^1];
-
-                float s0 = _cumLen[idx];
-                float s1 = _cumLen[idx + 1];
-                float u = (s1 - s0) > 1e-6f ? (s - s0) / (s1 - s0) : 0f;
-                return Vector3.Lerp(_samples[idx], _samples[idx + 1], u);
-            }
-
-            public Vector3 TangentAtArc(float s)
-            {
-                if (_samples.Count < 2) return Vector3.forward;
-                s = Mathf.Clamp(s, 0f, TotalLength);
-                int idx = Mathf.Min(FindIndexByArc(s), _samples.Count - 2);
-                Vector3 dir = _samples[idx + 1] - _samples[idx];
-                return dir.sqrMagnitude > 1e-8f ? dir.normalized : Vector3.forward;
-            }
-
-            private int FindIndexByArc(float s)
-            {
-                int lo = 0, hi = _cumLen.Count - 1;
-                while (lo < hi)
-                {
-                    int mid = (lo + hi) >> 1;
-                    if (_cumLen[mid] < s) lo = mid + 1; else hi = mid;
-                }
-                return Mathf.Max(0, lo - 1);
-            }
-
-            private static Vector3 CR(Vector3 p0, Vector3 p1, Vector3 p2, Vector3 p3, float t)
-            {
-                float t2 = t * t, t3 = t2 * t;
-                return 0.5f * ((2f * p1) +
-                               (-p0 + p2) * t +
-                               (2f * p0 - 5f * p1 + 4f * p2 - p3) * t2 +
-                               (-p0 + 3f * p1 - 3f * p2 + p3) * t3);
-            }
-        }
     }
 }

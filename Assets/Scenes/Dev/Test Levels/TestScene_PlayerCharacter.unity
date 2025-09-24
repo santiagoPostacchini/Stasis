@@ -2509,6 +2509,12 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!4 &1151025981 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 2383476489062659157, guid: 572021c50f9281a4797cedb86f28adb1,
+    type: 3}
+  m_PrefabInstance: {fileID: 7487808646232163445}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1552721261
 GameObject:
   m_ObjectHideFlags: 0
@@ -3067,6 +3073,16 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 1002325255668725722, guid: 572021c50f9281a4797cedb86f28adb1,
         type: 3}
+      propertyPath: alwaysDraw
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1002325255668725722, guid: 572021c50f9281a4797cedb86f28adb1,
+        type: 3}
+      propertyPath: launchOrigin
+      value: 
+      objectReference: {fileID: 1151025981}
+    - target: {fileID: 1002325255668725722, guid: 572021c50f9281a4797cedb86f28adb1,
+        type: 3}
       propertyPath: gizmosEnabled
       value: 1
       objectReference: {fileID: 0}
@@ -3074,6 +3090,26 @@ PrefabInstance:
         type: 3}
       propertyPath: maxNudgeForce
       value: 15
+      objectReference: {fileID: 0}
+    - target: {fileID: 1002325255668725722, guid: 572021c50f9281a4797cedb86f28adb1,
+        type: 3}
+      propertyPath: maxElevationDeg
+      value: 45
+      objectReference: {fileID: 0}
+    - target: {fileID: 1002325255668725722, guid: 572021c50f9281a4797cedb86f28adb1,
+        type: 3}
+      propertyPath: snapBodyToOrigin
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1002325255668725722, guid: 572021c50f9281a4797cedb86f28adb1,
+        type: 3}
+      propertyPath: preferSlowerBranch
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1002325255668725722, guid: 572021c50f9281a4797cedb86f28adb1,
+        type: 3}
+      propertyPath: useFixedLaunchOrigin
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2180747669493009233, guid: 572021c50f9281a4797cedb86f28adb1,
         type: 3}
