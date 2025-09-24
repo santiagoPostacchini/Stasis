@@ -32,12 +32,11 @@ namespace Player.Scripts.MovementFSM
 
         [Header("Input basis (opcional)")] public Transform cameraBasis;
         public float inputToMps = 4f; // z/x [-1..1] -> m/s
-        
-        [Header("Intent gating")]
-        public bool requireMoveInput = true;     // exigir intención
-        public float minInputMps     = 0.45f;    // m/s deseados para habilitar step
-        public float minActualMps    = 0.35f;    // m/s reales (vel horizontal)
-        public float intentGrace     = 0.20f;
+
+        [Header("Intent gating")] public bool requireMoveInput = true; // exigir intención
+        public float minInputMps = 0.45f; // m/s deseados para habilitar step
+        public float minActualMps = 0.35f; // m/s reales (vel horizontal)
+        public float intentGrace = 0.20f;
 
         [Header("Debug")] public bool debugDraw;
 
@@ -56,14 +55,16 @@ namespace Player.Scripts.MovementFSM
             if (!capsule) capsule = GetComponent<CapsuleCollider>();
             rb.interpolation = RigidbodyInterpolation.Interpolate;
             rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
+            if (!model) model = GetComponent<Model>();
+            if (model) SyncFromModel(model);
         }
-
+        
         void FixedUpdate()
         {
             Vector3 moveDir = GetWishDir(out var wishSpeed);
-            
+
             if (wishSpeed >= minInputMps) _lastMoveIntentTime = Time.time;
-            
+
             float actualMps = new Vector3(rb.velocity.x, 0f, rb.velocity.z).magnitude;
             bool hasRecentIntent = (Time.time - _lastMoveIntentTime) <= intentGrace;
             bool allowStep = (!requireMoveInput) || hasRecentIntent || (actualMps >= minActualMps);
@@ -74,7 +75,11 @@ namespace Player.Scripts.MovementFSM
                 return;
             }
 
-            if (!allowStep) { TrySnapDown(moveDir); return; }
+            if (!allowStep)
+            {
+                TrySnapDown(moveDir);
+                return;
+            }
 
             Vector3 foot = BottomSphereCenter();
             Vector3 ankle = foot + Vector3.up * (ankleHeight + Skin);
@@ -155,15 +160,15 @@ namespace Player.Scripts.MovementFSM
             Vector3 targetDir = tangentialInput.sqrMagnitude > 1e-5f ? tangentialInput.normalized : _stepDir;
 
             _stepDir = Vector3.Slerp(_stepDir, targetDir, Mathf.Clamp01(steerLerp * Time.fixedDeltaTime));
-            
+
             GetWishDir(out var wishSpeed);
             float speed01 = Mathf.Clamp01(wishSpeed / Mathf.Max(0.1f, speedForcesRef));
 
             float accel = assistAccelXZ * Mathf.Lerp(0.5f, 1f, speed01);
             rb.AddForce(_stepDir * accel, ForceMode.Acceleration);
-            
+
             ClampUp();
-            
+
             if (Time.time >= _stepEndTime)
                 _stepping = false;
         }
@@ -181,7 +186,7 @@ namespace Player.Scripts.MovementFSM
             float targetY = hit.point.y + Skin;
             float dy = targetY - rb.position.y;
             if (dy >= -0.03f) return;
-            
+
             float downDeltaVy = Mathf.Clamp(dy / Time.fixedDeltaTime, -2.5f, 0f);
             rb.AddForce(Vector3.up * downDeltaVy, ForceMode.VelocityChange);
             _lastSnapTime = Time.time;
@@ -216,7 +221,7 @@ namespace Player.Scripts.MovementFSM
                 wishSpeed = Mathf.Clamp01(wish.magnitude) * inputToMps;
                 return wish.normalized;
             }
-            
+
             Vector3 hv = rb.velocity;
             hv.y = 0f;
             if (hv.sqrMagnitude > 1e-5f)
@@ -238,6 +243,22 @@ namespace Player.Scripts.MovementFSM
                 rb.velocity = v;
             }
         }
+        
+        public bool IsStepping => _stepping;
+        public float LastSnapTime => _lastSnapTime;
+
+        public void SyncFromModel(Model m)
+        {
+            model = m;
+            if (!cameraBasis) cameraBasis = m ? m.cameraHolderTransform : null;
+            if (walkableMask.value == 0 && m) walkableMask = m.groundMask;
+            if (!rb) rb = m ? m.rb : GetComponent<Rigidbody>();
+            if (!capsule) capsule = GetComponent<CapsuleCollider>();
+        }
+
+        public bool RecentlySnapped(float graceSeconds = 0.06f)
+            => (Time.time - _lastSnapTime) <= Mathf.Max(0f, graceSeconds);
+
 
         void OnValidate()
         {

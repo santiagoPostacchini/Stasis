@@ -112,6 +112,10 @@ namespace Player.Scripts.MovementFSM
 
         float Radius => capsule ? Mathf.Max(0.05f, capsule.radius) : 0.3f;
         float Height => capsule ? capsule.height : 1.8f;
+        
+        public RaycastHit CurrentGroundHit => GroundHit;
+        
+        public float CurrentGroundSlopeDeg => GroundSlopeDeg;
 
         void Reset()
         {

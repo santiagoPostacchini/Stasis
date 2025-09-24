@@ -59,6 +59,17 @@ namespace Player.Scripts.MovementFSM.MVC
 
         [Header("Jump Assist")] public float coyoteTime = 0.12f;
         public float jumpBufferTime = 0.12f;
+        
+        [Header("Ground Stick / Snap")]
+        [Tooltip("Si true, al estar grounded se fuerza vel.Y=0 (previene creep y caída por bordes).")]
+        public bool zeroYVelocityWhenGrounded = true;
+
+        [Range(0f, 80f), Tooltip("Desde qué pendiente permitimos deslizar y NO forzamos vel.Y=0.")]
+        public float slideFromSlopeDeg = 30f;
+
+        [Tooltip("Límite por FixedUpdate para el snap vertical (evita teleports).")]
+        public float snapMaxStepPerFixed = 0.20f;
+
 
         [Header("Air Control")] public bool airEnteredFromGround;
         public float airMaxSpeed = 6f;
@@ -174,7 +185,11 @@ namespace Player.Scripts.MovementFSM.MVC
                 Scanner.OnGroundedChanged += HandleGroundedChanged;
             }
 
-
+            if (_stair)
+            {
+                _stair.SyncFromModel(this);
+            }
+            
             _fsm = new FSM();
             _fsm.CreateState(FSM.States.Grounded, new S_Grounded(_fsm, this, cameraHolderTransform));
             _fsm.CreateState(FSM.States.Climb, new S_Climb(_fsm, this));

@@ -5,21 +5,22 @@ using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using Player.Scripts.MovementFSM;
 using Player.Scripts.MovementFSM.MVC;
 
 namespace Player.Stasis
 {
     public class StasisGun : MonoBehaviour
     {
-        [Header("Visual Settings")]
-        [SerializeField] private Transform stasisOrigin;
+        [Header("Visual Settings")] [SerializeField]
+        private Transform stasisOrigin;
+
         [SerializeField] private GameObject stasisBeamPrefab;
-        [SerializeField] private float _radiusStasis = 0.2f;
+        [SerializeField] private float radiusStasis = 0.2f;
 
         [Header("Cantidad de objetos staseables")]
-        [HideInInspector] public List<(GameObject obj, IStasis stasis)> _stasisList = new List<(GameObject, IStasis)>();
-        private int _maxStasisObjects = 2;
+        private readonly List<(GameObject obj, IStasis stasis)> _stasisList = new List<(GameObject, IStasis)>();
+
+        private readonly int _maxStasisObjects = 2;
 
         private StasisBeam _activeBeam;
         private Coroutine _beamCoroutine;
@@ -30,12 +31,12 @@ namespace Player.Stasis
         public bool canShootStasis;
         [SerializeField] private LayerMask layer;
         [SerializeField] private float cooldown;
-        
+
         public event Action OnShoot = delegate { };
 
         private View _view;
 
-        [SerializeField] private GameObject _particleStasisMissed;
+        [SerializeField] private GameObject particleStasisMissed;
 
         void Start()
         {
@@ -54,15 +55,17 @@ namespace Player.Stasis
             {
                 if (_playerInteractor && _playerInteractor.HasObjectInHand())
                     return;
-                
-                TryApplyStasis(mainCam.transform);
+
+                TryApplyStasis();
             }
         }
+
         public void RemoveToListStasis()
         {
-            for (int i = 0; i < _stasisList.Count; i++)
+            for (int i = _stasisList.Count - 1; i >= 0; i--)
             {
-                if (!_stasisList[i].stasis.IsFreezed) _stasisList.RemoveAt(i);
+                if (!_stasisList[i].stasis.IsFreezed)
+                    _stasisList.RemoveAt(i);
             }
         }
 
@@ -71,74 +74,87 @@ namespace Player.Stasis
             yield return new WaitForSeconds(a);
             canShootStasis = true;
         }
-        private void TryApplyStasis(Transform playerCameraTransform)
+
+        private void TryApplyStasis()
         {
             if (!canShootStasis) return;
+
             canShootStasis = false;
-            Vector3 origin = playerCameraTransform.position;
-            Vector3 direction = playerCameraTransform.forward;
             StartCoroutine(WaitCanShoot(cooldown));
-            if(Physics.SphereCast(origin, _radiusStasis, direction, out RaycastHit hit, Mathf.Infinity, layer))
+
+            // Ray desde el centro de la pantalla
+            Ray ray;
+            if (mainCam)
+            {
+                ray = mainCam.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
+
+                // Pequeño offset para no pegarle al propio near plane/cabeza
+                float offset = (mainCam.nearClipPlane + 0.01f);
+                ray = new Ray(ray.origin + ray.direction * offset, ray.direction);
+            }
+            else
+            {
+                // Fallback por si no hay referencia a la cámara (no debería pasar)
+                ray = new Ray(transform.position, transform.forward);
+            }
+
+            if (Physics.SphereCast(ray, radiusStasis, out RaycastHit hit, Mathf.Infinity, layer,
+                    QueryTriggerInteraction.Ignore))
             {
                 bool stasisHit = false;
-
                 GameObject hitObject = hit.collider.gameObject;
-
 
                 if (hitObject.TryGetComponent<IStasis>(out var stasisComponent))
                 {
                     IStasis staseable = stasisComponent;
                     GameObject objStaseable = ((MonoBehaviour)stasisComponent).gameObject;
 
-                    // Buscamos el StasisRoot en los padres
+                    // Buscar root opcional
                     StasisRoot root = hitObject.GetComponentInParent<StasisRoot>();
-
-                    if (root != null)
+                    if (root)
                     {
-                        // Buscamos el IStasis correcto en el root
-                        staseable = root.GetComponentsInChildren<MonoBehaviour>().OfType<IStasis>().FirstOrDefault();
-                        if (staseable != null)
+                        var found = root.GetComponentsInChildren<MonoBehaviour>().OfType<IStasis>().FirstOrDefault();
+                        if (found != null)
+                        {
+                            staseable = found;
                             objStaseable = ((MonoBehaviour)staseable).gameObject;
+                        }
                     }
 
                     if (staseable != null)
                     {
                         Debug.Log("El objeto staseable es " + objStaseable);
                         StartCoroutine(WaitStasisEffect(objStaseable, staseable));
+                        // Si usás el flag para colorear el rayo, podés marcarlo aquí:
+                        // stasisHit = true;
                     }
-                    
-                       
                 }
                 else
                 {
-                    if (_particleStasisMissed == null) return;
-
-                    float offset = 0.2f; // pequeño offset para que no quede dentro de la pared
-                    Vector3 spawnPos = hit.point + hit.normal * offset;
-
-                    GameObject testEffect = Instantiate(_particleStasisMissed, spawnPos, Quaternion.LookRotation(hit.normal));
-                    testEffect.SetActive(true); // asegúrate que está activo
-                    ParticleSystem particle = testEffect.GetComponent<ParticleSystem>();
-                    particle.Play();
-                    Destroy(testEffect, 5f);
+                    if (particleStasisMissed)
+                    {
+                        float normalOffset = 0.2f;
+                        Vector3 spawnPos = hit.point + hit.normal * normalOffset;
+                        GameObject fx = Instantiate(particleStasisMissed, spawnPos,
+                            Quaternion.LookRotation(hit.normal));
+                        fx.SetActive(true);
+                        var particle = fx.GetComponent<ParticleSystem>();
+                        if (particle) particle.Play();
+                        Destroy(fx, 5f);
+                    }
                 }
 
+                if (_activeBeam) Destroy(_activeBeam.gameObject);
 
-                if (_activeBeam)
-                {
-                    Destroy(_activeBeam.gameObject);
-                }
-
-                OnShoot();
+                OnShoot?.Invoke();
                 StartCoroutine(WaitShot(hit, stasisHit));
             }
-            
-            //if (Physics.Raycast(origin, direction, out RaycastHit hit, Mathf.Infinity, layer))
-            //{
-                
-            //}
+
+            // Debug visual opcional
+            // Debug.DrawRay(ray.origin, ray.direction * 100f, Color.cyan, 0.2f);
         }
-        private IEnumerator WaitStasisEffect(GameObject hitObject,IStasis stasisComponent)
+
+        private IEnumerator WaitStasisEffect(GameObject hitObject, IStasis stasisComponent)
         {
             yield return new WaitForSeconds(0.1f);
             ApplyStasisEffect(hitObject, stasisComponent);
@@ -175,6 +191,7 @@ namespace Player.Stasis
             _stasisList.Add((newObject, newStasisComponent));
             newStasisComponent.StatisEffectActivate();
         }
+
         private void OnDisable()
         {
             UnfreezeAllObjects();
@@ -194,6 +211,7 @@ namespace Player.Stasis
         {
             canShootStasis = true;
         }
+
         public void DeactivateGun()
         {
             canShootStasis = false;

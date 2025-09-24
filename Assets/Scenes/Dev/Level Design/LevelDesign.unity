@@ -42641,15 +42641,14 @@ MonoBehaviour:
   stasisOrigin: {fileID: 4066046666591625884}
   stasisBeamPrefab: {fileID: 7511541719265762720, guid: c1dc9d25ab9e7ad4b94fb39f47e19e8b,
     type: 3}
-  _radiusStasis: 0.2
+  radiusStasis: 0.2
   mainCam: {fileID: 0}
   canShootStasis: 1
   layer:
     serializedVersion: 2
     m_Bits: 20608
   cooldown: 0.2
-  _particleStasisMissed: {fileID: 8753759091072199340, guid: e409391bbeabe294d8a796945d405db1,
-    type: 3}
+  particleStasisMissed: {fileID: 0}
 --- !u!114 &945727659293614774
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -53519,7 +53518,7 @@ CapsuleCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 2
-  m_Radius: 0.25
+  m_Radius: 0.3
   m_Height: 2
   m_Direction: 1
   m_Center: {x: 0, y: 1, z: 0}
@@ -68638,7 +68637,10 @@ MonoBehaviour:
   deceleration: 30
   jumpHeight: 1.5
   coyoteTime: 0.12
-  jumpBufferTime: 0.12
+  jumpBufferTime: 0.5
+  zeroYVelocityWhenGrounded: 1
+  slideFromSlopeDeg: 45
+  snapMaxStepPerFixed: 0.2
   airEnteredFromGround: 0
   airMaxSpeed: 6
   airAcceleration: 12
@@ -69014,7 +69016,7 @@ MonoBehaviour:
     m_Bits: 82176
   groundMask:
     serializedVersion: 2
-    m_Bits: 128
+    m_Bits: 384
   climbMask:
     serializedVersion: 2
     m_Bits: 65536
@@ -71852,7 +71854,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   walkableMask:
     serializedVersion: 2
-    m_Bits: 128
+    m_Bits: 384
   capsule: {fileID: 4536691054462998720}
   rb: {fileID: 4674414538794847727}
   maxStepUp: 0.35

@@ -32,18 +32,19 @@ namespace Player.Scripts.MovementFSM
         {
             _model.OnJump += OnJumpPressed;
 
-            // 1) Si hay jump buffer, saltar inmediatamente y no consumir landing
+            _moveCheckMask = _model.wallMask;
+
             if (_model.HasJumpBuffered())
             {
                 _model.ClearJumpBuffer();
                 PerformJumpAndGoAir();
                 return;
             }
-            
+
             if (_model.landedPending)
             {
                 _model.lastLandingTime = Time.time;
-                _model.landedPending   = false;
+                _model.landedPending = false;
             }
 
             _wasGrounded = _model.IsGroundedNow();
@@ -62,7 +63,7 @@ namespace Player.Scripts.MovementFSM
                 _wasGrounded = false;
                 return;
             }
-            
+
             _wasGrounded = grounded;
 
             var p = _model.probe;
@@ -73,7 +74,7 @@ namespace Player.Scripts.MovementFSM
                 _fsm.ChangeState(FSM.States.Climb);
                 return;
             }
-            
+
             if (p.action == ParkourAction.Vault && _model.zAxis > 0.05f)
             {
                 _fsm.ChangeState(FSM.States.Vault);
@@ -83,6 +84,8 @@ namespace Player.Scripts.MovementFSM
 
         public void OnFixedUpdate()
         {
+            ApplyGroundStickAndSnap();
+
             if (_model.canMove)
             {
                 HandleRunning();
@@ -97,6 +100,7 @@ namespace Player.Scripts.MovementFSM
         public void OnExit()
         {
             _model.OnJump -= OnJumpPressed;
+            if (_model && _model.rb) _model.rb.useGravity = true;
         }
 
         private void GetPlanarBasis(out Vector3 f, out Vector3 r)
@@ -230,16 +234,97 @@ namespace Player.Scripts.MovementFSM
             float h = Mathf.Max(0.01f, _model.jumpHeight);
             float jumpVel = Mathf.Sqrt(2f * Mathf.Abs(g) * h);
 
-            var v = _model.rb.velocity; v.y = 0f; _model.rb.velocity = v;
+            var v = _model.rb.velocity;
+            v.y = 0f;
+            _model.rb.velocity = v;
             _model.rb.AddForce(Vector3.up * jumpVel, ForceMode.VelocityChange);
 
             // Bloquear cualquier grounded/land por un ratito:
             _model.groundedIgnoreUntil = Time.time + _model.groundedIgnoreAfterJump;
 
             _model.lastLeftGroundTime = Time.time;
-            _model.airEnteredFromGround = false; // IMPORTANTÍSIMO: NO habilitar coyote tras un salto
+            _model.airEnteredFromGround = false;
 
             _fsm.ChangeState(FSM.States.Air);
         }
+
+        private void ApplyGroundStickAndSnap()
+        {
+            var scanner = _model.Scanner;
+            if (!scanner) return;
+
+            bool grounded = _model.IsGroundedNow();
+            bool ignoreSnapWindow = (Time.time < _model.groundedIgnoreUntil);
+
+            // Si el StairStepper está activo (step/snap reciente), no tocamos vel.Y ni gravedad
+            bool stepperBusy = HasRecentStepperActivity(out var stepper);
+
+            if (!grounded || ignoreSnapWindow || stepperBusy)
+            {
+                if (_model.rb.useGravity == false) _model.rb.useGravity = true;
+                return;
+            }
+
+            float slope = scanner.CurrentGroundSlopeDeg;
+            bool allowSlide = slope >= _model.slideFromSlopeDeg;
+
+            // (2) Desactivar fuerzas verticales cuando NO queremos deslizar
+            if (_model.zeroYVelocityWhenGrounded && !allowSlide)
+            {
+                if (_model.rb.useGravity) _model.rb.useGravity = false;
+                var v = _model.rb.velocity;
+                if (Mathf.Abs(v.y) > 1e-4f) { v.y = 0f; _model.rb.velocity = v; }
+            }
+            else
+            {
+                if (_model.rb.useGravity == false) _model.rb.useGravity = true;
+            }
+
+            // (3) Snap a suelo: solo si el Stepper NO está activo (ya filtrado arriba) 
+            SnapDownToGround(scanner);
+        }
+
+
+// Calcula cuánto bajar la cápsula hasta quedar apoyada y hace MovePosition hacia abajo.
+        private void SnapDownToGround(ParkourScanner scanner)
+        {
+            var cap = scanner.capsule;
+            if (!cap) return;
+
+            RaycastHit hit = scanner.CurrentGroundHit;
+            if (hit.collider == null) return;
+
+            // Geometría de la cápsula en mundo (replica la que usa el Scanner)
+            const float skin = 0.02f;
+            float r = Mathf.Max(0.01f, cap.radius - skin);
+            Vector3 center = scanner.transform.TransformPoint(cap.center);
+            float half = cap.height * 0.5f - r;
+            Vector3 bottom = center - Vector3.up * half;
+
+            // Base ideal (punto más bajo de la esfera inferior)
+            float baseY = bottom.y - r;
+
+            // Cuánto nos falta bajar para “apoyar” sobre el ground hit
+            float neededDown = baseY - hit.point.y;
+            if (neededDown <= 0.0005f) return; // ya estamos apoyados o levemente por debajo
+
+            // Limitar el snap por frame para evitar teleports
+            float maxSnap = Mathf.Min(scanner.groundSnapDistance, _model.snapMaxStepPerFixed);
+            float down = Mathf.Min(neededDown, maxSnap);
+
+            // MovePosition (correcto para Rigidbody en FixedUpdate)
+            _model.rb.MovePosition(_model.rb.position + Vector3.down * down);
+        }
+        
+        private bool HasRecentStepperActivity(out StairStepper stepper)
+        {
+            stepper = _model ? _model.GetComponent<StairStepper>() : null;
+            if (!stepper) return false;
+
+            // Consideramos actividad si está en step o si hizo snap hace nada
+            const float grace = 0.06f;
+            return stepper.IsStepping || stepper.RecentlySnapped(grace);
+        }
+
     }
 }
