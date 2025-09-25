@@ -27,6 +27,10 @@ namespace Player.Scripts.MovementFSM.MVC
         public event Action OnGetDamage = delegate { };
         public event Action OnDeath = delegate { };
         public event Action<int> OnTurnYaw = delegate { };
+        public event Action OnInteractFocusEnter   = delegate { };
+        public event Action OnInteractFocusExit    = delegate { };
+        public event Action OnInteract = delegate { };
+
 
         IController _controller;
         private StasisGun _stasisGun;
@@ -35,7 +39,8 @@ namespace Player.Scripts.MovementFSM.MVC
         internal ParkourScanner Scanner;
         private FSM _fsm;
 
-        [Header("References")] public Rigidbody rb;
+        [Header("References")] 
+        public Rigidbody rb;
         public Transform cameraHolderTransform;
 
         public ParkourProbe probe;
@@ -71,8 +76,7 @@ namespace Player.Scripts.MovementFSM.MVC
 
         [Tooltip("Límite por FixedUpdate para el snap vertical (evita teleports).")]
         public float snapMaxStepPerFixed = 0.20f;
-
-
+        
         [Header("Air Control")] public bool airEnteredFromGround;
         public float airMaxSpeed = 6f;
         public float airAcceleration = 12f;
@@ -177,13 +181,16 @@ namespace Player.Scripts.MovementFSM.MVC
             rb = GetComponent<Rigidbody>();
             _stair = GetComponent<StairStepper>();
             Scanner = GetComponent<ParkourScanner>();
+            
+            _interactor.OnInteractPerformed += HandleInteractPerformed;
+            _interactor.OnInteractableFocusEnter += HandleFocusEnter;
+            _interactor.OnInteractableFocusExit  += HandleFocusExit;
 
             if (Scanner)
             {
                 Scanner.OnProbeUpdated += p => probe = p;
                 probe = Scanner.Probe;
-
-                // suscribimos el detector de aterrizaje
+                
                 Scanner.OnGroundedChanged += HandleGroundedChanged;
             }
 
@@ -230,50 +237,59 @@ namespace Player.Scripts.MovementFSM.MVC
 
         public void UpdateRunKey(bool pressed) => runningKeyPressed = pressed;
 
+        // ReSharper disable Unity.PerformanceAnalysis
         public void JumpInput() => OnJump?.Invoke();
+        // ReSharper disable Unity.PerformanceAnalysis
         public void ShootInput() => OnShoot?.Invoke();
 
         public void UpdateStopping(bool stp) => OnStop?.Invoke(stp);
         public void UpdateIsRunning(bool run) => OnRun?.Invoke(run);
 
-        public void GroundChangedEvent(bool val) => OnGroundedChanged?.Invoke(val);
+        // ReSharper disable Unity.PerformanceAnalysis
+        private void GroundChangedEvent(bool val) => OnGroundedChanged?.Invoke(val);
+        // ReSharper disable Unity.PerformanceAnalysis
         public void WallrunStartEvent(float dir) => OnWallrunStart?.Invoke(dir);
         public void WallrunEndEvent() => OnWallrunEnd?.Invoke();
+        // ReSharper disable Unity.PerformanceAnalysis
         public void VaultStartEvent() => OnVaultStart?.Invoke();
+        // ReSharper disable Unity.PerformanceAnalysis
         public void VaultEndEvent() => OnVaultEnd?.Invoke();
 
         internal bool IsGroundedNow() => Scanner && Scanner.IsGrounded();
+        
+        // ReSharper disable Unity.PerformanceAnalysis
+        private void HandleFocusEnter() => OnInteractFocusEnter?.Invoke();
+        // ReSharper disable Unity.PerformanceAnalysis
+        private void HandleFocusExit()  => OnInteractFocusExit?.Invoke();
+        
+        // ReSharper disable Unity.PerformanceAnalysis
+        private void HandleInteractPerformed() => OnInteract?.Invoke();
 
         private void HandleGroundedChanged(bool grounded, RaycastHit hit)
         {
             if (!grounded)
             {
-                GroundChangedEvent(false); // <-- avisar a Animator
+                GroundChangedEvent(false);
                 lastLeftGroundTime = Time.time;
                 airEnteredFromGround = true;
                 landedPending = false;
                 return;
             }
 
-            // grounded == true (ya pasó la histéresis del scanner)
             if (Time.time < groundedIgnoreUntil)
             {
-                // venimos de un salto: todavía no “cuenta”
                 GroundChangedEvent(false);
                 return;
             }
-
-            // Si hay jump buffer, dejá que Grounded lo consuma y salte
+            
             if (HasJumpBuffered())
             {
-                // Si no querés que el animator vea "true" ni un frame, mantené false:
-                GroundChangedEvent(false); // <- o true si querés que pose un frame
+                GroundChangedEvent(false);
                 landedPending = false;
                 lastLandingTime = Time.time;
                 return;
             }
-
-            // A partir de acá sí: estamos realmente en suelo
+            
             GroundChangedEvent(true);
 
             float airTime = Time.time - lastLeftGroundTime;
@@ -283,21 +299,21 @@ namespace Player.Scripts.MovementFSM.MVC
 
             if (cooldownOk && (minAirOk && impactOk))
             {
-                lastLandingTime = Time.time; // (si tenés efectos de "landing fuerte", hacelos acá)
+                lastLandingTime = Time.time;
                 landedPending = false;
             }
             else
             {
-                landedPending = true; // lo consume S_Grounded.OnEnter
+                landedPending = true;
             }
         }
         
         public bool IsIdleForTurn()
         {
             if (isRunningRuntime) return false;
-            // sin input
+            
             bool noInput = (Mathf.Abs(xAxis) < 0.05f && Mathf.Abs(zAxis) < 0.05f);
-            // casi quieto en XZ
+            
             var hv = rb ? new Vector3(rb.velocity.x, 0f, rb.velocity.z) : Vector3.zero;
             bool lowSpeed = hv.magnitude < 0.15f;
             return noInput && lowSpeed;

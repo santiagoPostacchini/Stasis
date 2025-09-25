@@ -33,6 +33,9 @@ namespace Player.Scripts.MovementFSM
             _model.OnWallrunStart += view.OnWallrunStartEvent;
             _model.OnWallrunEnd += view.OnWallrunEndEvent;
             _model.OnTurnYaw += view.OnTurnYaw;
+            _model.OnInteractFocusEnter += view.OnCanInteractEnterEvent;
+            _model.OnInteractFocusExit += view.OnCanInteractExitEvent;
+            _model.OnInteract += view.OnInteractEvent;
         }
 
     public void OnUpdate()

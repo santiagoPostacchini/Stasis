@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 7095325046638112947}
   - component: {fileID: 8647046382987655326}
   - component: {fileID: 3097019312680570256}
-  m_Layer: 8
+  m_Layer: 12
   m_Name: Press.Active.Button
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -92,7 +92,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 6977782589343948375}
-  m_Layer: 8
+  m_Layer: 12
   m_Name: pos
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -126,7 +126,7 @@ GameObject:
   - component: {fileID: 1001280562131840716}
   - component: {fileID: 7850415853177932956}
   - component: {fileID: 3214542170422651651}
-  m_Layer: 8
+  m_Layer: 12
   m_Name: Canvas
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -232,7 +232,7 @@ GameObject:
   - component: {fileID: 8787381532352802365}
   - component: {fileID: 5858776914381132079}
   - component: {fileID: 5794204615498715978}
-  m_Layer: 8
+  m_Layer: 12
   m_Name: Button
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -359,6 +359,8 @@ MonoBehaviour:
           m_BoolArgument: 0
         m_CallState: 2
   textInteract: {fileID: 7246684875755503046}
+  yellow: {fileID: 0}
+  green: {fileID: 0}
 --- !u!95 &8787381532352802365
 Animator:
   serializedVersion: 5
@@ -416,8 +418,6 @@ MonoBehaviour:
   followTargetControllers:
   - {fileID: 0}
   - {fileID: 0}
-  yellow: {fileID: 2100000, guid: ec2afa5b1c7b64044a0bf92d883ae91b, type: 2}
-  green: {fileID: 2100000, guid: e6950ed15e3a36d4fbfbcdffe55ce62f, type: 2}
   delay: 0.3
 --- !u!1 &7620003799397363794
 GameObject:
@@ -430,7 +430,7 @@ GameObject:
   - component: {fileID: 877750921044328826}
   - component: {fileID: 9132651562696338384}
   - component: {fileID: 7246684875755503046}
-  m_Layer: 8
+  m_Layer: 12
   m_Name: Text (TMP) (3)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
