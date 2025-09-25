@@ -244,6 +244,7 @@ MonoBehaviour:
   acceleration: 20
   deceleration: 30
   jumpHeight: 1.5
+  isRunningRuntime: 0
   coyoteTime: 0.12
   jumpBufferTime: 0.5
   zeroYVelocityWhenGrounded: 1
@@ -5962,7 +5963,14 @@ MonoBehaviour:
   snapWhenEnabled: 0
   yawPivot: {fileID: 8196760204495728595}
   visualRoot: {fileID: 4781069886773376880}
+  model: {fileID: 1651258607665766378}
   turnLerp: 0.05
+  startVelDegPerSec: 120
+  sustainVelDegPerSec: 60
+  retriggerPeriod: 0.05
+  minGapAfterStart: 0.2
+  onlyWhenIdle: 1
+  blockWhenRunning: 1
 --- !u!114 &6784295972864072445
 MonoBehaviour:
   m_ObjectHideFlags: 0
