@@ -1,13 +1,8 @@
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
-namespace ForceSelect
+public class ForceSelectParentTag : MonoBehaviour
 {
-    /// <summary>
-    /// Simple marcador para forzar que al seleccionar un hijo,
-    /// se seleccione este objeto raíz en el Editor.
-    /// </summary>
-    public class ForceSelectParentTag : MonoBehaviour
-    {
-        // No hace nada en runtime, solo sirve como "marca" para el Editor.
-    }
+    //No necesita codigo, solo sirve de Tag
 }

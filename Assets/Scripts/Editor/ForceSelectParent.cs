@@ -1,43 +1,34 @@
-using UnityEditor;
 using UnityEngine;
+using UnityEditor;
 
-namespace ForceSelect
+[InitializeOnLoad]
+public static class ForceSelectParent
 {
-    [InitializeOnLoad]
-    public static class ForceSelectParent
+    static ForceSelectParent()
     {
-        static ForceSelectParent()
+        Selection.selectionChanged += OnSelectionChanged;
+    }
+
+    private static void OnSelectionChanged()
+    {
+        if (Selection.activeTransform == null) return;
+
+        Transform selected = Selection.activeTransform;
+
+        // Si no hay padre, salir
+        if (selected.parent == null) return;
+
+        // Revisar si el padre o el root tienen la marca
+        ForceSelectParentTag marker = selected.parent.GetComponent<ForceSelectParentTag>();
+        ForceSelectParentTag rootMarker = selected.root.GetComponent<ForceSelectParentTag>();
+
+        if (marker != null || rootMarker != null)
         {
-            Selection.selectionChanged += OnSelectionChanged;
-        }
-
-        private static void OnSelectionChanged()
-        {
-            if (Selection.activeGameObject == null)
-                return;
-
-            Transform current = Selection.activeGameObject.transform;
-
-            while (current != null)
-            {
-                if (current.GetComponent<ForceSelectParentTag>() != null)
-                {
-                    if (Selection.activeGameObject != current.gameObject)
-                    {
-                        GameObject target = current.gameObject;
-
-                        // Posponer para que Unity no lo sobrescriba
-                        EditorApplication.delayCall += () =>
-                        {
-                            if (target != null)
-                                Selection.activeGameObject = target;
-                        };
-                    }
-                    break;
-                }
-
-                current = current.parent;
-            }
+            // Forzar selección al padre más alto con la marca
+            if (rootMarker != null)
+                Selection.activeTransform = selected.root;
+            else
+                Selection.activeTransform = selected.parent;
         }
     }
 }
