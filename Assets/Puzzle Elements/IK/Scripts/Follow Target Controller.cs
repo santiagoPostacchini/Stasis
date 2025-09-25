@@ -57,6 +57,13 @@ public class FollowTargetController : MonoBehaviour
 
     private float brotherCurrentMin = 0f;
 
+    // ---------- Privados nuevos (no se exponen en Inspector) ----------
+    // evito “doble piloto” durante el tween de ChangePosition
+    private bool suspendPathMotion = false;
+    // warm start tras ResetObject para alinear en el acto
+    private int warmStartFramesRemaining = 0;
+    private const int WARM_START_FRAMES = 3;
+
     private void Awake()
     {
         rb = GetComponent<Rigidbody>();
@@ -84,11 +91,13 @@ public class FollowTargetController : MonoBehaviour
             rig.weight = currentWeight;
         }
 
+        // distancia inicial
         if (player != null)
         {
             Vector3 d = player.position - rb.position;
             if (onlyHorizontalDistance) d.y = 0f;
             distRaw = distFiltered = d.magnitude;
+            dist = distFiltered;
         }
     }
 
@@ -107,7 +116,8 @@ public class FollowTargetController : MonoBehaviour
 
             if (distanceSmoothHz > 0f)
             {
-                float alpha = 1f - Mathf.Exp(-distanceSmoothHz * Time.deltaTime);
+                // FixedUpdate => usar fixedDeltaTime
+                float alpha = 1f - Mathf.Exp(-distanceSmoothHz * Time.fixedDeltaTime);
                 distFiltered = Mathf.Lerp(distFiltered, distRaw, alpha);
             }
             else
@@ -123,7 +133,7 @@ public class FollowTargetController : MonoBehaviour
         float raw = math.remap(inMin, inMax, outMin, outMax, distFiltered);
         float curved = remapLerp.Evaluate(raw);
 
-        // Nueva lógica estable
+        // Lógica de targetWeight con mínimo dinámico en brother
         if (currentTip == startAnchor)
         {
             targetWeight = Mathf.Clamp01(curved);
@@ -145,23 +155,56 @@ public class FollowTargetController : MonoBehaviour
             brotherCurrentMin = 0f;
         }
 
-        float desired = targetWeight;
-        if (Mathf.Approximately(desired, currentWeight) || Mathf.Abs(desired - currentWeight) < weightDeadZone)
-            desired = currentWeight;
+        // Warm start: forzar peso directo los primeros frames
+        if (warmStartFramesRemaining > 0)
+        {
+            currentWeight = targetWeight;
+            weightVel = 0f;
+            warmStartFramesRemaining--;
+        }
+        else
+        {
+            float desired = targetWeight;
+            if (Mathf.Approximately(desired, currentWeight) || Mathf.Abs(desired - currentWeight) < weightDeadZone)
+                desired = currentWeight;
+
+            if (rig != null)
+            {
+                currentWeight = Mathf.SmoothDamp(
+                    currentWeight,
+                    desired,
+                    ref weightVel,
+                    weightSmoothTime,
+                    Mathf.Infinity,
+                    Time.fixedDeltaTime
+                );
+                currentWeight = Mathf.Clamp01(currentWeight);
+            }
+        }
 
         if (rig != null)
-        {
-            currentWeight = Mathf.SmoothDamp(currentWeight, desired, ref weightVel, weightSmoothTime, Mathf.Infinity, Time.deltaTime);
-            currentWeight = Mathf.Clamp01(currentWeight);
             rig.weight = currentWeight;
-        }
 
         ApplyPathByWeight();
     }
 
     public void ResetObject()
     {
+        // Reset a la otra punta (como ya hacías)
         atStart = false;
+
+        // Warm start: sincronizar distancias y peso para evitar “llegar tarde”
+        if (player != null)
+        {
+            Vector3 d = player.position - rb.position;
+            if (onlyHorizontalDistance) d.y = 0f;
+            distRaw = distFiltered = d.magnitude; // instantáneo
+            dist = distFiltered;
+        }
+        weightVel = 0f;
+        brotherCurrentMin = 0f;
+        warmStartFramesRemaining = WARM_START_FRAMES;
+
         ChangePosition();
     }
 
@@ -183,6 +226,9 @@ public class FollowTargetController : MonoBehaviour
 
         Vector3 segStartPos = rb.position;
         Quaternion segStartRot = rb.rotation;
+
+        // Durante el tween, desactivo el path para evitar “doble piloto”
+        suspendPathMotion = true;
 
         while (remaining > 0f)
         {
@@ -220,17 +266,45 @@ public class FollowTargetController : MonoBehaviour
             remaining = 0f;
         }
 
+        // Estado final coherente
         atStart = (to == startAnchor);
+        currentTip = to;
 
-        // Actualizar punto A al llegar
+        // Punto A actualizado
         aPos = rb.position;
         aRot = rb.rotation;
 
+        // Peso coherente al destino para que no “corrija” el frame siguiente
+        if (rig != null)
+        {
+            if (to == startAnchor)
+            {
+                brotherCurrentMin = 0f;
+                targetWeight = 0f;
+                currentWeight = 0f;
+            }
+            else // brother
+            {
+                brotherCurrentMin = brotherMinWeight;
+                targetWeight = Mathf.Max(targetWeight, brotherMinWeight);
+                currentWeight = Mathf.Max(currentWeight, brotherMinWeight);
+                currentWeight = Mathf.Clamp01(currentWeight);
+            }
+            rig.weight = currentWeight;
+        }
+
+        // Warm start breve tras el tween (1-2 frames suelen ser suficientes)
+        warmStartFramesRemaining = Mathf.Max(warmStartFramesRemaining, 2);
+
+        // Reactivar path y terminar
+        suspendPathMotion = false;
         moveRoutine = null;
     }
 
     private void ApplyPathByWeight()
     {
+        if (suspendPathMotion) return; // no mover mientras corre el tween
+
         Transform dest = currentTip != null ? currentTip : (brother != null ? brother : startAnchor);
         if (dest == null) return;
 
@@ -294,5 +368,8 @@ public class FollowTargetController : MonoBehaviour
             StopCoroutine(moveRoutine);
             moveRoutine = null;
         }
+        suspendPathMotion = false;
+        warmStartFramesRemaining = 0;
+        weightVel = 0f;
     }
 }
