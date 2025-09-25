@@ -2120,6 +2120,18 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &349721858 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 1651258607665766378, guid: ac47a46ffbcff544a90e0f740b602476,
+    type: 3}
+  m_PrefabInstance: {fileID: 4190144610894141726}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0b003dcbf3cd17943bc8b3a4cb7ab408, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &388426447
 GameObject:
   m_ObjectHideFlags: 0
@@ -2403,6 +2415,18 @@ Mesh:
     offset: 0
     size: 0
     path: 
+--- !u!114 &539119067 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 6629083621197630116, guid: ac47a46ffbcff544a90e0f740b602476,
+    type: 3}
+  m_PrefabInstance: {fileID: 4190144610894141726}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bdee14b2a0be3834dac803a7a98c6949, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &960557179
 GameObject:
   m_ObjectHideFlags: 0
@@ -2725,6 +2749,18 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1967087957 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 5498949171064323062, guid: ac47a46ffbcff544a90e0f740b602476,
+    type: 3}
+  m_PrefabInstance: {fileID: 4190144610894141726}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a79441f348de89743a2939f4d699eac1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &1996757274
 GameObject:
   m_ObjectHideFlags: 0
@@ -2873,6 +2909,16 @@ PrefabInstance:
       propertyPath: m_Layer
       value: 15
       objectReference: {fileID: 0}
+    - target: {fileID: 1651258607665766378, guid: ac47a46ffbcff544a90e0f740b602476,
+        type: 3}
+      propertyPath: cameraController
+      value: 
+      objectReference: {fileID: 1967087957}
+    - target: {fileID: 1651258607665766378, guid: ac47a46ffbcff544a90e0f740b602476,
+        type: 3}
+      propertyPath: visualYawFollower
+      value: 
+      objectReference: {fileID: 539119067}
     - target: {fileID: 1766850463603512949, guid: ac47a46ffbcff544a90e0f740b602476,
         type: 3}
       propertyPath: m_Layer
@@ -2958,6 +3004,16 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 4919680807016266484, guid: ac47a46ffbcff544a90e0f740b602476,
+        type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.05700004
+      objectReference: {fileID: 0}
+    - target: {fileID: 4919680807016266484, guid: ac47a46ffbcff544a90e0f740b602476,
+        type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -1.7
+      objectReference: {fileID: 0}
     - target: {fileID: 4928116537307136734, guid: ac47a46ffbcff544a90e0f740b602476,
         type: 3}
       propertyPath: m_Weight
@@ -2992,6 +3048,31 @@ PrefabInstance:
         type: 3}
       propertyPath: m_Layer
       value: 15
+      objectReference: {fileID: 0}
+    - target: {fileID: 6629083621197630116, guid: ac47a46ffbcff544a90e0f740b602476,
+        type: 3}
+      propertyPath: model
+      value: 
+      objectReference: {fileID: 349721858}
+    - target: {fileID: 6629083621197630116, guid: ac47a46ffbcff544a90e0f740b602476,
+        type: 3}
+      propertyPath: minInterval
+      value: 0.01
+      objectReference: {fileID: 0}
+    - target: {fileID: 6629083621197630116, guid: ac47a46ffbcff544a90e0f740b602476,
+        type: 3}
+      propertyPath: fireAngleDeg
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6629083621197630116, guid: ac47a46ffbcff544a90e0f740b602476,
+        type: 3}
+      propertyPath: releaseAngleDeg
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 6629083621197630116, guid: ac47a46ffbcff544a90e0f740b602476,
+        type: 3}
+      propertyPath: retriggerEveryDeg
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 6997020775856673236, guid: ac47a46ffbcff544a90e0f740b602476,
         type: 3}

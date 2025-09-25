@@ -26,6 +26,7 @@ namespace Player.Scripts.MovementFSM.MVC
         public event Action OnWallrunEnd = delegate { };
         public event Action OnGetDamage = delegate { };
         public event Action OnDeath = delegate { };
+        public event Action<int> OnTurnYaw = delegate { };
 
         IController _controller;
         private StasisGun _stasisGun;
@@ -51,11 +52,12 @@ namespace Player.Scripts.MovementFSM.MVC
 
         [Header("<color=green>Movement Settings</color>")]
         public float walkingSpeed = 4f;
-
         public float runningSpeed = 8f;
         public float acceleration = 20f;
         public float deceleration = 30f;
         public float jumpHeight = 5f;
+        
+        [HideInInspector] public bool isRunningRuntime;
 
         [Header("Jump Assist")] public float coyoteTime = 0.12f;
         public float jumpBufferTime = 0.12f;
@@ -288,6 +290,23 @@ namespace Player.Scripts.MovementFSM.MVC
             {
                 landedPending = true; // lo consume S_Grounded.OnEnter
             }
+        }
+        
+        public bool IsIdleForTurn()
+        {
+            if (isRunningRuntime) return false;
+            // sin input
+            bool noInput = (Mathf.Abs(xAxis) < 0.05f && Mathf.Abs(zAxis) < 0.05f);
+            // casi quieto en XZ
+            var hv = rb ? new Vector3(rb.velocity.x, 0f, rb.velocity.z) : Vector3.zero;
+            bool lowSpeed = hv.magnitude < 0.15f;
+            return noInput && lowSpeed;
+        }
+        
+        public void RequestTurnYaw(int dir)
+        {
+            dir = (dir >= 0) ? +1 : -1;
+            OnTurnYaw(dir);
         }
     }
 }

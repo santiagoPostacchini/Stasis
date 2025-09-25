@@ -9,6 +9,8 @@ namespace Player.Scripts.MovementFSM.MVC
         private static readonly int IsStopping = Animator.StringToHash("IsStopping");
         private static readonly int IsJumping = Animator.StringToHash("IsJumping");
         private static readonly int IsGrounded = Animator.StringToHash("IsGrounded");
+        private static readonly int TurnLeftHash  = Animator.StringToHash("TurnLeft");
+        private static readonly int TurnRightHash = Animator.StringToHash("TurnRight");
         
         [SerializeField] private Animator animator;
         [SerializeField] private FirstPersonCamera playerCam;
@@ -68,7 +70,7 @@ namespace Player.Scripts.MovementFSM.MVC
         {
             Debug.Log("Jump Event");
             animator.CrossFade("Player_Leg_Jump", 0);
-            animator.CrossFade("Player_Arm_Jump", 0.25f);
+            animator.CrossFade("Player_Arm_Jump", 0);
             //playerCam.ClearTilt();
             //EventManager.TriggerEvent("OnJump", gameObject);
         }
@@ -96,8 +98,8 @@ namespace Player.Scripts.MovementFSM.MVC
         public void OnVaultStartEvent()
         {
             Debug.Log("Vault Start Event");
-            animator.CrossFade("Player_Leg_Vault", 0.05f);
-            animator.CrossFade("Player_Arm_Vault", 0.05f);
+            animator.CrossFade("Player_Leg_Vault", 0);
+            animator.CrossFade("Player_Arm_Vault", 0);
             animator.applyRootMotion = false;
             playerCam.SetVaultTiltRandom();
             //animator.SetTrigger(_vaultHash);
@@ -135,6 +137,7 @@ namespace Player.Scripts.MovementFSM.MVC
         {
             Debug.Log($"Wall Slide Event with dir: {dir}");
             animator.CrossFade(dir > 0 ? "Player_Leg_Wallrun_Left" : "Player_Leg_Wallrun_Right", 0);
+            animator.CrossFade(dir > 0 ? "Player_Arm_Wallrun_Left" : "Player_Arm_Wallrun_Right", 0);
             playerCam.SetWallrunTilt(dir);
         }
         
@@ -158,6 +161,19 @@ namespace Player.Scripts.MovementFSM.MVC
             Debug.Log("Grab Event");
             //animator.SetTrigger(_grabHash);
             //EventManager.TriggerEvent("OnObjectGrab", gameObject);
+        }
+        
+        public void OnTurnYaw(int dir)
+        {
+            // dir: -1 = izquierda, +1 = derecha
+            if (dir < 0)
+            {
+                animator.CrossFade(TurnLeftHash, 0.05f);
+            }
+            else
+            {
+                animator.CrossFade(TurnRightHash, 0.05f);
+            }
         }
         
         public void OnDropEvent()

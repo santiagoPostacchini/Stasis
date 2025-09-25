@@ -32,7 +32,7 @@ namespace Player.Scripts.MovementFSM
             _model.OnDeath += _view.OnDeathEvent;
             _model.OnWallrunStart += view.OnWallrunStartEvent;
             _model.OnWallrunEnd += view.OnWallrunEndEvent;
-
+            _model.OnTurnYaw += view.OnTurnYaw;
         }
 
     public void OnUpdate()
