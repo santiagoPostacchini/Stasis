@@ -1,8 +1,12 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
-public class ForceSelectParentTag : MonoBehaviour
+namespace ForceSelect
 {
-    //No necesita codigo, solo sirve de Tag
+    /// <summary>
+    /// Marker to force selecting the parent in the editor.
+    /// </summary>
+    public class ForceSelectParentTag : MonoBehaviour
+    {
+        // vacío, solo marca
+    }
 }

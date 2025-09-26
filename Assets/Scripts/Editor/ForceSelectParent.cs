@@ -1,34 +1,55 @@
-using UnityEngine;
 using UnityEditor;
+using UnityEngine;
+using ForceSelect; // <- importa el namespace de tu tag
 
 [InitializeOnLoad]
-public static class ForceSelectParent
+public static class ForceSelectParentEditor
 {
-    static ForceSelectParent()
+    // Poner en true para ver logs en la consola durante la prueba
+    const bool debug = true;
+
+    static ForceSelectParentEditor()
     {
         Selection.selectionChanged += OnSelectionChanged;
     }
 
     private static void OnSelectionChanged()
     {
-        if (Selection.activeTransform == null) return;
-
-        Transform selected = Selection.activeTransform;
-
-        // Si no hay padre, salir
-        if (selected.parent == null) return;
-
-        // Revisar si el padre o el root tienen la marca
-        ForceSelectParentTag marker = selected.parent.GetComponent<ForceSelectParentTag>();
-        ForceSelectParentTag rootMarker = selected.root.GetComponent<ForceSelectParentTag>();
-
-        if (marker != null || rootMarker != null)
+        if (Selection.activeGameObject == null)
         {
-            // Forzar selección al padre más alto con la marca
-            if (rootMarker != null)
-                Selection.activeTransform = selected.root;
-            else
-                Selection.activeTransform = selected.parent;
+            if (debug) Debug.Log("[ForceSelect] nothing selected");
+            return;
+        }
+
+        GameObject selected = Selection.activeGameObject;
+        if (debug) Debug.Log($"[ForceSelect] selected: {selected.name}");
+
+        Transform current = selected.transform;
+        GameObject foundTaggedParent = null;
+
+        // Subimos por la jerarquía hasta encontrar el objeto con ForceSelectParentTag
+        while (current != null)
+        {
+            if (current.GetComponent<ForceSelectParentTag>() != null)
+            {
+                foundTaggedParent = current.gameObject;
+                break;
+            }
+            current = current.parent;
+        }
+
+        if (foundTaggedParent != null)
+        {
+            if (Selection.activeGameObject != foundTaggedParent)
+            {
+                if (debug) Debug.Log($"[ForceSelect] switching selection to: {foundTaggedParent.name}");
+                // Usamos delayCall para evitar problemas si Unity está en medio de un cambio de selección
+                EditorApplication.delayCall += () => Selection.activeGameObject = foundTaggedParent;
+            }
+        }
+        else
+        {
+            if (debug) Debug.Log("[ForceSelect] no tagged parent found in hierarchy");
         }
     }
 }
