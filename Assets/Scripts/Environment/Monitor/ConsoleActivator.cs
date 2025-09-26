@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.Events;
+using System.Collections;
 
 [RequireComponent(typeof(Collider))]
 public class ConsoleActivator : MonoBehaviour
@@ -9,15 +10,13 @@ public class ConsoleActivator : MonoBehaviour
     public Transform explicitPlayer; // opcional si no usás tag
 
     [Header("Modo de activación")]
-    public bool activateOnEnter = true;    // activa apenas el jugador entra
-    public bool requireInteractKey = false; // si true, requiere tecla
-    public KeyCode interactKey = KeyCode.E;
+    public KeyCode interactKey = KeyCode.E; // SOLO tecla
     public bool onlyOnce = false;
 
     [Header("Animator (opcional)")]
     public Animator animator;
     public ParamType paramType = ParamType.Bool;
-    public string animatorParam = "Activated";
+    public string animatorParam = "Active";
 
     [Header("Eventos")]
     public UnityEvent onActivated;
@@ -26,13 +25,16 @@ public class ConsoleActivator : MonoBehaviour
     private bool _playerInside;
     private Transform _currentPlayer;
     private bool _hasFired;
+    private bool activated = false;
 
     public enum ParamType { Bool, Trigger }
+
+    [SerializeField] private Collider _collider;
 
     void Reset()
     {
         var col = GetComponent<Collider>();
-        col.isTrigger = true;
+        col.isTrigger = true; // mantiene trigger, solo detecta área
     }
 
     void Awake()
@@ -42,51 +44,35 @@ public class ConsoleActivator : MonoBehaviour
 
     void Update()
     {
-        if (!_playerInside || _hasFired) return;
 
-        if (requireInteractKey)
+        if (Input.GetKeyDown(interactKey) && _playerInside)
         {
-            if (Input.GetKeyDown(interactKey))
-            {
-                Fire();
-            }
-        }
-        else if (!activateOnEnter)
-        {
-            // Modo “permanecer dentro”: se activa apenas detectamos que está dentro y no pedimos tecla
             Fire();
         }
     }
 
+    
     private void OnTriggerEnter(Collider other)
     {
-        if (_hasFired && onlyOnce) return;
-
-        if (IsPlayer(other.transform))
+        if (other.CompareTag("Player"))
         {
             _playerInside = true;
-            _currentPlayer = other.transform;
-
-            if (activateOnEnter && !requireInteractKey)
-            {
-                Fire();
-            }
         }
     }
-
     private void OnTriggerExit(Collider other)
     {
-        if (other.transform == _currentPlayer)
+        if (other.CompareTag("Player"))
         {
             _playerInside = false;
-            _currentPlayer = null;
         }
     }
+
 
     private bool IsPlayer(Transform t)
     {
         if (explicitPlayer != null) return t == explicitPlayer;
-        if (!string.IsNullOrEmpty(playerTag)) return t.CompareTag(playerTag) || (t.root != null && t.root.CompareTag(playerTag));
+        if (!string.IsNullOrEmpty(playerTag))
+            return t.CompareTag(playerTag) || (t.root != null && t.root.CompareTag(playerTag));
         return false;
     }
 
@@ -104,9 +90,20 @@ public class ConsoleActivator : MonoBehaviour
         }
 
         // Evento
-        onActivated?.Invoke();
+        if (!activated)
+        {
+            StartCoroutine(wait());
+        }
 
         if (onlyOnce) _hasFired = true;
+    }
+
+    IEnumerator wait()
+    {
+        yield return new WaitForSeconds(1f);
+        onActivated?.Invoke();
+        _collider.enabled = false;
+        activated = true;
     }
 
     // Método público por si querés llamarlo desde otros scripts/botones
