@@ -167,6 +167,7 @@ namespace Player.Scripts.Interactor
                 {
                     if (hitObject)
                     {
+                        Debug.Log("hit object");
                         var interactable = hitObject.GetComponentInParent<IInteractable>();
                         if (interactable != null)
                         {

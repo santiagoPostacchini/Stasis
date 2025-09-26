@@ -26,6 +26,7 @@ namespace Puzzle_Elements.Button.Scripts
             onPressed?.Invoke();
             ChangeMaterial();
             EventManager.TriggerEvent("Click", gameObject);
+            Debug.Log("Evento llamado");
         }
         
        
@@ -34,6 +35,10 @@ namespace Puzzle_Elements.Button.Scripts
             Model player = collision.gameObject.GetComponent<Model>();
             if (player)
             {
+                if (Input.GetKeyDown(KeyCode.E))
+                {
+                    Interact();
+                }
                 if (!textInteract.gameObject.activeSelf)
                     textInteract.gameObject.SetActive(true);
             }

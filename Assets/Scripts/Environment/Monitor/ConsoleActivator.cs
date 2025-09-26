@@ -102,7 +102,6 @@ public class ConsoleActivator : MonoBehaviour
     {
         yield return new WaitForSeconds(1f);
         onActivated?.Invoke();
-        _collider.enabled = false;
         activated = true;
     }
 
