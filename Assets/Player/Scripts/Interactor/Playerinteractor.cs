@@ -25,27 +25,37 @@ namespace Player.Scripts.Interactor
         private bool _isHoldingThrow;
 
         [SerializeField] private float throwForce = 10f;
-        [SerializeField] private Transform objectGrabPointTransform;
+        [SerializeField] private Transform objectGrabPointTransform; // solo para smoothing interno si querés
         [SerializeField] private Transform objectGrabPointBackTransform;
 
-        [Header("Grab System")] [SerializeField]
-        private float minHoldDistance = -0.1f;
+        [Header("Release Target")] [SerializeField]
+        private float releaseAimWindow = 0.20f; // tiempo en que ese objeto es ‘target’ directo de stasis
 
-        [SerializeField] private float maxHoldDistance = 1.5f;
-        [SerializeField] private float holderOffset = 0.05f;
+        private PhysicsBox _releasingTarget;
+        private float _releaseAimUntil = -999f;
+
+        public PhysicsBox GetReleasingTarget()
+        {
+            return (Time.time <= _releaseAimUntil) ? _releasingTarget : null;
+        }
+
+        private void MarkReleasing(PhysicsBox pb)
+        {
+            _releasingTarget = pb;
+            _releaseAimUntil = Time.time + releaseAimWindow;
+        }
 
         private PhysicsBox _objectGrabbable;
 
-        [Header("Environment")] [SerializeField]
+        [Header("Environment")]
+        [Tooltip("Capas de entorno sólidas. Los interactuables serán ignorados en LOS.")]
+        [SerializeField]
         private LayerMask environmentMask = ~0;
 
+        [Tooltip("Capas de objetos agarrables (PhysicsBox).")] [SerializeField]
+        private LayerMask grabbableMask;
+
         [Header("Smoothing")] [SerializeField] private float rotationSmoothSpeed = 10f;
-
-        [Header("Custom Movement")] [SerializeField]
-        private AnimationCurve holdMoveCurve = AnimationCurve.Linear(0, 0, 1, 1);
-
-        [SerializeField] private float headDropStartDist = 0.5f;
-        [SerializeField] private float maxHeadDrop = 0.5f;
 
         [Header("FX Settings")] [SerializeField]
         private StasisObjectEffects stasisEffects;
@@ -57,32 +67,19 @@ namespace Player.Scripts.Interactor
 
         public event Action OnGrabItem = delegate { };
 
-        [Header("Interactable Focus")] [Tooltip("Radio del SphereCast para tolerancia al apuntado")] [SerializeField]
+        [Header("Interactable Focus")] [SerializeField]
         private float focusSphereRadius = 0.15f;
 
-        [Tooltip("Capas consideradas como interactuables (colliders de los objetos)")] [SerializeField]
-        private LayerMask interactableMask = ~0;
+        [SerializeField] private LayerMask interactableMask = ~0;
+        [SerializeField] private float enterDistance = 4f;
+        [SerializeField] private float exitDistance = 4.5f;
+        [Range(1f, 30f)] [SerializeField] private float enterAngleDeg = 6f;
+        [Range(1f, 45f)] [SerializeField] private float exitAngleDeg = 8f;
+        [SerializeField] private float enterStableTime = 0.06f;
+        [SerializeField] private float exitStableTime = 0.08f;
+        [SerializeField] private float castStartOffset = 0.05f;
 
-        [Tooltip("Distancia para ENTRAR en foco")] [SerializeField]
-        private float enterDistance = 4f;
-
-        [Tooltip("Distancia para SALIR de foco (histéresis)")] [SerializeField]
-        private float exitDistance = 4.5f;
-
-        [Tooltip("Ángulo (grados) respecto al forward para ENTRAR")] [Range(1f, 30f)] [SerializeField]
-        private float enterAngleDeg = 6f;
-
-        [Tooltip("Ángulo (grados) para SALIR (histéresis)")] [Range(1f, 45f)] [SerializeField]
-        private float exitAngleDeg = 8f;
-
-        [Tooltip("Tiempo que debe mantenerse válido antes de disparar ENTER")] [SerializeField]
-        private float enterStableTime = 0.06f;
-
-        [Tooltip("Tiempo que debe mantenerse inválido antes de disparar EXIT")] [SerializeField]
-        private float exitStableTime = 0.08f;
-
-        [Tooltip("Offset inicial del cast para evitar auto-colisión")] [SerializeField]
-        private float castStartOffset = 0.05f;
+        [Header("Debug")] [SerializeField] private bool debugFocus;
 
         private GameObject _currentFocused;
         private float _lastFocusHitDistance = Mathf.Infinity;
@@ -92,15 +89,70 @@ namespace Player.Scripts.Interactor
         private float _pendingEnterSince = -999f;
         private float _lostSince = -999f;
 
+        // =================== Hands ===================
+        [Header("Hand Hold")] [Tooltip("Palma izquierda (UP = normal de la palma).")] [SerializeField]
+        private Transform leftPalmTransform;
+
+        [Tooltip("Palma derecha (UP = normal de la palma).")] [SerializeField]
+        private Transform rightPalmTransform;
+
+        private Transform _currentPalm; // interna (no aparece en el inspector)
+
+        [Tooltip("Altura sobre la palma a lo largo del UP de la mano")] [SerializeField]
+        private float palmHeight = 0.12f;
+
+        [Tooltip("Velocidad del giro 'mágico' en grados/seg")] [SerializeField]
+        private float hoverSpinSpeed = 50f;
+
+        [Tooltip("Tiempo de aproximación y escalado al agarrar")] [SerializeField]
+        private float pickupApproachTime = 0.22f;
+
+        [Tooltip("Tiempo de cambio de palma durante wallrun")] [SerializeField]
+        private float handSwitchTime = 0.18f;
+        // =================================================
+
+        private Model _model; // para eventos de wallrun
+
         void Start()
         {
-            _rotationSmoothQuat = objectGrabPointTransform.rotation;
+            _rotationSmoothQuat = objectGrabPointTransform ? objectGrabPointTransform.rotation : Quaternion.identity;
             _view = GetComponentInParent<View>();
             OnGrabItem += _view.OnGrabEvent;
 
-            // sincronizar con enter/exit distance por defecto
+            // Elegimos palma por defecto: derecha si existe, si no izquierda, si no backTransform
+            _currentPalm = rightPalmTransform ?? leftPalmTransform ?? objectGrabPointBackTransform;
+            if (!_currentPalm)
+                Debug.LogWarning("[PlayerInteractor] No hay palms asignadas. Asigná left/rightPalmTransform.");
+
+            // Suscripción a wallrun
+            _model = GetComponentInParent<Model>();
+            if (_model) _model.OnWallrunStart += HandleWallrunStart;
+
             enterDistance = Mathf.Min(enterDistance, pickUpRange);
             exitDistance = Mathf.Max(exitDistance, enterDistance + 0.25f);
+        }
+
+        void OnDestroy()
+        {
+            if (_model) _model.OnWallrunStart -= HandleWallrunStart;
+        }
+
+        private void HandleWallrunStart(float dir)
+        {
+            if (!_objectGrabbable) return;
+
+            // pared a la izquierda (dir < 0) => pasar a palma derecha; pared a la derecha (dir > 0) => palma izquierda
+            Transform targetPalm = (dir < 0f) ? (rightPalmTransform ?? _currentPalm)
+                : (dir > 0f) ? (leftPalmTransform ?? _currentPalm)
+                : _currentPalm;
+
+            if (targetPalm && targetPalm != _currentPalm)
+            {
+                _currentPalm = targetPalm;
+                _objectGrabbable.MoveWhileHoldingToPalm(_currentPalm, palmHeight, handSwitchTime);
+                var ownerRb = _model ? _model.rb : GetComponentInParent<Rigidbody>();
+                _objectGrabbable.SetReferences(_currentPalm, ownerRb, transform);
+            }
         }
 
         void Update()
@@ -109,14 +161,13 @@ namespace Player.Scripts.Interactor
 
             GameObject hitObject = GetBestInteractable(out _, out _);
 
-            // dentro de Update(), donde presionás E y detectás IInteractable:
             if (Input.GetKeyDown(KeyCode.E))
             {
                 if (!_objectGrabbable)
                 {
                     if (hitObject)
                     {
-                        var interactable = hitObject.GetComponent<IInteractable>();
+                        var interactable = hitObject.GetComponentInParent<IInteractable>();
                         if (interactable != null)
                         {
                             OnInteractPerformed();
@@ -146,13 +197,13 @@ namespace Player.Scripts.Interactor
                 {
                     if (_objectGrabbable && !_objectGrabbable.IsOverlappingAnything)
                     {
+                        MarkReleasing(_objectGrabbable);
                         _objectGrabbable.Throw(throwForce);
                         _objectGrabbable = null;
                         _isHoldingThrow = false;
                         holdTime = 0f;
                         throwCharge = 0f;
                         ThrowUISlider.Instance?.SetFill(0);
-
                         EventManager.TriggerEvent("OnObjectThrow", gameObject);
                     }
                 }
@@ -183,12 +234,11 @@ namespace Player.Scripts.Interactor
             }
         }
 
-        // -------------------- LÓGICA DE FOCUS CON HISTÉRESIS + DEBOUNCE --------------------
+        // -------------------- FOCUS + HISTÉRESIS --------------------
         private void UpdateInteractableFocus()
         {
             var best = GetBestInteractable(out float dist, out float angleDeg);
 
-            // Reglas de entrada/salida con histéresis
             bool canEnter = best &&
                             dist <= enterDistance &&
                             angleDeg <= enterAngleDeg &&
@@ -197,16 +247,14 @@ namespace Player.Scripts.Interactor
             bool mustExit = false;
             if (_currentFocused)
             {
-                // si el mejor ya no es el actual, o se fue de distancia/ángulo/LOS
                 bool currentVisible = best == _currentFocused &&
-                                      dist <= exitDistance &&
+                                      dist <= pickUpRange &&
                                       angleDeg <= exitAngleDeg &&
                                       HasLineOfSight(_currentFocused);
 
                 mustExit = !currentVisible;
             }
 
-            // Debounce ENTER
             if (!_currentFocused)
             {
                 if (canEnter)
@@ -216,17 +264,14 @@ namespace Player.Scripts.Interactor
                         _pendingEnterTarget = best;
                         _pendingEnterSince = Time.time;
                     }
-                    else
+                    else if ((Time.time - _pendingEnterSince) >= enterStableTime)
                     {
-                        if ((Time.time - _pendingEnterSince) >= enterStableTime)
-                        {
-                            _currentFocused = _pendingEnterTarget;
-                            _pendingEnterTarget = null;
-                            _pendingEnterSince = -999f;
-                            _lostSince = -999f;
-                            _lastFocusHitDistance = dist;
-                            OnInteractableFocusEnter();
-                        }
+                        _currentFocused = _pendingEnterTarget;
+                        _pendingEnterTarget = null;
+                        _pendingEnterSince = -999f;
+                        _lostSince = -999f;
+                        _lastFocusHitDistance = dist;
+                        OnInteractableFocusEnter();
                     }
                 }
                 else
@@ -235,13 +280,11 @@ namespace Player.Scripts.Interactor
                     _pendingEnterSince = -999f;
                 }
             }
-            // Debounce EXIT
             else
             {
                 if (mustExit)
                 {
                     if (_lostSince < 0f) _lostSince = Time.time;
-
                     if ((Time.time - _lostSince) >= exitStableTime)
                     {
                         OnInteractableFocusExit();
@@ -260,7 +303,7 @@ namespace Player.Scripts.Interactor
             }
         }
 
-        // Selecciona el mejor interactuable: primero un ray directo; si no, spherecast-all, el más cercano dentro del cono.
+        // Devuelve el mejor candidato que sea IInteractable o PhysicsBox.
         private GameObject GetBestInteractable(out float distance, out float angleDeg)
         {
             Vector3 origin = transform.position + transform.forward * castStartOffset;
@@ -269,33 +312,32 @@ namespace Player.Scripts.Interactor
             distance = Mathf.Infinity;
             angleDeg = 999f;
 
-            // 1) Ray fino prioritario
-            if (Physics.Raycast(origin, dir, out RaycastHit rh, exitDistance, interactableMask,
+            int targetMask = interactableMask | grabbableMask;
+
+            if (Physics.Raycast(origin, dir, out RaycastHit rh, exitDistance, targetMask,
                     QueryTriggerInteraction.Ignore))
             {
-                var go = rh.collider.gameObject;
-                if (go.GetComponent<IInteractable>() != null)
+                var rootGo = rh.collider.transform.root.gameObject;
+                if (IsValidTarget(rootGo))
                 {
                     distance = rh.distance;
                     angleDeg = 0f;
-                    return go;
+                    return rootGo;
                 }
             }
 
-            // 2) SphereCastAll para tolerancia y elegir el más cercano dentro del cono
             RaycastHit[] hits = Physics.SphereCastAll(origin, focusSphereRadius, dir, exitDistance,
-                interactableMask, QueryTriggerInteraction.Ignore);
+                targetMask, QueryTriggerInteraction.Ignore);
 
             GameObject best = null;
             float bestDist = Mathf.Infinity;
             float bestAngle = 999f;
-
             float maxAngle = (!_currentFocused) ? enterAngleDeg : exitAngleDeg;
 
             foreach (var t in hits)
             {
-                var go = t.collider.gameObject;
-                if (!go || go.GetComponent<IInteractable>() == null) continue;
+                var rootGo = t.collider.transform.root.gameObject;
+                if (!IsValidTarget(rootGo)) continue;
 
                 Vector3 to = t.point - origin;
                 float d = to.magnitude;
@@ -304,9 +346,9 @@ namespace Player.Scripts.Interactor
                 float ang = Vector3.Angle(dir, to.normalized);
                 if (ang > maxAngle) continue;
 
-                if (d < bestDist && HasLineOfSight(go))
+                if (d < bestDist && HasLineOfSight(rootGo))
                 {
-                    best = go;
+                    best = rootGo;
                     bestDist = d;
                     bestAngle = ang;
                 }
@@ -317,38 +359,41 @@ namespace Player.Scripts.Interactor
             return best;
         }
 
-        private bool HasLineOfSight(GameObject target)
+        private bool IsValidTarget(GameObject rootGo)
         {
-            if (!target) return false;
+            if (!rootGo) return false;
+            if (rootGo.GetComponentInParent<IInteractable>() != null) return true;
+            if (rootGo.GetComponent<PhysicsBox>()) return true;
+            return false;
+        }
+
+        private bool HasLineOfSight(GameObject targetRoot)
+        {
+            if (!targetRoot) return false;
 
             Vector3 origin = transform.position + transform.forward * castStartOffset;
-            Vector3 targetPos = ClosestPointOrCenter(target, origin);
+            Vector3 targetPos = ClosestPointOrCenter(targetRoot, origin);
 
-            // Si hay algo del environment entre medio, no hay LOS.
-            if (Physics.Linecast(origin, targetPos, out RaycastHit hit, environmentMask,
-                    QueryTriggerInteraction.Ignore))
+            int excludeTargets = interactableMask | grabbableMask;
+            int losMask = environmentMask & ~excludeTargets;
+
+            if (Physics.Linecast(origin, targetPos, out RaycastHit hit, losMask, QueryTriggerInteraction.Ignore))
             {
-                // Si lo primero que toca NO pertenece al target, está ocluido
-                if (hit.collider && hit.collider.gameObject != target)
-                    return false;
+                if (debugFocus) Debug.DrawLine(origin, hit.point, Color.red, 0.05f);
+                return false;
             }
 
+            if (debugFocus) Debug.DrawLine(origin, targetPos, Color.green, 0.05f);
             return true;
         }
 
         private Vector3 ClosestPointOrCenter(GameObject go, Vector3 from)
         {
-            var col = go.GetComponent<Collider>();
-            if (col)
-            {
-                // punto más cercano sobre el colisionador
-                return col.ClosestPoint(from);
-            }
-
+            var col = go.GetComponentInChildren<Collider>();
+            if (col) return col.ClosestPoint(from);
             return go.transform.position;
         }
 
-        // -------------------- RESTO (igual que antes) --------------------
         private void TryGrabObject(GameObject hitObject)
         {
             OnGrabItem();
@@ -358,14 +403,19 @@ namespace Player.Scripts.Interactor
         private IEnumerator WaitGrab(GameObject hitObject)
         {
             yield return new WaitForSeconds(0.2f);
-            if (hitObject && hitObject.TryGetComponent(out PhysicsBox physicsObject))
+            if (!hitObject) yield break;
+
+            var root = hitObject.transform.root.gameObject;
+
+            if (root && root.TryGetComponent(out PhysicsBox physicsObject))
             {
-                objectGrabPointTransform.position = hitObject.transform.position;
-                physicsObject.SetReferences(objectGrabPointTransform);
-                physicsObject.Grab();
+                var ownerRb = GetComponentInParent<Model>()?.rb;
+
+                physicsObject.SetReferences(_currentPalm, ownerRb, transform);
+
+                physicsObject.BeginHoldSmooth(_currentPalm, palmHeight, pickupApproachTime);
 
                 _objectGrabbable = physicsObject;
-
                 EventManager.TriggerEvent("Grab", gameObject);
             }
         }
@@ -374,16 +424,18 @@ namespace Player.Scripts.Interactor
         {
             if (_objectGrabbable)
             {
+                MarkReleasing(_objectGrabbable);
                 if (!_objectGrabbable.IsFreezed)
                 {
                     ThrowUISlider.Instance?.SetFill(0);
+                    _objectGrabbable.EndHold();
                     _objectGrabbable.Drop();
                     _objectGrabbable = null;
-
                     EventManager.TriggerEvent("OnObjectDrop", gameObject);
                 }
                 else if (!_objectGrabbable.IsOverlappingAnything)
                 {
+                    _objectGrabbable.EndHold();
                     _objectGrabbable.Drop();
                     _objectGrabbable = null;
                     EventManager.TriggerEvent("OnObjectDrop", gameObject);
@@ -391,39 +443,43 @@ namespace Player.Scripts.Interactor
             }
         }
 
+        public void ClearReleasingTargetIf(GameObject go)
+        {
+            if (_releasingTarget && _releasingTarget.gameObject == go)
+            {
+                _releasingTarget = null;
+                _releaseAimUntil = -999f;
+            }
+        }
+
+
         private void UpdateHolderPosition()
         {
-            float targetDistance = maxHoldDistance;
-            if (Physics.Raycast(transform.position, transform.forward, out RaycastHit hit, maxHoldDistance,
-                    environmentMask))
-            {
-                targetDistance = Mathf.Clamp(hit.distance - holderOffset, minHoldDistance, maxHoldDistance);
-            }
+            if (!_objectGrabbable || !_currentPalm) return;
+            if (_objectGrabbable.IsApproachingHand) return; // no interferir durante blends
 
-            float t = Mathf.InverseLerp(maxHoldDistance, minHoldDistance, targetDistance);
-            float curveT = holdMoveCurve.Evaluate(t);
+            Quaternion baseRot = Quaternion.LookRotation(_currentPalm.forward, _currentPalm.up);
+            Quaternion spin = Quaternion.AngleAxis(Time.time * hoverSpinSpeed, _currentPalm.up);
+            Quaternion targetRot = baseRot * spin;
 
-            Vector3 frontPos = transform.position + transform.forward * maxHoldDistance;
-            Vector3 backPos = objectGrabPointBackTransform.position;
+            _objectGrabbable.transform.SetParent(_currentPalm, worldPositionStays: false);
+            _objectGrabbable.transform.localPosition = Vector3.up * palmHeight;
+            _objectGrabbable.transform.rotation = targetRot;
 
-            Vector3 desiredPos = Vector3.Lerp(frontPos, backPos, curveT);
-
-            if (targetDistance < headDropStartDist)
-            {
-                float headT = Mathf.InverseLerp(headDropStartDist, minHoldDistance, targetDistance);
-                float dropAmt = Mathf.Lerp(0f, maxHeadDrop, headT);
-                desiredPos.y -= dropAmt;
-            }
-
-            Vector3 dirToPlayer = (transform.position - desiredPos).normalized;
-            Quaternion targetRot = Quaternion.LookRotation(dirToPlayer, Vector3.up);
             _rotationSmoothQuat =
                 Quaternion.Slerp(_rotationSmoothQuat, targetRot, Time.deltaTime * rotationSmoothSpeed);
-
-            objectGrabPointTransform.SetPositionAndRotation(desiredPos, _rotationSmoothQuat);
-            _objectGrabbable.transform.SetPositionAndRotation(desiredPos, _rotationSmoothQuat);
         }
 
         public bool HasObjectInHand() => _objectGrabbable && _objectGrabbable.gameObject.activeInHierarchy;
+
+        private void OnDrawGizmosSelected()
+        {
+            if (!debugFocus) return;
+            Gizmos.color = Color.cyan;
+            Vector3 origin = transform.position + transform.forward * castStartOffset;
+            Gizmos.DrawWireSphere(origin, 0.03f);
+            Gizmos.color = Color.yellow;
+            Gizmos.DrawRay(origin, transform.forward * exitDistance);
+        }
     }
 }

@@ -12,7 +12,6 @@ GameObject:
   - component: {fileID: 4041040436437145166}
   - component: {fileID: 323154402208163911}
   - component: {fileID: 8254887600969419534}
-  - component: {fileID: 2509437268334227207}
   - component: {fileID: 7904837832302133731}
   - component: {fileID: 4748163262775331448}
   - component: {fileID: 8387434314372414841}
@@ -101,29 +100,7 @@ MeshCollider:
   m_Material: {fileID: 0}
   m_IncludeLayers:
     serializedVersion: 2
-    m_Bits: 7671
-  m_ExcludeLayers:
-    serializedVersion: 2
     m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 5
-  m_Convex: 1
-  m_CookingOptions: 30
-  m_Mesh: {fileID: 365172287751340079, guid: 95c5f10515d3bb247be4422cc37fff5c, type: 3}
---- !u!64 &2509437268334227207
-MeshCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1410952592698481589}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 512
   m_ExcludeLayers:
     serializedVersion: 2
     m_Bits: 0
@@ -177,9 +154,14 @@ MonoBehaviour:
   matStasis: {fileID: 2100000, guid: ede74eb79b9d0e94694f3cb677c03bb2, type: 2}
   _renderer: {fileID: 323154402208163911}
   mainCollider: {fileID: 8254887600969419534}
-  playerCollider: {fileID: 2509437268334227207}
   rb: {fileID: 7904837832302133731}
   particleFrozen: {fileID: 0}
+  heldScaleFactor: 0.1
+  scaleLerpTime: 0.18
+  dropNudgeImpulse: 100
+  dropNudgeUp: 0.08
+  dropSeparation: 0.28
+  throwSeparation: 0.06
 --- !u!82 &8387434314372414841
 AudioSource:
   m_ObjectHideFlags: 0
