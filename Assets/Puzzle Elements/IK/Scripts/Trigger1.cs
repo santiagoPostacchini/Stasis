@@ -23,17 +23,17 @@ public class Trigger1 : MonoBehaviour
         _layerInvisible = LayerMask.NameToLayer("Invisible");
 
     }
-    private void OnTriggerEnter(Collider other)
-    {
-        if (_alreadyCollision) return;
-        Debug.Log("Entre en colision");
-        foreach (var item in followTargetControllers)
-        {
-            item.ChangePosition();
-        }
-        _alreadyCollision = true;
-        //ChangeMaterial();
-    }
+    //private void OnTriggerEnter(Collider other)
+    //{
+    //    if (_alreadyCollision) return;
+    //    Debug.Log("Entre en colision");
+    //    foreach (var item in followTargetControllers)
+    //    {
+    //        item.ChangePosition();
+    //    }
+    //    _alreadyCollision = true;
+    //    //ChangeMaterial();
+    //}
     public void EventButton()
     {
         foreach (var item in followTargetControllers)
