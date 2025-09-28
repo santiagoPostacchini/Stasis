@@ -29,8 +29,10 @@ public class FollowTargetController : MonoBehaviour
 
     [Header("Movimiento ChangePosition")]
     public float moveDuration = 1f;
+
     [Header("Seguridad de movimiento")]
     public float maxMoveSpeed = 5f;
+
     [Header("Control")]
     public bool canMove = true;
 
@@ -38,9 +40,15 @@ public class FollowTargetController : MonoBehaviour
     [Range(0f, 1f)] public float brotherMinWeight = 0.6f;
     public float brotherApproachSmooth = 0.2f;
 
+    [Header("Frame de referencia (toggle para comparar)")]
+    [Tooltip("ON: anclas y Punto A viven en el marco local (tren). OFF: en mundo (comportamiento anterior).")]
+    public bool anchorInParentFrame = true;
+    [Tooltip("Opcional: marco explícito. Si es null usa transform.parent (o este transform si no hay padre).")]
+    public Transform frame;
+
     private Rigidbody rb;
-    private Transform startAnchor;
-    public Transform currentTip;
+    private Transform startAnchor;     // ancla A
+    public Transform currentTip;       // destino actual (A o brother)
     private bool atStart = true;
     private Coroutine moveRoutine;
 
@@ -52,29 +60,62 @@ public class FollowTargetController : MonoBehaviour
     private float distFiltered;
     public float dist { get; private set; }
 
-    private Vector3 aPos;
-    private Quaternion aRot;
+    // Punto A en mundo o en local (según anchorInParentFrame)
+    private Vector3 aPosWorld;
+    private Quaternion aRotWorld;
+    private Vector3 aPosLocal;
+    private Quaternion aRotLocal;
 
     private float brotherCurrentMin = 0f;
+
+    private Transform GetFrame()
+    {
+        if (frame) return frame;
+        if (transform.parent) return transform.parent;
+        return transform;
+    }
 
     private void Awake()
     {
         rb = GetComponent<Rigidbody>();
         rb.isKinematic = true;
-        rb.interpolation = RigidbodyInterpolation.Interpolate;
+        // Interpolación depende del modo; se ajusta en Start
     }
 
     private void Start()
     {
-        if (GameManager.Instance != null)
+        if (GameManager.Instance != null && player == null)
             player = GameManager.Instance.player;
 
-        aPos = rb.position;
-        aRot = rb.rotation;
-
+        // Crear ancla A
         startAnchor = new GameObject(name + "_StartAnchor").transform;
+
+        if (anchorInParentFrame)
+        {
+            Transform f = GetFrame();
+            startAnchor.SetParent(f, true);
+            startAnchor.SetPositionAndRotation(transform.position, transform.rotation);
+
+            // Guardar A en local del frame
+            aPosLocal = f.InverseTransformPoint(transform.position);
+            aRotLocal = Quaternion.Inverse(f.rotation) * transform.rotation;
+
+            // En modo frame, evitamos el lag del RB cinemático frente a movimiento por Transform del padre
+            rb.interpolation = RigidbodyInterpolation.None;
+        }
+        else
+        {
+            startAnchor.SetParent(null, true);
+            startAnchor.SetPositionAndRotation(transform.position, transform.rotation);
+
+            // Guardar A en mundo
+            aPosWorld = transform.position;
+            aRotWorld = transform.rotation;
+
+            rb.interpolation = RigidbodyInterpolation.Interpolate;
+        }
+
         currentTip = startAnchor;
-        startAnchor.SetPositionAndRotation(rb.position, rb.rotation);
         atStart = true;
 
         if (rig != null)
@@ -86,7 +127,7 @@ public class FollowTargetController : MonoBehaviour
 
         if (player != null)
         {
-            Vector3 d = player.position - rb.position;
+            Vector3 d = player.position - transform.position;
             if (onlyHorizontalDistance) d.y = 0f;
             distRaw = distFiltered = d.magnitude;
         }
@@ -94,6 +135,14 @@ public class FollowTargetController : MonoBehaviour
 
     private void FixedUpdate()
     {
+        // Evitar lag del RB cuando el padre (tren) se mueve por Transform:
+        // sincronizamos el estado del RB con el Transform ANTES de cálculos.
+        if (anchorInParentFrame)
+        {
+            rb.position = transform.position;
+            rb.rotation = transform.rotation;
+        }
+
         // Distancia filtrada
         if (player != null)
         {
@@ -123,7 +172,7 @@ public class FollowTargetController : MonoBehaviour
         float raw = math.remap(inMin, inMax, outMin, outMax, distFiltered);
         float curved = remapLerp.Evaluate(raw);
 
-        // Nueva lógica estable
+        // Lógica estable con umbral mínimo hacia brother
         if (currentTip == startAnchor)
         {
             targetWeight = Mathf.Clamp01(curved);
@@ -222,9 +271,18 @@ public class FollowTargetController : MonoBehaviour
 
         atStart = (to == startAnchor);
 
-        // Actualizar punto A al llegar
-        aPos = rb.position;
-        aRot = rb.rotation;
+        // Actualizar Punto A al llegar (en el marco correcto)
+        if (anchorInParentFrame)
+        {
+            Transform f = GetFrame();
+            aPosLocal = f.InverseTransformPoint(rb.position);
+            aRotLocal = Quaternion.Inverse(f.rotation) * rb.rotation;
+        }
+        else
+        {
+            aPosWorld = rb.position;
+            aRotWorld = rb.rotation;
+        }
 
         moveRoutine = null;
     }
@@ -233,6 +291,21 @@ public class FollowTargetController : MonoBehaviour
     {
         Transform dest = currentTip != null ? currentTip : (brother != null ? brother : startAnchor);
         if (dest == null) return;
+
+        // Punto A en mundo según modo
+        Vector3 aPos;
+        Quaternion aRot;
+        if (anchorInParentFrame)
+        {
+            Transform f = GetFrame();
+            aPos = f.TransformPoint(aPosLocal);
+            aRot = f.rotation * aRotLocal;
+        }
+        else
+        {
+            aPos = aPosWorld;
+            aRot = aRotWorld;
+        }
 
         Vector3 destPos = dest.position;
         Quaternion destRot = dest.rotation;
@@ -250,8 +323,8 @@ public class FollowTargetController : MonoBehaviour
         }
         else
         {
-            Vector3 refPos = toB ? (startAnchor != null ? startAnchor.position : destPos) : (brother != null ? brother.position : destPos);
-            Quaternion refRot = toB ? (startAnchor != null ? startAnchor.rotation : destRot) : (brother != null ? brother.rotation : destRot);
+            Vector3 refPos = toB ? startAnchor.position : (brother != null ? brother.position : destPos);
+            Quaternion refRot = toB ? startAnchor.rotation : (brother != null ? brother.rotation : destRot);
             midPos = 0.5f * (aPos + refPos);
             midRot = Quaternion.Slerp(aRot, refRot, 0.5f);
         }

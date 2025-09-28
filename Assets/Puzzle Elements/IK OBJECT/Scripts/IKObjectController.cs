@@ -18,10 +18,9 @@ namespace IKSuite
         public IKObjectPreset preset;
 
         [Header("<color=red>Se mira y no se toca</color>")]
-        // Scene refs (asignar en Inspector)
-        public Transform arm;        // Debe tener Animator + RigBuilder (INSTANCIA EN ESCENA)
-        public Transform root;       // Padre de la cadena (se instancian bones aquí, bajo arm)
-        public Transform rigObject;  // Debe tener Rig + ChainIKConstraint (BAJO arm)
+        public Transform arm;        // Animator + RigBuilder (instancia en escena)
+        public Transform root;       // donde se instancian bones
+        public Transform rigObject;  // Rig + ChainIKConstraint (bajo arm)
         public Transform sistemas;   // opcional
 
         // Contenedores de visibilidad por sistema
@@ -31,7 +30,7 @@ namespace IKSuite
         public Transform sys_IK_PlatformRotation;
         public Transform sys_IK_PlatformRotation_Stairs;
 
-        // Targets por sistema (arrastrar referencias, sin .Find)
+        // Targets por sistema
         public Transform target_IK_Distance;                 // TipController
         public Transform target_IK_DistanceInverse;          // TipController (inverse)
         public Transform target_IK_PlatformMovement;         // PlatformM
@@ -45,7 +44,7 @@ namespace IKSuite
         public Component stasisTipCtrl_Rotation;
         public Component stasisTipCtrl_Stairs;
 
-        // Prefabs (asignar acá)
+        // Prefabs
         public GameObject bonePrefab_Distance;
         public GameObject bonePrefab_PlatformMovement;
         public GameObject bonePrefab_Rotation;
@@ -53,18 +52,32 @@ namespace IKSuite
         public GameObject tipPrefab_MeshOff;
 
         // Opciones de editor
+        [Tooltip("En Editor (sin Play) apaga Animator/Rig para rotar/mover los huesos libremente.")]
         public bool liveRebuildInEditor = true;
+        public bool editorFreePose = true;
 
-        // Offset de orientación para Distance/Inverse (evita atravesar la plataforma)
+        // Offset de orientación para Distance/Inverse
         public Vector3 tipEulerOffset_Distance = new Vector3(0f, 180f, 0f);
 
         // caches
         ChainIKConstraint _chain;
         RigBuilder _rigBuilder;
         Rig _rig;
+        Animator _anim;
 
         readonly List<Transform> _generatedBones = new List<Transform>();
         Transform _generatedTip;
+
+        // -------- Persistencia de pose de autor --------
+        [System.Serializable]
+        public struct PoseData
+        {
+            public string name;
+            public Vector3 localPos;
+            public Quaternion localRot;
+            public Vector3 localScale;
+        }
+        [SerializeField] List<PoseData> _savedPose = new List<PoseData>();
 
 #if UNITY_EDITOR
         [SerializeField, HideInInspector] int _presetHash;
@@ -82,6 +95,7 @@ namespace IKSuite
 
 #if UNITY_EDITOR
             if (liveRebuildInEditor) ScheduleRebuild();
+            else RebuildNow();
 #else
             RebuildNow();
 #endif
@@ -90,7 +104,7 @@ namespace IKSuite
         void OnDisable()
         {
 #if UNITY_EDITOR
-            // nada pesado
+            // nada
 #else
             PurgeGeneratedRuntime();
 #endif
@@ -119,6 +133,7 @@ namespace IKSuite
             ApplyTunablesInEditor();
 #if UNITY_EDITOR
             if (liveRebuildInEditor) ScheduleRebuild();
+            else ApplyEditorFreePoseState();
 #endif
         }
 
@@ -128,6 +143,22 @@ namespace IKSuite
 #if UNITY_EDITOR
         [ContextMenu("Rebuild In Editor Now")]
         void RebuildInEditorNowMenu() { RebuildNow(); }
+
+        [ContextMenu("Capture Author Pose (Editor)")]
+        void MenuCapturePose()
+        {
+            if (Application.isPlaying) return;
+            CaptureAuthorPoseToSaved();
+            if (!Application.isPlaying) EditorSceneManager.MarkSceneDirty(gameObject.scene);
+        }
+
+        [ContextMenu("Apply Saved Pose (Editor)")]
+        void MenuApplyPose()
+        {
+            if (Application.isPlaying) return;
+            RestoreSavedPoseToCurrent();
+            if (!Application.isPlaying) EditorSceneManager.MarkSceneDirty(gameObject.scene);
+        }
 
         void ScheduleRebuild()
         {
@@ -148,32 +179,89 @@ namespace IKSuite
         {
             if (!ValidateSetup()) return;
 
-#if UNITY_EDITOR
-            if (!Application.isPlaying) EditorSceneManager.MarkSceneDirty(gameObject.scene);
-            PurgeGeneratedEditor();
-#else
-            PurgeGeneratedRuntime();
-#endif
-            BuildArm(!Application.isPlaying);
-
-            // Hook para AddElementsToRenderer:
-            // En Editor NO reparentamos (evita errores de prefab instance), en Play sí.
-            var stasisTC = GetStasisTipControllerForMode(preset.systemType);
-            if (Application.isPlaying) CallAddElementsWithTemporaryParent(stasisTC);
-            else SafeCallAddElements(stasisTC);
-
-            // En Play, para Distance/Inverse: target en A y solver activo,
-            // PERO rig weight lo controla FollowTargetController => rig queda en 0
-            if (Application.isPlaying &&
-                (preset.systemType == IKSystemType.IK_Distance || preset.systemType == IKSystemType.IK_DistanceInverse))
+            if (Application.isPlaying)
             {
-                ApplyDistanceRuntimeInit();
+                // En Play: si ya existe la cadena generada en escena, NO la destruimos.
+                if (TryBindExistingGeneratedInPlay())
+                {
+                    if (preset.systemType == IKSystemType.IK_Distance || preset.systemType == IKSystemType.IK_DistanceInverse)
+                        ApplyDistanceRuntimeInit();
+#if UNITY_EDITOR
+                    ApplyEditorFreePoseState(); // en Play siempre deja Rig/Animator activos
+#endif
+                    return;
+                }
+
+                // Si no había cadena, construir.
+                PurgeGeneratedRuntime();
+                BuildArm(false);
+
+                if (preset.systemType == IKSystemType.IK_Distance || preset.systemType == IKSystemType.IK_DistanceInverse)
+                    ApplyDistanceRuntimeInit();
+
+                // NO llamar Animator.Rebind() para no perder pose
+                return;
             }
 
-            // Rebind opcional
-            var anim = arm ? arm.GetComponent<Animator>() : null;
-            if (anim && Application.isPlaying) anim.Rebind();
+            // ----- Editor -----
+#if UNITY_EDITOR
+            CaptureAuthorPoseToSaved();
+            if (!Application.isPlaying) EditorSceneManager.MarkSceneDirty(gameObject.scene);
+            PurgeGeneratedEditor();
+
+            BuildArm(true);
+
+            RestoreSavedPoseToCurrent();
+
+            var stasisTC = GetStasisTipControllerForMode(preset.systemType);
+            SafeCallAddElements(stasisTC);
+
+            ApplyEditorFreePoseState();
+#endif
         }
+
+#if UNITY_EDITOR
+        void CaptureAuthorPoseToSaved()
+        {
+            _savedPose.Clear();
+            if (!root) return;
+
+            var tags = root.GetComponentsInChildren<IKGeneratedTag>(true);
+            foreach (var t in tags)
+            {
+                if (!t) continue;
+                var tr = t.transform;
+                _savedPose.Add(new PoseData
+                {
+                    name = tr.name,
+                    localPos = tr.localPosition,
+                    localRot = tr.localRotation,
+                    localScale = tr.localScale
+                });
+            }
+        }
+
+        void RestoreSavedPoseToCurrent()
+        {
+            if (_savedPose == null || _savedPose.Count == 0 || !root) return;
+
+            var dict = new Dictionary<string, Transform>();
+            var tags = root.GetComponentsInChildren<IKGeneratedTag>(true);
+            foreach (var t in tags)
+            {
+                if (!t) continue;
+                dict[t.transform.name] = t.transform;
+            }
+
+            foreach (var p in _savedPose)
+            {
+                if (!dict.TryGetValue(p.name, out var tr)) continue;
+                tr.localPosition = p.localPos;
+                tr.localRotation = p.localRot;
+                tr.localScale = p.localScale;
+            }
+        }
+#endif
 
         // =====================================================================
         // Build chain
@@ -198,6 +286,7 @@ namespace IKSuite
             for (int i = 0; i < count; i++)
             {
                 var boneT = InstantiateBone(bonePrefab, i == 0 ? root : prevBone, immediate);
+                if (boneT == null) return;
                 boneT.name = "Bone_" + (i + 1);
                 _generatedBones.Add(boneT);
 
@@ -228,6 +317,8 @@ namespace IKSuite
             // TIP: hijo del PADRE de END, en la pose mundial de END (+ offset para Distance/Inverse)
             Transform tipParent = prevEnd ? prevEnd.parent : prevBone;
             var tipT = InstantiateTip(tipPrefab, tipParent, immediate);
+            if (tipT == null) return;
+
             tipT.name = "TIP";
             if (prevEnd != null)
             {
@@ -244,10 +335,12 @@ namespace IKSuite
             _generatedTip = tipT;
 
             // Rig / Constraint: asignar data ANTES de build
-            _chain = rigObject.GetComponent<ChainIKConstraint>();
-            if (_chain == null) _chain = rigObject.gameObject.AddComponent<ChainIKConstraint>();
-            _rig = rigObject.GetComponent<Rig>();
-            if (_rig == null) _rig = rigObject.gameObject.AddComponent<Rig>();
+            _chain = rigObject ? rigObject.GetComponent<ChainIKConstraint>() : null;
+            if (_chain == null && rigObject) _chain = rigObject.gameObject.AddComponent<ChainIKConstraint>();
+            _rig = rigObject ? rigObject.GetComponent<Rig>() : null;
+            if (_rig == null && rigObject) _rig = rigObject.gameObject.AddComponent<Rig>();
+
+            if (_chain == null || _rig == null) return;
 
             var data = _chain.data;
             data.root = firstBone;
@@ -255,35 +348,28 @@ namespace IKSuite
             data.target = target;
             _chain.data = data;
 
-            // Pesos:
-            // Distance/Inverse: rig siempre 0 (editor y play). ChainIK activo (1).
-            // Movement/Rotation: rig 1 como venías usando.
+            // Pesos por sistema
             if (preset.systemType == IKSystemType.IK_Distance || preset.systemType == IKSystemType.IK_DistanceInverse)
             {
                 _chain.weight = 1f;
-                _rig.weight = 0f;
+                _rig.weight = 0f;   // FollowTargetController maneja el weight
             }
             else
             {
                 _chain.weight = 1f;
-                _rig.weight = 1f;
+                _rig.weight = 1f;   // Movement/Rotation activos siempre
             }
 
-            // Sanear RigBuilder y recién ahí Build
             EnsureRigComponents();
-            _rigBuilder.Build();
+            if (_rigBuilder) _rigBuilder.Build();
 
-            // Para Distance modes, asegurar que el FollowTargetController del target apunte a ESTE rig
             if (preset.systemType == IKSystemType.IK_Distance || preset.systemType == IKSystemType.IK_DistanceInverse)
-            {
                 AssignRigToFollowTargetController(target, _rig);
-            }
         }
 
-        // En Play, iniciar Distance/Inverse:
-        // - target = pose de TIP (A)
-        // - ChainIK = 1
-        // - Rig = 0 (peso controlado por FollowTargetController)
+        // =====================================================================
+        // Play init para Distance/Inverse
+        // =====================================================================
         void ApplyDistanceRuntimeInit()
         {
             var target = GetTargetForMode(preset.systemType);
@@ -293,7 +379,7 @@ namespace IKSuite
             target.rotation = _generatedTip.rotation;
 
             if (_chain != null) _chain.weight = 1f;
-            if (_rig != null) _rig.weight = 0f; // *** clave: el weight lo maneja FollowTargetController
+            if (_rig != null) _rig.weight = 0f; // FollowTargetController maneja el weight
         }
 
         // Vincula el rig al FollowTargetController en el target (si existe)
@@ -303,6 +389,77 @@ namespace IKSuite
             var ft = target.GetComponent<FollowTargetController>();
             if (!ft) return;
             ft.rig = rig;
+        }
+
+        // =====================================================================
+        // Reusar cadena existente en Play (seguro)
+        // =====================================================================
+        bool TryBindExistingGeneratedInPlay()
+        {
+            if (!Application.isPlaying) return false;
+            if (!root || !rigObject) return false;
+            if (!root.gameObject.scene.IsValid()) return false;
+
+            var tags = root.GetComponentsInChildren<IKGeneratedTag>(true);
+            if (tags == null || tags.Length == 0) return false;
+
+            Transform firstBone = null;
+            Transform tip = null;
+
+            foreach (var t in tags)
+            {
+                if (!t) continue;
+                if (t.name == "TIP") tip = t.transform;
+            }
+            foreach (var t in tags)
+            {
+                if (!t) continue;
+                if (t.transform.parent == root && t.name.StartsWith("Bone_"))
+                {
+                    firstBone = t.transform;
+                    break;
+                }
+            }
+
+            if (!firstBone || !tip) return false;
+
+            EnsureRigComponents();
+            if (!rigObject) return false;
+
+            if (_chain == null) _chain = rigObject.gameObject.GetComponent<ChainIKConstraint>();
+            if (_chain == null) _chain = rigObject.gameObject.AddComponent<ChainIKConstraint>();
+
+            if (_rig == null) _rig = rigObject.gameObject.GetComponent<Rig>();
+            if (_rig == null) _rig = rigObject.gameObject.AddComponent<Rig>();
+
+            var target = GetTargetForMode(preset.systemType);
+
+            var data = _chain.data;
+            data.root = firstBone;
+            data.tip = tip;
+            data.target = target;
+            _chain.data = data;
+
+            if (preset.systemType == IKSystemType.IK_Distance || preset.systemType == IKSystemType.IK_DistanceInverse)
+            {
+                _chain.weight = 1f;
+                _rig.weight = 0f;
+                AssignRigToFollowTargetController(target, _rig);
+            }
+            else
+            {
+                _chain.weight = 1f;
+                _rig.weight = 1f;
+            }
+
+            EnsureRigComponents();
+            if (_rigBuilder) _rigBuilder.Build();
+
+            _generatedBones.Clear();
+            foreach (var t in tags) if (t && t.name.StartsWith("Bone_")) _generatedBones.Add(t.transform);
+            _generatedTip = tip;
+
+            return true;
         }
 
         // =====================================================================
@@ -329,20 +486,17 @@ namespace IKSuite
         }
 
         // =====================================================================
-        // Instantiation helpers (con fix para Prefab Asset parenting)
+        // Instantiation helpers (Prefab Asset parenting safe)
         // =====================================================================
 #if UNITY_EDITOR
         Transform GetSafeParent(Transform desiredParent)
         {
-            // Si no hay root o no es de escena, mejor no avanzar
             if (!root || !root.gameObject.scene.IsValid())
                 return desiredParent ? desiredParent : null;
 
-            // Tomar el deseado si existe y pertenece a la MISMA escena que root
             if (desiredParent && desiredParent.gameObject.scene == root.gameObject.scene)
                 return desiredParent;
 
-            // Caso contrario, usar root
             return root;
         }
 #endif
@@ -353,7 +507,6 @@ namespace IKSuite
             if (!Application.isPlaying && prefab && PrefabUtility.IsPartOfPrefabAsset(prefab))
             {
                 var parentT = GetSafeParent(parent != null ? parent : root);
-                // Instanciar con parent DIRECTO para no hacer SetParent luego (evita el error)
                 var obj = PrefabUtility.InstantiatePrefab(prefab, parentT) as GameObject;
                 if (obj == null) return null;
                 obj.AddComponent<IKGeneratedTag>();
@@ -390,8 +543,6 @@ namespace IKSuite
         void CallAddElementsWithTemporaryParent(Component controller)
         {
             if (controller == null || root == null) return;
-
-            // En Play sí podemos reparentar temporalmente
             var ctrlT = controller.transform;
             var origParent = root.parent;
             var wp = root.position; var wr = root.rotation; var ws = root.lossyScale;
@@ -441,7 +592,6 @@ namespace IKSuite
             {
                 case IKSystemType.IK_Distance:
                 case IKSystemType.IK_DistanceInverse:
-                    // Distance/Inverse: se configuran desde la jerarquía (no tocamos nada aquí)
                     break;
 
                 case IKSystemType.IK_PlatformMovement:
@@ -483,6 +633,48 @@ namespace IKSuite
 #endif
         }
 
+#if UNITY_EDITOR
+        void ApplyEditorFreePoseState()
+        {
+            EnsureRigComponents();
+            if (Application.isPlaying)
+            {
+                // En Play SIEMPRE activos; pesos por sistema
+                if (_anim) _anim.enabled = true;
+                if (_chain) _chain.enabled = true;
+                if (_rig)
+                {
+                    _rig.enabled = true;
+                    _rig.weight = (preset != null &&
+                        (preset.systemType == IKSystemType.IK_Distance || preset.systemType == IKSystemType.IK_DistanceInverse))
+                        ? 0f : 1f;
+                }
+                if (_rigBuilder) { _rigBuilder.enabled = true; _rigBuilder.Build(); }
+                return;
+            }
+
+            // En Editor: modo pose libre opcional
+            if (editorFreePose)
+            {
+                if (_anim) _anim.enabled = false;
+                if (_rigBuilder) { _rigBuilder.Clear(); _rigBuilder.enabled = false; }
+                if (_rig) { _rig.enabled = false; _rig.weight = 0f; }
+                if (_chain) _chain.enabled = false;
+            }
+            else
+            {
+                if (_anim) _anim.enabled = true;
+                if (_rig)
+                {
+                    _rig.enabled = true; _rig.weight = (preset != null &&
+            (preset.systemType == IKSystemType.IK_Distance || preset.systemType == IKSystemType.IK_DistanceInverse)) ? 0f : 1f;
+                }
+                if (_chain) _chain.enabled = true;
+                if (_rigBuilder) { _rigBuilder.enabled = true; _rigBuilder.Build(); }
+            }
+        }
+#endif
+
         // Mantener escala mundo al reparentar
         static void SetWorldScale(Transform t, Vector3 worldScale)
         {
@@ -503,7 +695,6 @@ namespace IKSuite
             foreach (var r in receivers)
                 if (r is IStasisPartIK iface) iface.SetTipController(tipController);
 
-            // fallback por nombres comunes si algún script no implementa la interfaz
             string[] names = { "stasisTipController", "StasisTipController", "tipController", "TipController", "stasisTipCtrl", "StasisTipCtrl" };
             foreach (var r in receivers)
             {
@@ -531,6 +722,8 @@ namespace IKSuite
 
             _rig = rigObject ? rigObject.GetComponent<Rig>() : null;
             if (rigObject && _rig == null) _rig = rigObject.gameObject.AddComponent<Rig>();
+
+            _anim = arm ? arm.GetComponent<Animator>() : null;
 
             if (_rigBuilder != null)
             {
@@ -611,7 +804,6 @@ namespace IKSuite
             if (!GetBonePrefabForMode(preset.systemType)) return false;
             if (!GetTipPrefabForMode(preset.systemType)) return false;
 
-            // Tanto root como rigObject DEBEN colgar de arm (Animator) y ser INSTANCIAS DE ESCENA
             if (!IsDescendantOf(root, arm) || !root.gameObject.scene.IsValid())
             {
                 Debug.LogError("[IK] 'root' must be a Scene instance and a descendant of 'arm' (Animator).", this);
@@ -644,7 +836,6 @@ namespace IKSuite
             unchecked { return (int)preset.systemType * 23 + preset.boneCount; }
         }
 
-        // Setters por SerializedObject para scripts externos
         static void ApplyToPathFollower1(Transform target, float speed, float distanceThreshold)
         {
             if (!target) return;
