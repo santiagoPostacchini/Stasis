@@ -46,6 +46,8 @@ namespace Player.Stasis
 
         public event Action OnShoot = delegate { };
 
+        [HideInInspector] public bool stasisActivate = false;
+
         private void Start()
         {
             _playerInteractor = GetComponent<PlayerInteractor>();
@@ -106,8 +108,13 @@ namespace Player.Stasis
             }
         }
 
+        public void StasisActivate()
+        {
+            stasisActivate = true;
+        }
         private void TryApplyStasis()
         {
+            if (!stasisActivate) return;
             if (!canShootStasis || !mainCam) return;
 
             canShootStasis = false;
@@ -116,7 +123,7 @@ namespace Player.Stasis
             Ray ray = GetCenterScreenRay(mainCam);
 
             bool gotHit = Physics.SphereCast(ray, radiusStasis, out RaycastHit hit, maxDistance, layer,
-                              QueryTriggerInteraction.Ignore)
+                              QueryTriggerInteraction.Collide)
                           || Physics.Raycast(ray, out hit, maxDistance, layer, QueryTriggerInteraction.Ignore);
 
             bool stasisHit = false;

@@ -13,7 +13,7 @@ namespace Puzzle_Elements.Button.Scripts
     public class Button : MonoBehaviour, IInteractable
     {
         private static readonly int Click = Animator.StringToHash("Click");
-
+        public string animatorParam = "click";
         [SerializeField] private Animator animator;
         [Tooltip("Evento lanzado al presionar el boton")]
         public UnityEvent onPressed;
@@ -22,7 +22,7 @@ namespace Puzzle_Elements.Button.Scripts
         public Material yellow, green;
         public void Interact()
         {
-            animator.SetTrigger(Click);
+            animator.SetTrigger(animatorParam);
             onPressed?.Invoke();
             ChangeMaterial();
             EventManager.TriggerEvent("Click", gameObject);
@@ -30,28 +30,28 @@ namespace Puzzle_Elements.Button.Scripts
         }
         
        
-        private void OnCollisionStay(Collision collision)
-        {
-            Model player = collision.gameObject.GetComponent<Model>();
-            if (player)
-            {
-                if (Input.GetKeyDown(KeyCode.E))
-                {
-                    Interact();
-                }
-                if (!textInteract.gameObject.activeSelf)
-                    textInteract.gameObject.SetActive(true);
-            }
-        }
-        private void OnCollisionExit(Collision collision)
-        {
-            Model player = collision.gameObject.GetComponent<Model>();
-            if (player)
-            {
-                textInteract.gameObject.SetActive(false);
-            }
+        //private void OnCollisionStay(Collision collision)
+        //{
+        //    Model player = collision.gameObject.GetComponent<Model>();
+        //    if (player)
+        //    {
+        //        if (Input.GetKeyDown(KeyCode.E))
+        //        {
+        //            Interact();
+        //        }
+        //        if (!textInteract.gameObject.activeSelf)
+        //            textInteract.gameObject.SetActive(true);
+        //    }
+        //}
+        //private void OnCollisionExit(Collision collision)
+        //{
+        //    Model player = collision.gameObject.GetComponent<Model>();
+        //    if (player)
+        //    {
+        //        textInteract.gameObject.SetActive(false);
+        //    }
 
-        }
+        //}
         async void ChangeMaterial()
         {
             GetComponent<Renderer>().material = yellow;

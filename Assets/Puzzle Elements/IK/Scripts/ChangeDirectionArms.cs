@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using UnityEngine;
 
-public class Trigger1 : MonoBehaviour
+public class ChangeDirectionArms : MonoBehaviour
 {
     public List<FollowTargetController> followTargetControllers;
     //public Material yellow, green;

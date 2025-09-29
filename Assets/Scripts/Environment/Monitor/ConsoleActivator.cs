@@ -1,111 +1,60 @@
 using UnityEngine;
 using UnityEngine.Events;
 using System.Collections;
+using Player.Scripts.Interactor;
+using Player.Scripts.MovementFSM.MVC;
 
 [RequireComponent(typeof(Collider))]
-public class ConsoleActivator : MonoBehaviour
+public class ConsoleActivator : MonoBehaviour, IInteractable
 {
-    [Header("Detección")]
-    public string playerTag = "Player";
-    public Transform explicitPlayer; // opcional si no usás tag
 
-    [Header("Modo de activación")]
-    public KeyCode interactKey = KeyCode.E; // SOLO tecla
-    public bool onlyOnce = false;
 
     [Header("Animator (opcional)")]
     public Animator animator;
-    public ParamType paramType = ParamType.Bool;
     public string animatorParam = "Active";
 
     [Header("Eventos")]
     public UnityEvent onActivated;
 
-    // Interno
-    private bool _playerInside;
-    private Transform _currentPlayer;
-    private bool _hasFired;
-    private bool activated = false;
 
-    public enum ParamType { Bool, Trigger }
-
-    [SerializeField] private Collider _collider;
-
-    void Reset()
-    {
-        var col = GetComponent<Collider>();
-        col.isTrigger = true; // mantiene trigger, solo detecta área
-    }
 
     void Awake()
     {
         if (animator == null) animator = GetComponent<Animator>();
     }
 
-    void Update()
+    /// <summary>
+    /// Implementación de IInteractable
+    /// </summary>
+    public void Interact()
+    {
+        Debug.Log("Interact");
+        Fire();
+    }
+    private void OnTriggerStay(Collider other)
+    {
+        Model player = other.GetComponent<Model>();
+        if (player)
+        {
+            if (Input.GetKeyDown(KeyCode.E))
+            {
+                Interact();
+            }
+
+        }
+    }
+    private void Fire()
     {
 
-        if (Input.GetKeyDown(interactKey) && _playerInside)
-        {
-            Fire();
-        }
+        // Animator
+        animator.SetBool("Active", true);
+        onActivated?.Invoke();
+
     }
 
     
-    private void OnTriggerEnter(Collider other)
-    {
-        if (other.CompareTag("Player"))
-        {
-            _playerInside = true;
-        }
-    }
-    private void OnTriggerExit(Collider other)
-    {
-        if (other.CompareTag("Player"))
-        {
-            _playerInside = false;
-        }
-    }
 
-
-    private bool IsPlayer(Transform t)
-    {
-        if (explicitPlayer != null) return t == explicitPlayer;
-        if (!string.IsNullOrEmpty(playerTag))
-            return t.CompareTag(playerTag) || (t.root != null && t.root.CompareTag(playerTag));
-        return false;
-    }
-
-    private void Fire()
-    {
-        if (_hasFired && onlyOnce) return;
-
-        // Animator
-        if (animator && !string.IsNullOrEmpty(animatorParam))
-        {
-            if (paramType == ParamType.Bool)
-                animator.SetBool(animatorParam, true);
-            else
-                animator.SetTrigger(animatorParam);
-        }
-
-        // Evento
-        if (!activated)
-        {
-            StartCoroutine(wait());
-        }
-
-        if (onlyOnce) _hasFired = true;
-    }
-
-    IEnumerator wait()
-    {
-        yield return new WaitForSeconds(1f);
-        onActivated?.Invoke();
-        activated = true;
-    }
-
-    // Método público por si querés llamarlo desde otros scripts/botones
+    // Método público por si querés llamarlo desde otros scripts
     public void ActivateManually()
     {
         Fire();
