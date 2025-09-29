@@ -7,6 +7,7 @@ using Player.FullBody_Scripts.MovementFSM;
 using Player.Scripts.MovementFSM;
 using Player.Scripts.MovementFSM.MVC;
 using System.Threading.Tasks;
+using System.Collections;
 
 namespace Puzzle_Elements.Button.Scripts
 {
@@ -20,38 +21,32 @@ namespace Puzzle_Elements.Button.Scripts
         [Tooltip("Texto que aparece al entrar en colision con el boton")]
         [SerializeField] private TextMeshProUGUI textInteract;
         public Material yellow, green;
+
+        private bool canCallEvent = true;
         public void Interact()
         {
-            animator.SetTrigger(animatorParam);
-            onPressed?.Invoke();
-            ChangeMaterial();
+            if (!canCallEvent) return;
+            canCallEvent = false;
+            animator.SetBool(animatorParam,true);
+            StartCoroutine(ActivateEvent());
+            //ChangeMaterial();
             EventManager.TriggerEvent("Click", gameObject);
             Debug.Log("Evento llamado");
+            StartCoroutine(ReturnToIdle());
         }
-        
+        IEnumerator ActivateEvent()
+        {
+            yield return new WaitForSeconds(1f);
+            onPressed?.Invoke();
+        }
        
-        //private void OnCollisionStay(Collision collision)
-        //{
-        //    Model player = collision.gameObject.GetComponent<Model>();
-        //    if (player)
-        //    {
-        //        if (Input.GetKeyDown(KeyCode.E))
-        //        {
-        //            Interact();
-        //        }
-        //        if (!textInteract.gameObject.activeSelf)
-        //            textInteract.gameObject.SetActive(true);
-        //    }
-        //}
-        //private void OnCollisionExit(Collision collision)
-        //{
-        //    Model player = collision.gameObject.GetComponent<Model>();
-        //    if (player)
-        //    {
-        //        textInteract.gameObject.SetActive(false);
-        //    }
+        IEnumerator ReturnToIdle()
+        {
+            yield return new WaitForSeconds(4f);
+            animator.SetBool(animatorParam, false);
+            canCallEvent = true;
 
-        //}
+        }
         async void ChangeMaterial()
         {
             GetComponent<Renderer>().material = yellow;
