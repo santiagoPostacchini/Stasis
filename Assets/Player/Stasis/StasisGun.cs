@@ -73,6 +73,10 @@ namespace Player.Stasis
         private bool _isWallrunning;
         private Hand _wallOnSide; // lado donde está la pared (Left = pared a la izquierda del jugador)
 
+
+        private bool _stasisActivate = false;
+        public Transform camHolder;
+
         private void Start()
         {
             _playerInteractor = GetComponent<PlayerInteractor>();
@@ -138,9 +142,13 @@ namespace Player.Stasis
 
         public void ActivateGun() => canShootStasis = true;
         public void DeactivateGun() => canShootStasis = false;
-
+        public void ActivateStasis()
+        {
+            _stasisActivate = true;
+        }
         private void TryApplyStasis()
         {
+            if (!_stasisActivate) return;
             if (!canShootStasis) return;
             if (!mainCam)
             {
@@ -156,7 +164,7 @@ namespace Player.Stasis
             StartCoroutine(ResetShootAfter(cooldown));
             OnShoot?.Invoke();
 
-            Ray ray = GetCenterScreenRay(mainCam);
+            Ray ray = GetForwardRay(camHolder,20);
 
             bool gotHit = Physics.SphereCast(ray, radiusStasis, out RaycastHit hit, maxDistance, mask,
                                  QueryTriggerInteraction.Collide)
@@ -209,6 +217,18 @@ namespace Player.Stasis
 
             // Debug
             DrawDebugShot(ray, gotHit, hit, stasisHit);
+        }
+        private Ray GetForwardRay(Transform origin, float distance)
+        {
+            if (!origin)
+            {
+                Debug.LogWarning("[StasisGun] No se asignó un Transform válido para GetForwardRay.");
+                return new Ray(Vector3.zero, Vector3.forward);
+            }
+
+            // El rayo empieza en la posición del Transform
+            // y va en la dirección de su forward
+            return new Ray(origin.position, origin.forward);
         }
 
         private void FireDirect(GameObject targetObj, IStasis stasisComp, Vector3 hitPoint)
