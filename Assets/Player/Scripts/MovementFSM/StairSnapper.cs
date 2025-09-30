@@ -14,6 +14,15 @@ namespace Player.Scripts.MovementFSM
         public float checkForward = 0.45f; // alcance del sondeo
         public float ankleHeight = 0.12f; // altura del ray a riser
         public float kneeHeight = 0.60f; // altura del ray a clearance
+        
+        [Header("Low ramp-as-step")]
+        public bool enableLowRampStep = true;
+        [Tooltip("Qué tan adelante muestreamos la altura de 'tapa'")]
+        public float rampProbeAhead = 0.28f;
+        [Tooltip("Altura desde la cual casteamos hacia abajo para hallar 'tapa'")]
+        public float rampTopProbeUp = 0.25f;
+        [Tooltip("Normal.y mínima aceptable para considerar la 'tapa' caminable")]
+        [Range(0f,1f)] public float topMinNormalY = 0.25f; // 0.25 ~ 75°
 
         [Header("Forces")] public float liftDeltaVy = 0.75f; // Δv vertical instantáneo (m/s)
         public float assistAccelXZ = 1.2f; // empuje XZ mientras dura el step (m/s^2)
@@ -68,6 +77,12 @@ namespace Player.Scripts.MovementFSM
             float actualMps = new Vector3(rb.velocity.x, 0f, rb.velocity.z).magnitude;
             bool hasRecentIntent = (Time.time - _lastMoveIntentTime) <= intentGrace;
             bool allowStep = (!requireMoveInput) || hasRecentIntent || (actualMps >= minActualMps);
+            
+            if (enableLowRampStep && TryLowRampAsStep(moveDir, out var topY, out var fakeRiserNormal))
+            {
+                BeginStep(moveDir, fakeRiserNormal, topY);
+                return;
+            }
 
             if (_stepping)
             {
@@ -85,7 +100,8 @@ namespace Player.Scripts.MovementFSM
             Vector3 ankle = foot + Vector3.up * (ankleHeight + Skin);
             Vector3 knee = foot + Vector3.up * (kneeHeight + Skin);
 
-            if (!Physics.Raycast(ankle, moveDir, out RaycastHit riserHit, checkForward, walkableMask,
+            const float riserProbeRadius = 0.05f; // pequeño, evita falsos positivos
+            if (!Physics.SphereCast(ankle, riserProbeRadius, moveDir, out RaycastHit riserHit, checkForward, walkableMask,
                     QueryTriggerInteraction.Ignore))
             {
                 TrySnapDown(moveDir);
@@ -190,6 +206,44 @@ namespace Player.Scripts.MovementFSM
             float downDeltaVy = Mathf.Clamp(dy / Time.fixedDeltaTime, -2.5f, 0f);
             rb.AddForce(Vector3.up * downDeltaVy, ForceMode.VelocityChange);
             _lastSnapTime = Time.time;
+        }
+        
+        bool TryLowRampAsStep(Vector3 moveDir, out float topY, out Vector3 fakeRiserNormal)
+        {
+            topY = 0f;
+            fakeRiserNormal = Vector3.zero;
+
+            // 1) punto adelante en XZ donde “queremos” estar
+            Vector3 foot = BottomSphereCenter();
+            Vector3 aheadXZ = foot + moveDir.normalized * Mathf.Clamp(rampProbeAhead, 0.1f, checkForward);
+
+            // 2) ray hacia abajo para encontrar la “tapa” (aunque sea inclinada)
+            Vector3 downOrigin = new Vector3(aheadXZ.x, foot.y + maxStepUp + rampTopProbeUp, aheadXZ.z);
+            if (!Physics.Raycast(downOrigin, Vector3.down, out RaycastHit topHit,
+                    maxStepUp + rampTopProbeUp + 0.1f, walkableMask,
+                    QueryTriggerInteraction.Ignore))
+                return false;
+
+            // 3) que la “tapa” sea físicamente alcanzable como step
+            float candidateTopY = topHit.point.y + Skin;
+            float dy = candidateTopY - rb.position.y;
+            if (dy < 0.02f || dy > maxStepUp + 0.001f) return false;
+
+            // 4) y que no sea una pared total (aceptamos inclinadas fuertes, pero no techo)
+            if (topHit.normal.y < topMinNormalY) return false;
+
+            // 5) clearance a rodilla entre acá y ahead (evitar clavarnos en la cara de la rampa)
+            Vector3 knee = foot + Vector3.up * (kneeHeight + Skin);
+            if (Physics.Raycast(knee, moveDir, rampProbeAhead, walkableMask, QueryTriggerInteraction.Ignore))
+                return false;
+
+            // 6) "riser" sintético: usamos la componente frontal opuesta a la marcha
+            // para construir un plano tangencial donde deslizar durante el step
+            fakeRiserNormal = Vector3.ProjectOnPlane(-moveDir, Vector3.up).normalized;
+            if (fakeRiserNormal.sqrMagnitude < 1e-5f) fakeRiserNormal = Vector3.forward; // fallback estable
+
+            topY = candidateTopY;
+            return true;
         }
 
         Vector3 BottomSphereCenter()

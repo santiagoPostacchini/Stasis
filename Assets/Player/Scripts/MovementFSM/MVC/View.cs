@@ -8,7 +8,8 @@ namespace Player.Scripts.MovementFSM.MVC
         private static readonly int ZAxisHash = Animator.StringToHash("zAxis");
         private static readonly int IsStopping = Animator.StringToHash("IsStopping");
         private static readonly int CanInteract = Animator.StringToHash("CanInteract");
-        private static readonly int IsGrounded = Animator.StringToHash("IsGrounded");
+        private static readonly int IsGrounded  = Animator.StringToHash("IsGrounded");
+        private static readonly int IsDeepFall  = Animator.StringToHash("IsDeepFall");
         private static readonly int TurnLeftHash = Animator.StringToHash("TurnLeft");
         private static readonly int TurnRightHash = Animator.StringToHash("TurnRight");
 
@@ -17,10 +18,15 @@ namespace Player.Scripts.MovementFSM.MVC
 
         [Header("<color=yellow>Animator Settings</color>")]
         private float _animX, _animZ, _xAxis, _zAxis;
+        
+        [Header("Air Anim")]
+        [Tooltip("Tiempo en el aire antes de usar la anim de caída al vacío.")]
+        [SerializeField] private float deepFallDelay = 0.45f;
 
         private float _targetAnimX, _targetAnimZ;
         [SerializeField] private float animLerpSpeed = 8f;
-        private bool _isRun, _isStopping, _canInteract;
+        private bool _isRun, _isStopping, _canInteract, _isGrounded;
+        float _airElapsed;
 
         private void Awake()
         {
@@ -42,6 +48,13 @@ namespace Player.Scripts.MovementFSM.MVC
             animator.SetFloat(XAxisHash, _animX);
             animator.SetFloat(ZAxisHash, _animZ);
             animator.SetBool(IsStopping, _isStopping);
+            
+            if(!_isGrounded)
+            {
+                _airElapsed += Time.deltaTime;
+                bool deep = _airElapsed >= deepFallDelay;
+                animator.SetBool(IsDeepFall, deep);
+            }
         }
 
         public void OnMove(float x, float z)
@@ -65,10 +78,21 @@ namespace Player.Scripts.MovementFSM.MVC
             _isStopping = stp;
         }
 
-        public void GroundedChangedEvent(bool val)
+        public void GroundedChangedEvent(bool grounded, float airTime)
         {
-            Debug.Log("Grounded Changed Event");
-            animator.SetBool(IsGrounded, val);
+            _isGrounded = grounded;
+            animator.SetBool(IsGrounded, grounded);
+
+            if (grounded)
+            {
+                _airElapsed = 0f;
+                animator.SetBool(IsDeepFall, false);
+               
+            }
+            else
+            {
+                _airElapsed = Mathf.Max(0f, airTime);
+            }
         }
 
         public void OnJumpEvent()
@@ -142,7 +166,7 @@ namespace Player.Scripts.MovementFSM.MVC
             Debug.Log($"Wall Slide Event with dir: {dir}");
             animator.CrossFade(dir > 0 ? "Player_Leg_Wallrun_Left" : "Player_Leg_Wallrun_Right", 0);
             animator.CrossFade(dir > 0 ? "Player_Arm_Wallrun_Left" : "Player_Arm_Wallrun_Right", 0);
-            playerCamEffects.WallrunStart();
+            playerCamEffects.WallrunStart(dir);
         }
 
         public void OnWallrunEndEvent()

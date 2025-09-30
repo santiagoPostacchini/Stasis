@@ -8,7 +8,7 @@ namespace Player.Scripts.MovementFSM.MVC
 {
     public class Model : MonoBehaviour
     {
-        public event Action<bool> OnGroundedChanged = delegate { };
+        public event Action<bool, float> OnGroundedChanged = delegate { };
         public event Action<float, float> OnMove = delegate { };
         public event Action OnJump = delegate { };
         public event Action OnShoot = delegate { };
@@ -27,8 +27,8 @@ namespace Player.Scripts.MovementFSM.MVC
         public event Action OnGetDamage = delegate { };
         public event Action OnDeath = delegate { };
         public event Action<int> OnTurnYaw = delegate { };
-        public event Action OnInteractFocusEnter   = delegate { };
-        public event Action OnInteractFocusExit    = delegate { };
+        public event Action OnInteractFocusEnter = delegate { };
+        public event Action OnInteractFocusExit = delegate { };
         public event Action OnInteract = delegate { };
 
 
@@ -39,8 +39,7 @@ namespace Player.Scripts.MovementFSM.MVC
         internal ParkourScanner Scanner;
         private FSM _fsm;
 
-        [Header("References")] 
-        public Rigidbody rb;
+        [Header("References")] public Rigidbody rb;
         public Transform cameraHolderTransform;
 
         public ParkourProbe probe;
@@ -57,16 +56,17 @@ namespace Player.Scripts.MovementFSM.MVC
 
         [Header("<color=green>Movement Settings</color>")]
         public float walkingSpeed = 4f;
+
         public float runningSpeed = 8f;
         public float acceleration = 20f;
         public float deceleration = 30f;
         public float jumpHeight = 5f;
-        
+
         [HideInInspector] public bool isRunningRuntime;
 
         [Header("Jump Assist")] public float coyoteTime = 0.12f;
         public float jumpBufferTime = 0.12f;
-        
+
         [Header("Ground Stick / Snap")]
         [Tooltip("Si true, al estar grounded se fuerza vel.Y=0 (previene creep y caída por bordes).")]
         public bool zeroYVelocityWhenGrounded = true;
@@ -76,7 +76,7 @@ namespace Player.Scripts.MovementFSM.MVC
 
         [Tooltip("Límite por FixedUpdate para el snap vertical (evita teleports).")]
         public float snapMaxStepPerFixed = 0.20f;
-        
+
         [Header("Air Control")] public bool airEnteredFromGround;
         public float airMaxSpeed = 6f;
         public float airAcceleration = 12f;
@@ -88,6 +88,10 @@ namespace Player.Scripts.MovementFSM.MVC
         [HideInInspector] public float lastAirTime;
         [HideInInspector] public float lastFallSpeed;
         [HideInInspector] public float lastLandingTime = -999f;
+
+        [Header("Air Anim / Deep Fall")] [Tooltip("Retraso antes de activar la animación de 'caída al vacío'.")]
+        public float deepFallAnimDelay = 0.45f;
+
 
         [Header("Vault")] public float vaultRegrabCooldown = 0.25f;
         [HideInInspector] public float blockVaultUntil = -999f;
@@ -164,6 +168,7 @@ namespace Player.Scripts.MovementFSM.MVC
         [HideInInspector] public bool jumpDownThisFrame;
 
         public bool HasJumpBuffered() => (Time.time - lastJumpPressedTime) <= jumpBufferTime;
+
         public void BufferJumpNow() => lastJumpPressedTime = Time.time;
 
         public bool HasJumpBufferedAfterLeftGround()
@@ -181,16 +186,16 @@ namespace Player.Scripts.MovementFSM.MVC
             rb = GetComponent<Rigidbody>();
             _stair = GetComponent<StairStepper>();
             Scanner = GetComponent<ParkourScanner>();
-            
+
             _interactor.OnInteractPerformed += HandleInteractPerformed;
             _interactor.OnInteractableFocusEnter += HandleFocusEnter;
-            _interactor.OnInteractableFocusExit  += HandleFocusExit;
+            _interactor.OnInteractableFocusExit += HandleFocusExit;
 
             if (Scanner)
             {
                 Scanner.OnProbeUpdated += p => probe = p;
                 probe = Scanner.Probe;
-                
+
                 Scanner.OnGroundedChanged += HandleGroundedChanged;
             }
 
@@ -198,7 +203,7 @@ namespace Player.Scripts.MovementFSM.MVC
             {
                 _stair.SyncFromModel(this);
             }
-            
+
             _fsm = new FSM();
             _fsm.CreateState(FSM.States.Grounded, new S_Grounded(_fsm, this, cameraHolderTransform));
             _fsm.CreateState(FSM.States.Climb, new S_Climb(_fsm, this));
@@ -239,6 +244,7 @@ namespace Player.Scripts.MovementFSM.MVC
 
         // ReSharper disable Unity.PerformanceAnalysis
         public void JumpInput() => OnJump?.Invoke();
+
         // ReSharper disable Unity.PerformanceAnalysis
         public void ShootInput() => OnShoot?.Invoke();
 
@@ -246,22 +252,27 @@ namespace Player.Scripts.MovementFSM.MVC
         public void UpdateIsRunning(bool run) => OnRun?.Invoke(run);
 
         // ReSharper disable Unity.PerformanceAnalysis
-        private void GroundChangedEvent(bool val) => OnGroundedChanged?.Invoke(val);
+        private void GroundChangedEvent(bool grounded, float airTime)
+            => OnGroundedChanged?.Invoke(grounded, airTime);
+
         // ReSharper disable Unity.PerformanceAnalysis
         public void WallrunStartEvent(float dir) => OnWallrunStart?.Invoke(dir);
         public void WallrunEndEvent() => OnWallrunEnd?.Invoke();
+
         // ReSharper disable Unity.PerformanceAnalysis
         public void VaultStartEvent() => OnVaultStart?.Invoke();
+
         // ReSharper disable Unity.PerformanceAnalysis
         public void VaultEndEvent() => OnVaultEnd?.Invoke();
 
         internal bool IsGroundedNow() => Scanner && Scanner.IsGrounded();
-        
+
         // ReSharper disable Unity.PerformanceAnalysis
         private void HandleFocusEnter() => OnInteractFocusEnter?.Invoke();
+
         // ReSharper disable Unity.PerformanceAnalysis
-        private void HandleFocusExit()  => OnInteractFocusExit?.Invoke();
-        
+        private void HandleFocusExit() => OnInteractFocusExit?.Invoke();
+
         // ReSharper disable Unity.PerformanceAnalysis
         private void HandleInteractPerformed() => OnInteract?.Invoke();
 
@@ -269,7 +280,8 @@ namespace Player.Scripts.MovementFSM.MVC
         {
             if (!grounded)
             {
-                GroundChangedEvent(false);
+                // acaba de dejar el suelo
+                GroundChangedEvent(false, 0f);
                 lastLeftGroundTime = Time.time;
                 airEnteredFromGround = true;
                 landedPending = false;
@@ -278,23 +290,27 @@ namespace Player.Scripts.MovementFSM.MVC
 
             if (Time.time < groundedIgnoreUntil)
             {
-                GroundChangedEvent(false);
+                // si decidís “ignorar” este grounded, reportá como no-grounded con el tiempo transcurrido
+                GroundChangedEvent(false, Time.time - lastLeftGroundTime);
                 return;
             }
-            
+
             if (HasJumpBuffered())
             {
-                GroundChangedEvent(false);
+                GroundChangedEvent(false, Time.time - lastLeftGroundTime);
                 landedPending = false;
                 lastLandingTime = Time.time;
                 return;
             }
-            
-            GroundChangedEvent(true);
 
+            // landed
             float airTime = Time.time - lastLeftGroundTime;
-            bool minAirOk = airTime >= minAirTime;
-            bool impactOk = lastFallSpeed <= landVelThreshold;
+            GroundChangedEvent(true, airTime);
+
+            // (tu lógica existente de landing debajo se mantiene igual)
+            float at = airTime;
+            bool minAirOk  = at >= minAirTime;
+            bool impactOk  = lastFallSpeed <= landVelThreshold;
             bool cooldownOk = (Time.time - lastLandingTime) > landEventCooldown;
 
             if (cooldownOk && (minAirOk && impactOk))
@@ -307,18 +323,18 @@ namespace Player.Scripts.MovementFSM.MVC
                 landedPending = true;
             }
         }
-        
+
         public bool IsIdleForTurn()
         {
             if (isRunningRuntime) return false;
-            
+
             bool noInput = (Mathf.Abs(xAxis) < 0.05f && Mathf.Abs(zAxis) < 0.05f);
-            
+
             var hv = rb ? new Vector3(rb.velocity.x, 0f, rb.velocity.z) : Vector3.zero;
             bool lowSpeed = hv.magnitude < 0.15f;
             return noInput && lowSpeed;
         }
-        
+
         public void RequestTurnYaw(int dir)
         {
             dir = (dir >= 0) ? +1 : -1;

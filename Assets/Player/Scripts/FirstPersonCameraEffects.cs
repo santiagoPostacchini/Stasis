@@ -133,7 +133,12 @@ namespace Player.Scripts
             effectsPivot.localPosition = pos;
         }
 
-        public void WallrunStart() { _rollTarget = wallrunTilt;  AddFov(+Mathf.Abs(wallrunFovAdd)); }
+        public void WallrunStart(float side)
+        {
+            int s = Mathf.Sign(side) <= 0 ? +1 : -1;
+            _rollTarget = -s * wallrunTilt;
+            AddFov(+Mathf.Abs(wallrunFovAdd));
+        }
         public void WallrunEnd()                  { _rollTarget = 0f;                        AddFov(-Mathf.Abs(wallrunFovAdd)); }
         public void VaultStart(int sideSign = 0)  { sideSign = Mathf.Clamp(sideSign, -1, 1); _rollTarget = (sideSign==0?1:sideSign)*vaultTilt; if (vaultAsPulse) _vaultTimer = vaultHoldTime; AddFov(+Mathf.Abs(vaultFovAdd)); AddImpulseShake(1.4f); }
         public void VaultEnd()                    { if (!vaultAsPulse) _rollTarget = 0f;     AddFov(-Mathf.Abs(vaultFovAdd)); }

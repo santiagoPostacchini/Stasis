@@ -87,7 +87,6 @@ namespace Player.Scripts.MovementFSM
         public void OnExit()
         {
             _model.OnJump -= OnJumpPressed;
-            Debug.Log("Air EXIT");
         }
 
         public void OnLateUpdate()

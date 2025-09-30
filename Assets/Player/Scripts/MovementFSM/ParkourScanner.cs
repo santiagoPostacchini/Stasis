@@ -699,8 +699,9 @@ namespace Player.Scripts.MovementFSM
 
             nPlanar.Normalize();
 
-            float sideSign = Vector3.Dot(Vector3.Cross(fwdPlanar, -nPlanar), Vector3.up);
-            int resolvedSide = (sideSign >= 0f) ? +1 : -1;
+            float rightDot = Vector3.Dot(nPlanar, transform.right);
+
+            int resolvedSide = -Mathf.Sign(rightDot) >= 0 ? +1 : -1;
 
             result = new ParkourProbe
             {
