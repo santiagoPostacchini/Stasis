@@ -79,7 +79,6 @@ namespace Player.Stasis
 
         private void Start()
         {
-            _stasisActivate = true;
             _playerInteractor = GetComponent<PlayerInteractor>();
             _view = GetComponentInParent<View>();
             _model = GetComponentInParent<Model>();           // buscar Model

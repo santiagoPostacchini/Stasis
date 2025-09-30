@@ -804,6 +804,13 @@ namespace IKSuite
             if (!GetBonePrefabForMode(preset.systemType)) return false;
             if (!GetTipPrefabForMode(preset.systemType)) return false;
 
+            // --- NUEVO: si es un prefab asset, no validar ---
+            if (!gameObject.scene.IsValid())
+            {
+                return false;
+            }
+
+            // --- resto igual ---
             if (!IsDescendantOf(root, arm) || !root.gameObject.scene.IsValid())
             {
                 Debug.LogError("[IK] 'root' must be a Scene instance and a descendant of 'arm' (Animator).", this);
