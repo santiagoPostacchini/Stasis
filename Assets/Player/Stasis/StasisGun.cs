@@ -45,10 +45,6 @@ namespace Player.Stasis
         [SerializeField, Tooltip("Si los clicks están dentro de esta ventana, alterna la mano.")]
         private float spamWindow = 0.18f;
 
-        [Header("Anti spam / toggle")]
-        [SerializeField, Tooltip("Antirebote por objetivo (segundos). Previene doble toggle en spam ultra-rápido.")]
-        private float perTargetDebounce = 0.08f;
-
         [Header("Debug")]
         [SerializeField] private bool debugDraw = true;
         [SerializeField] private bool debugLogs;
@@ -64,7 +60,7 @@ namespace Player.Stasis
         private StasisBeam _activeBeam;
         private PlayerInteractor _playerInteractor;
         private View _view;
-        private Model _model; // Model para eventos de wallrun
+        private Model _model;                 // Model para eventos de wallrun
 
         public event Action OnShoot = delegate { };
 
@@ -77,23 +73,15 @@ namespace Player.Stasis
         private bool _isWallrunning;
         private Hand _wallOnSide; // lado donde está la pared (Left = pared a la izquierda del jugador)
 
-        // Anti "lost click"
-        private readonly Dictionary<GameObject, float> _lastToggleAt = new();
 
-        private struct PendingShot
-        {
-            public bool Valid;
-            public GameObject TargetObj;
-            public IStasis StasisComp;
-            public Vector3 HitPoint;
-        }
-        private PendingShot _pending;
+        private bool _stasisActivate = false;
+        public Transform camHolder;
 
         private void Start()
         {
             _playerInteractor = GetComponent<PlayerInteractor>();
             _view = GetComponentInParent<View>();
-            _model = GetComponentInParent<Model>();
+            _model = GetComponentInParent<Model>();           // buscar Model
 
             mainCam = cameraOverride
                       ?? GetComponentInChildren<UnityEngine.Camera>() 
@@ -128,44 +116,39 @@ namespace Player.Stasis
 
         private void Update()
         {
-            // Capturamos clicks incluso en cooldown para poder BUFERIZAR
-            if (Input.GetMouseButtonDown(0))
+            if (!canShootStasis) return;
+            if (!Input.GetMouseButtonDown(0)) return;
+
+            // 1) Releasing target directo
+            PhysicsBox releasing = null;
+            if (_playerInteractor)
             {
-                if (!canShootStasis)
-                {
-                    // Estamos en cooldown: ray rápido para guardar próximo objetivo y dar feedback visual
-                    BufferShotFromCamera();
-                    return;
-                }
-
-                // canShootStasis = true → flujo normal
-                // 1) Releasing target directo
-                PhysicsBox releasing = null;
-                if (_playerInteractor)
-                {
-                    releasing = _playerInteractor.GetReleasingTarget();
-                    if (releasing && !releasing.gameObject.activeInHierarchy) releasing = null;
-                }
-
-                if (releasing)
-                {
-                    var stasisComp = (IStasis)releasing;
-                    var col = releasing.GetComponentInChildren<Collider>();
-                    var hitPoint = col ? col.bounds.center : releasing.transform.position;
-                    FireDirect(releasing.gameObject, stasisComp, hitPoint);
-                    return;
-                }
-
-                // 2) Flujo normal con raycast real
-                TryApplyStasis();
+                releasing = _playerInteractor.GetReleasingTarget();
+                if (releasing && !releasing.gameObject.activeInHierarchy) releasing = null;
             }
+
+            if (releasing)
+            {
+                var stasisComp = (IStasis)releasing;
+                var col = releasing.GetComponentInChildren<Collider>();
+                var hitPoint = col ? col.bounds.center : releasing.transform.position;
+                FireDirect(releasing.gameObject, stasisComp, hitPoint);
+                return;
+            }
+
+            // 2) Flujo normal con raycast real
+            TryApplyStasis();
         }
 
         public void ActivateGun() => canShootStasis = true;
         public void DeactivateGun() => canShootStasis = false;
-
+        public void ActivateStasis()
+        {
+            _stasisActivate = true;
+        }
         private void TryApplyStasis()
         {
+            if (!_stasisActivate) return;
             if (!canShootStasis) return;
             if (!mainCam)
             {
@@ -181,7 +164,7 @@ namespace Player.Stasis
             StartCoroutine(ResetShootAfter(cooldown));
             OnShoot?.Invoke();
 
-            Ray ray = GetCenterScreenRay(mainCam);
+            Ray ray = GetForwardRay(camHolder,20);
 
             bool gotHit = Physics.SphereCast(ray, radiusStasis, out RaycastHit hit, maxDistance, mask,
                                  QueryTriggerInteraction.Collide)
@@ -198,7 +181,7 @@ namespace Player.Stasis
                 if (go.TryGetComponent<IStasis>(out var stasisComponent))
                 {
                     var staseable = stasisComponent;
-                    var objStaseable = ((MonoBehaviour)staseable).gameObject;
+                    var objStaseable = ((MonoBehaviour)stasisComponent).gameObject;
 
                     var root = go.GetComponentInParent<StasisRoot>();
                     if (root)
@@ -213,9 +196,8 @@ namespace Player.Stasis
 
                     stasisHit = true;
 
-                    // Toggle INMEDIATO (sin delay). Ya estamos dentro del click que inició el cooldown.
-                    if (CanToggleNow(objStaseable))
-                        ToggleStasisImmediate(objStaseable, staseable);
+                    // EXACTAMENTE como tu StasisGun2: delay corto y toggle en ApplyStasisEffect
+                    StartCoroutine(WaitStasisEffect(objStaseable, staseable));
                 }
                 else
                 {
@@ -227,34 +209,38 @@ namespace Player.Stasis
                 SpawnMissFx(targetPoint, -ray.direction);
             }
 
-            // Elegir mano(s) segun wallrun/spam
+            // Elegir mano(s) según wallrun/spam
             var fireMode = ChooseHandForThisShot();
 
-            // Spawnear beam desde el(los) brazo(s) seleccionados
+            // Spawnear beam desde el(los) brazo(s) seleccionados (siempre hay FX)
             SpawnBeamsNextFrame(targetPoint, stasisHit, fireMode);
 
             // Debug
             DrawDebugShot(ray, gotHit, hit, stasisHit);
         }
+        private Ray GetForwardRay(Transform origin, float distance)
+        {
+            if (!origin)
+            {
+                Debug.LogWarning("[StasisGun] No se asignó un Transform válido para GetForwardRay.");
+                return new Ray(Vector3.zero, Vector3.forward);
+            }
+
+            // El rayo empieza en la posición del Transform
+            // y va en la dirección de su forward
+            return new Ray(origin.position, origin.forward);
+        }
 
         private void FireDirect(GameObject targetObj, IStasis stasisComp, Vector3 hitPoint)
         {
-            if (!canShootStasis)
-            {
-                // En cooldown → guardar este intento como pending y dar feedback visual
-                _pending = new PendingShot { Valid = true, TargetObj = targetObj, StasisComp = stasisComp, HitPoint = hitPoint };
-                var fireModePending = ChooseHandForThisShot();
-                SpawnBeamsNextFrame(hitPoint, true, fireModePending);
-                return;
-            }
+            if (!canShootStasis) return;
 
             canShootStasis = false;
             StartCoroutine(ResetShootAfter(cooldown));
             OnShoot?.Invoke();
 
-            // Toggle inmediato
-            if (CanToggleNow(targetObj))
-                ToggleStasisImmediate(targetObj, stasisComp);
+            // Delay corto y toggle en ApplyStasisEffect (mismo patrón que funcionaba)
+            StartCoroutine(WaitStasisEffect(targetObj, stasisComp));
 
             var fireMode = ChooseHandForThisShot();
             SpawnBeamsNextFrame(hitPoint, true, fireMode);
@@ -263,54 +249,6 @@ namespace Player.Stasis
                 _playerInteractor.ClearReleasingTargetIf(targetObj);
 
             if (debugLogs) Debug.Log($"[StasisGun] Direct STASIS to releasing target: {targetObj.name}", targetObj);
-        }
-
-        // ===== Buffer de clicks en cooldown (desde cámara) =====
-        private void BufferShotFromCamera()
-        {
-            if (!mainCam) return;
-
-            int mask = layer.value != 0 ? layer.value : ~0;
-
-            Ray ray = GetCenterScreenRay(mainCam);
-
-            bool gotHit = Physics.SphereCast(ray, radiusStasis, out RaycastHit hit, maxDistance, mask,
-                                 QueryTriggerInteraction.Collide)
-                          || Physics.Raycast(ray, out hit, maxDistance, mask, QueryTriggerInteraction.Ignore);
-
-            bool stasisHit = false;
-            Vector3 targetPoint = gotHit 
-                                  ? hit.point 
-                                  : ray.origin + ray.direction * Mathf.Min(25f, maxDistance * 0.2f);
-
-            if (gotHit && hit.collider.gameObject.TryGetComponent<IStasis>(out var stasisComponent))
-            {
-                // Resolver StasisRoot si corresponde
-                var staseable = stasisComponent;
-                var objStaseable = ((MonoBehaviour)staseable).gameObject;
-                var root = hit.collider.GetComponentInParent<StasisRoot>();
-                if (root)
-                {
-                    var found = root.GetComponentsInChildren<MonoBehaviour>().OfType<IStasis>().FirstOrDefault();
-                    if (found != null)
-                    {
-                        staseable = found;
-                        objStaseable = ((MonoBehaviour)staseable).gameObject;
-                    }
-                }
-
-                stasisHit = true;
-                _pending = new PendingShot { Valid = true, TargetObj = objStaseable, StasisComp = staseable, HitPoint = targetPoint };
-            }
-            else
-            {
-                SpawnMissFx(targetPoint, gotHit ? hit.normal : -ray.direction);
-            }
-
-            // Feedback visual aunque estemos en cooldown
-            var fireMode = ChooseHandForThisShot();
-            SpawnBeamsNextFrame(targetPoint, stasisHit, fireMode);
-            OnShoot?.Invoke(); // audio/anim
         }
 
         private enum FireMode { Right, Left, Alternate /*reservado si quisieras doble simultáneo*/ }
@@ -344,7 +282,6 @@ namespace Player.Stasis
         // Eventos del Model
         private void HandleWallrunStart(float dir)
         {
-            // Convención: dir < 0 => pared a la izquierda ; dir > 0 => pared a la derecha
             _isWallrunning = true;
             _wallOnSide = (dir < 0f) ? Hand.Left : Hand.Right;
             if (debugLogs)
@@ -357,15 +294,12 @@ namespace Player.Stasis
             if (debugLogs) Debug.Log("[StasisGun] WallrunEnd.");
         }
 
-        // =========================
-        //        BEAMS/FX
-        // =========================
-
         private void SpawnBeamsNextFrame(Vector3 hitPoint, bool stasisHit, FireMode mode)
         {
             StartCoroutine(SpawnBeamsCR(hitPoint, stasisHit, mode));
         }
 
+        // ReSharper disable Unity.PerformanceAnalysis
         private IEnumerator SpawnBeamsCR(Vector3 hitPoint, bool stasisHit, FireMode mode)
         {
             yield return null;
@@ -393,7 +327,7 @@ namespace Player.Stasis
                     SpawnOneBeam((left ? left.position : right.position), hitPoint, stasisHit);
                     break;
                 case FireMode.Alternate:
-                    // Guardado por si quisieras disparar ambos simultáneo
+                    // Guardado por si alguna vez querés disparar ambos simultáneo
                     SpawnOneBeam((right ? right.position : left.position), hitPoint, stasisHit);
                     SpawnOneBeam((left ? left.position : right.position),  hitPoint, stasisHit);
                     break;
@@ -422,62 +356,35 @@ namespace Player.Stasis
         {
             yield return new WaitForSeconds(t);
             canShootStasis = true;
-
-            // ¿hay un disparo en buffer?
-            if (_pending.Valid && _pending.TargetObj)
-            {
-                if (CanToggleNow(_pending.TargetObj))
-                    ToggleStasisImmediate(_pending.TargetObj, _pending.StasisComp);
-
-                // feedback visual para el buffer ejecutado (opcional: ya hubo beam al buferizar)
-                _pending.Valid = false;
-            }
         }
 
-        // =========================
-        //     TOGGLE INMEDIATO
-        // =========================
-
-        private bool CanToggleNow(GameObject obj)
+        private IEnumerator WaitStasisEffect(GameObject hitObject, IStasis stasisComponent)
         {
-            float t = Time.time;
-            if (_lastToggleAt.TryGetValue(obj, out var last) && (t - last) < perTargetDebounce)
-                return false;
-
-            _lastToggleAt[obj] = t;
-            return true;
+            // pequeño delay para sincronizar con FX (idéntico a tu script que andaba)
+            yield return new WaitForSeconds(0.06f);
+            ApplyStasisEffect(hitObject, stasisComponent);
         }
 
-        private void ToggleStasisImmediate(GameObject newObject, IStasis stasisComponent)
+        private void ApplyStasisEffect(GameObject newObject, IStasis newStasisComponent)
         {
-            // Estado real del componente
-            bool isOn = stasisComponent.IsFreezed;
-
-            if (isOn)
+            // MISMA lógica de tu StasisGun2 (toggle por GameObject)
+            int idx = _stasisList.FindIndex(x => x.obj == newObject);
+            if (idx != -1)
             {
-                // Apagar
-                stasisComponent.StatisEffectDeactivate();
-
-                int idx = _stasisList.FindIndex(x => x.obj == newObject);
-                if (idx != -1) _stasisList.RemoveAt(idx);
+                _stasisList[idx].stasis.StatisEffectDeactivate();
+                _stasisList.RemoveAt(idx);
+                return;
             }
-            else
+
+            if (_stasisList.Count >= _maxStasisObjects)
             {
-                // Encender (respetando cupo)
-                if (_stasisList.Count >= _maxStasisObjects)
-                {
-                    _stasisList[0].stasis.StatisEffectDeactivate();
-                    _stasisList.RemoveAt(0);
-                }
-
-                _stasisList.Add((newObject, stasisComponent));
-                stasisComponent.StatisEffectActivate();
+                _stasisList[0].stasis.StatisEffectDeactivate();
+                _stasisList.RemoveAt(0);
             }
+
+            _stasisList.Add((newObject, newStasisComponent));
+            newStasisComponent.StatisEffectActivate();
         }
-
-        // =========================
-        //       UTILIDADES
-        // =========================
 
         private void SpawnMissFx(Vector3 point, Vector3 normal)
         {
@@ -494,7 +401,6 @@ namespace Player.Stasis
         {
             foreach (var (obj, st) in _stasisList) st.StatisEffectDeactivate();
             _stasisList.Clear();
-            _pending.Valid = false;
         }
 
         private void DrawDebugShot(Ray ray, bool gotHit, RaycastHit hit, bool stasisHit)
