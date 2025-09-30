@@ -28,10 +28,6 @@ public class VigillanceCamera : MonoBehaviour
         _parent = transform.parent;
         _lastValidRotation = transform.localRotation;
     }
-    private void Start()
-    {
-        target = GameManager.Instance.player;
-    }
     void LateUpdate()
     {
         if (!target) return;
