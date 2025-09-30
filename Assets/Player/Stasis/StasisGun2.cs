@@ -17,9 +17,9 @@ namespace Player.Stasis
         [SerializeField] private GameObject particleStasisMissed;
 
         [Header("Raycast")]
-        [Tooltip("Radio del SphereCast para perdonar errores de puntería.")]
+        [Tooltip("Radio del SphereCast para perdonar errores de punterï¿½a.")]
         [SerializeField] private float radiusStasis = 0.2f;
-        [Tooltip("Distancia máxima del raycast/spherecast.")]
+        [Tooltip("Distancia mï¿½xima del raycast/spherecast.")]
         [SerializeField] private float maxDistance = 300f;
         [Tooltip("Capas a considerar como objetivo (excluye Player).")]
         [SerializeField] private LayerMask layer;
@@ -52,13 +52,13 @@ namespace Player.Stasis
             _playerInteractor = GetComponent<PlayerInteractor>();
             _view = GetComponentInParent<View>();
 
-            // Cámara: prioriza la de hijo/padre, luego Camera.main
+            // Cï¿½mara: prioriza la de hijo/padre, luego Camera.main
             mainCam = GetComponentInChildren<UnityEngine.Camera>() ?? GetComponentInParent<UnityEngine.Camera>() ?? UnityEngine.Camera.current;
 
             if (_view) OnShoot += _view.OnShootEvent;
 
             if (!mainCam && debugLogs)
-                Debug.LogWarning("[StasisGun] No se encontró cámara. Asigna una Camera en escena.");
+                Debug.LogWarning("[StasisGun] No se encontrï¿½ cï¿½mara. Asigna una Camera en escena.");
         }
 
         private void Update()
@@ -91,7 +91,7 @@ namespace Player.Stasis
             canShootStasis = false;
             StartCoroutine(ResetShootAfter(cooldown));
 
-            // 1) Ray desde el centro de pantalla, con un pequeño offset del near clip
+            // 1) Ray desde el centro de pantalla, con un pequeï¿½o offset del near clip
             Ray ray = GetCenterScreenRay(mainCam);
 
             // 2) Hiteo: primero SphereCast para perdonar, si no, Raycast fino
@@ -162,14 +162,14 @@ namespace Player.Stasis
 
         private IEnumerator WaitStasisEffect(GameObject hitObject, IStasis stasisComponent)
         {
-            // Pequeño delay para sincronizar con el FX
+            // Pequeï¿½o delay para sincronizar con el FX
             yield return new WaitForSeconds(0.06f);
             ApplyStasisEffect(hitObject, stasisComponent);
         }
 
         private IEnumerator SpawnBeamNextFrame(Vector3 hitPoint, bool stasisHit)
         {
-            // Un frame / pequeño delay para que no compita con otros efectos
+            // Un frame / pequeï¿½o delay para que no compita con otros efectos
             yield return null;
 
             if (!stasisOrigin || !stasisBeamPrefab) yield break;
@@ -237,7 +237,7 @@ namespace Player.Stasis
                     var toHitFromMuzzle = (hit.point - stasisOrigin.position).normalized;
                     float aimVsBeamAngle = Vector3.Angle(ray.direction, toHitFromMuzzle);
                     if (debugLogs && aimVsBeamAngle > 5f)
-                        Debug.LogWarning($"[StasisGun] Aim vs Beam angle = {aimVsBeamAngle:F1}° (posible desalineación de FX o mano).");
+                        Debug.LogWarning($"[StasisGun] Aim vs Beam angle = {aimVsBeamAngle:F1}ï¿½ (posible desalineaciï¿½n de FX o mano).");
                 }
             }
             else
