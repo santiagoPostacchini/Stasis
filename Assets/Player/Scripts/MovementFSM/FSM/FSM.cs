@@ -52,5 +52,10 @@ namespace Player.Scripts.MovementFSM
         {
             _currentState?.OnFixedUpdate();
         }
+        
+        public void ArtificialLateUpdate()
+        {
+            _currentState?.OnLateUpdate();
+        }
     }
 }

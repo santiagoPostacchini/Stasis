@@ -33,6 +33,9 @@ namespace Player.Scripts.MovementFSM
         
         }
 
-        
+        public void OnLateUpdate()
+        {
+            throw new System.NotImplementedException();
+        }
     }
 }

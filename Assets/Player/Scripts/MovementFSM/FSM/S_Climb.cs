@@ -201,6 +201,11 @@ namespace Player.Scripts.MovementFSM
             _m.blockClimbUntil = Time.time + _m.climbRegrabCooldown;
         }
 
+        public void OnLateUpdate()
+        {
+            throw new System.NotImplementedException();
+        }
+
         // ======================
         // Detección pared frontal
         // ======================

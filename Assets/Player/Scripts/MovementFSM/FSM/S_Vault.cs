@@ -187,6 +187,11 @@ namespace Player.Scripts.MovementFSM
                 Debug.Log($"[VaultState] EXIT | endPos={_rb.position:F3} vel={_rb.velocity:F2}");
         }
 
+        public void OnLateUpdate()
+        {
+            throw new System.NotImplementedException();
+        }
+
         private void BuildVaultCurve(in ParkourProbe p)
         {
             float radius = _capsule ? _capsule.radius : (p.playerRadius > 0 ? p.playerRadius : 0.3f);

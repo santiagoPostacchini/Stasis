@@ -103,6 +103,11 @@ namespace Player.Scripts.MovementFSM
             if (_model && _model.rb) _model.rb.useGravity = true;
         }
 
+        public void OnLateUpdate()
+        {
+            throw new System.NotImplementedException();
+        }
+
         private void GetPlanarBasis(out Vector3 f, out Vector3 r)
         {
             Transform basis = _moveBasis ? _moveBasis : _model.transform;
@@ -177,7 +182,8 @@ namespace Player.Scripts.MovementFSM
                 _isRunning = _model.canRun && _model.runningKeyPressed &&
                              (Mathf.Abs(_model.xAxis) > 0.1f || Mathf.Abs(_model.zAxis) > 0.1f);
             }
-
+                
+            
             _model.UpdateIsRunning(_isRunning);
         }
 

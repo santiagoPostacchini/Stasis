@@ -6,5 +6,6 @@ namespace Player.Scripts.MovementFSM
         void OnUpdate();
         void OnFixedUpdate();
         void OnExit();
+        void OnLateUpdate();
     }
 }

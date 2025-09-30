@@ -13,7 +13,7 @@ namespace Player.Scripts.MovementFSM.MVC
         private static readonly int TurnRightHash = Animator.StringToHash("TurnRight");
 
         [SerializeField] private Animator animator;
-        [SerializeField] private FirstPersonCamera playerCam;
+        [SerializeField] private FirstPersonCameraEffects playerCamEffects;
 
         [Header("<color=yellow>Animator Settings</color>")]
         private float _animX, _animZ, _xAxis, _zAxis;
@@ -53,6 +53,11 @@ namespace Player.Scripts.MovementFSM.MVC
         public void OnRun(bool run)
         {
             _isRun = run;
+            if (playerCamEffects)
+            {
+                if (run && !_isRun) playerCamEffects.OnRunStart();
+                else if(!run && _isRun)    playerCamEffects.OnRunEnd();
+            }
         }
 
         public void OnStop(bool stp)
@@ -100,14 +105,14 @@ namespace Player.Scripts.MovementFSM.MVC
             animator.CrossFade("Player_Leg_Vault", 0.1f);
             animator.CrossFade("Player_Arm_Vault", 0.1f);
             animator.applyRootMotion = false;
-            playerCam.SetVaultTiltRandom();
+            playerCamEffects.VaultStart();
             //animator.SetTrigger(_vaultHash);
         }
 
         public void OnVaultEndEvent()
         {
             Debug.Log("Vault End Event");
-            playerCam.ClearTilt();
+            playerCamEffects.VaultEnd();
         }
 
         public void OnClimbStartEvent()
@@ -137,12 +142,12 @@ namespace Player.Scripts.MovementFSM.MVC
             Debug.Log($"Wall Slide Event with dir: {dir}");
             animator.CrossFade(dir > 0 ? "Player_Leg_Wallrun_Left" : "Player_Leg_Wallrun_Right", 0);
             animator.CrossFade(dir > 0 ? "Player_Arm_Wallrun_Left" : "Player_Arm_Wallrun_Right", 0);
-            playerCam.SetWallrunTilt(dir);
+            playerCamEffects.WallrunStart();
         }
 
         public void OnWallrunEndEvent()
         {
-            playerCam.ClearTilt();
+            playerCamEffects.WallrunEnd();
         }
 
         public void OnDamageEvent()
@@ -164,14 +169,13 @@ namespace Player.Scripts.MovementFSM.MVC
 
         public void OnTurnYaw(int dir)
         {
-            // dir: -1 = izquierda, +1 = derecha
             if (dir < 0)
             {
-                animator.CrossFade(TurnLeftHash, 0.05f);
+                animator.CrossFade(TurnLeftHash, 0.1f);
             }
             else
             {
-                animator.CrossFade(TurnRightHash, 0.05f);
+                animator.CrossFade(TurnRightHash, 0.1f);
             }
         }
 

@@ -90,6 +90,11 @@ namespace Player.Scripts.MovementFSM
             Debug.Log("Air EXIT");
         }
 
+        public void OnLateUpdate()
+        {
+            throw new System.NotImplementedException();
+        }
+
         private void OnJumpPressed()
         {
             _model.BufferJumpNow();

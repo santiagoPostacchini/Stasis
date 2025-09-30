@@ -59,8 +59,8 @@ public class PlayerDeath : MonoBehaviour
         if (panTiltScript != null && !_scriptsToDisable.Contains(panTiltScript))
             _scriptsToDisable.Add(panTiltScript);
 
-        FirstPersonCamera firstPersonScript = GetComponentInChildren<FirstPersonCamera>();
-        if (firstPersonScript != null && !_scriptsToDisable.Contains(firstPersonScript))
+        FirstPersonCameraEffects firstPersonScript = GetComponentInChildren<FirstPersonCameraEffects>();
+        if (firstPersonScript && !_scriptsToDisable.Contains(firstPersonScript))
             _scriptsToDisable.Add(firstPersonScript);
     }
 

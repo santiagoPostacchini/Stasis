@@ -109,6 +109,11 @@ namespace Player.Scripts.MovementFSM
             _model.WallrunEndEvent();
         }
 
+        public void OnLateUpdate()
+        {
+            throw new System.NotImplementedException();
+        }
+
         private void ReadProbe(in ParkourProbe p)
         {
             if (p.action == ParkourAction.WallrunRight || p.action == ParkourAction.WallrunLeft)
