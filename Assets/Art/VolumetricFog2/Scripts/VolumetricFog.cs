@@ -214,7 +214,18 @@ namespace VolumetricFogAndMist2 {
 
             if (fogMat == null || profile == null) return;
 
-            r.sortingLayerID = profile.sortingLayerID;
+            int sortingLayerId = profile.sortingLayerID;
+
+            if (!SortingLayer.IsValid(sortingLayerId)) {
+                var layers = SortingLayer.layers;
+                if (layers != null && layers.Length > 0) {
+                    int index = Mathf.Clamp(sortingLayerId, 0, layers.Length - 1);
+                    sortingLayerId = layers[index].id; // ← ID único real
+                }
+            }
+
+            r.sortingLayerID = sortingLayerId;
+            r.sortingOrder  = profile.sortingOrder;
             r.sortingOrder = profile.sortingOrder;
             fogMat.renderQueue = profile.renderQueue;
             float noiseScale = 0.1f / profile.noiseScale;
