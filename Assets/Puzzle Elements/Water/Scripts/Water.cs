@@ -8,15 +8,16 @@ namespace Puzzle_Elements.Water.Scripts
 {
     public class Water : MonoBehaviour
     {
-        [SerializeField] private Transform _posPlayer;
-        [SerializeField] private Transform _posHedro;
+
         public UnityEvent OnFallInWater;
+
+        [SerializeField] private LinearCheckpointSystem _checkpoint;
         private void OnTriggerEnter(Collider other)
         {
             Model player = other.GetComponent<Model>();
             if(player != null)
             {
-                player.transform.position = _posPlayer.transform.position;
+                player.transform.position = _checkpoint.CurrentCheckpointPos();
                 OnFallInWater?.Invoke();
                 Rigidbody rb = player.GetComponent<Rigidbody>();
                 if(rb != null)
@@ -41,7 +42,7 @@ namespace Puzzle_Elements.Water.Scripts
             Model player = collision.gameObject.GetComponent<Model>();
             if (player != null)
             {
-                player.transform.position = _posPlayer.transform.position;
+                player.transform.position = _checkpoint.CurrentCheckpointPos();
                 OnFallInWater?.Invoke();
                 Rigidbody rb = player.GetComponent<Rigidbody>();
                 if (rb != null)
