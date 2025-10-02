@@ -12,7 +12,7 @@ public class TrainSystem : MonoBehaviour
     public Rigidbody elevatorRb;
     public Transform elevatorWP1;
     public Transform elevatorWP2;
-    public float elevatorSpeed = 2f;           // dynamic at runtime
+    public float elevatorSpeed = 2f;
     public float elevatorWaitSeconds = 2f;
     public float elevatorArriveThreshold = 0.02f;
 
@@ -20,14 +20,14 @@ public class TrainSystem : MonoBehaviour
     public Rigidbody barricadeRb;
     public Transform barricadeWP1;
     public Transform barricadeWP2;
-    public float barricadeSpeed = 2.5f;        // dynamic at runtime
+    public float barricadeSpeed = 2.5f;
     public float barricadeArriveThreshold = 0.02f;
 
     [Header("Train (Rigidbody + Waypoints)")]
     public Rigidbody trainRb;
-    public List<Transform> trainWaypoints = new List<Transform>(); // ordered path
-    public Transform departure;                                      // must be one item from trainWaypoints
-    public float trainSpeed = 4f;            // dynamic at runtime
+    public List<Transform> trainWaypoints = new List<Transform>();
+    public Transform departure;
+    public float trainSpeed = 4f;
     public float trainArriveThreshold = 0.03f;
     public float trainTeleportWaitSeconds = 2f;
 
@@ -43,7 +43,6 @@ public class TrainSystem : MonoBehaviour
     private Coroutine barricadeCo;
     private Coroutine trainCo;
 
-    // Resueltos por altura para claridad automática
     private Transform elevatorLow;
     private Transform elevatorHigh;
     private Transform barricadeDown;
@@ -82,7 +81,6 @@ public class TrainSystem : MonoBehaviour
         trainCo = null;
     }
 
-    // Arranque manual equivalente a colocar el hedro
     public void StartAllMovement()
     {
         systemEnabled = true;
@@ -91,10 +89,12 @@ public class TrainSystem : MonoBehaviour
         ResolveHeights();
 
         if (elevatorCo != null) StopCoroutine(elevatorCo);
-        elevatorCo = StartCoroutine(ElevatorLoop());
+        if (IsElevatorConfigured())
+            elevatorCo = StartCoroutine(ElevatorLoop());
 
         if (barricadeCo != null) StopCoroutine(barricadeCo);
-        barricadeCo = StartCoroutine(BarricadeRaiseThenIdle());
+        if (IsBarricadeConfigured())
+            barricadeCo = StartCoroutine(BarricadeRaiseThenIdle());
 
         if (trainCo == null) trainCo = StartCoroutine(TrainSupervisor());
     }
@@ -106,30 +106,22 @@ public class TrainSystem : MonoBehaviour
 
     public void DisableSystem()
     {
-        // Se marca inmediatamente el halt para que el tren apunte a Departure y frene
         systemEnabled = false;
         trainHaltAtDeparture = true;
 
-        // Detener elevador donde esté
         if (elevatorCo != null)
         {
             StopCoroutine(elevatorCo);
             elevatorCo = null;
         }
 
-        // Barricada baja a DOWN
         if (barricadeCo != null) StopCoroutine(barricadeCo);
-        if (barricadeRb != null)
-        {
-            ResolveHeights();
-            if (barricadeDown != null)
-                barricadeCo = StartCoroutine(MoveBodyToDynamic(barricadeRb, barricadeDown.position, () => barricadeSpeed, barricadeArriveThreshold));
-        }
+        if (IsBarricadeConfigured())
+            barricadeCo = StartCoroutine(MoveBodyToDynamic(barricadeRb, barricadeDown.position, () => barricadeSpeed, barricadeArriveThreshold));
     }
 
     private void ResolveHeights()
     {
-        // Elevator: low/high por Y
         if (elevatorWP1 != null && elevatorWP2 != null)
         {
             if (elevatorWP1.position.y <= elevatorWP2.position.y)
@@ -143,67 +135,79 @@ public class TrainSystem : MonoBehaviour
                 elevatorHigh = elevatorWP1;
             }
         }
+        else
+        {
+            elevatorLow = null;
+            elevatorHigh = null;
+        }
 
-        // Barricade: down/up por Y
         if (barricadeWP1 != null && barricadeWP2 != null)
         {
             if (barricadeWP1.position.y <= barricadeWP2.position.y)
             {
                 barricadeDown = barricadeWP1;
-                barricadeUp = barricadeWP2;   // llegar aquí dispara el tren
+                barricadeUp = barricadeWP2;
             }
             else
             {
                 barricadeDown = barricadeWP2;
-                barricadeUp = barricadeWP1;   // llegar aquí dispara el tren
+                barricadeUp = barricadeWP1;
             }
+        }
+        else
+        {
+            barricadeDown = null;
+            barricadeUp = null;
         }
     }
 
-    // ---------------- Elevator: velocidad dinámica ----------------
+    private bool IsElevatorConfigured()
+    {
+        return elevatorRb != null && elevatorLow != null && elevatorHigh != null;
+    }
+
+    private bool IsBarricadeConfigured()
+    {
+        return barricadeRb != null && barricadeDown != null && barricadeUp != null;
+    }
+
     private IEnumerator ElevatorLoop()
     {
-        if (elevatorRb == null || elevatorLow == null || elevatorHigh == null) yield break;
+        if (!IsElevatorConfigured()) yield break;
 
         float dLow = Vector3.Distance(elevatorRb.position, elevatorLow.position);
         float dHigh = Vector3.Distance(elevatorRb.position, elevatorHigh.position);
         Transform next = (dLow <= dHigh) ? elevatorHigh : elevatorLow;
 
-        while (systemEnabled)
+        while (systemEnabled && IsElevatorConfigured())
         {
             Transform a = next;
             Transform b = (a == elevatorLow) ? elevatorHigh : elevatorLow;
 
-            // Va a 'a'
             yield return MoveBodyToDynamic(elevatorRb, a.position, () => elevatorSpeed, elevatorArriveThreshold);
             yield return WaitSecondsRealtime(elevatorWaitSeconds);
-            if (!systemEnabled) break;
+            if (!systemEnabled || !IsElevatorConfigured()) break;
 
-            // Va a 'b'
             yield return MoveBodyToDynamic(elevatorRb, b.position, () => elevatorSpeed, elevatorArriveThreshold);
             yield return WaitSecondsRealtime(elevatorWaitSeconds);
-            if (!systemEnabled) break;
+            if (!systemEnabled || !IsElevatorConfigured()) break;
 
-            next = a; // ping-pong
+            next = a;
         }
     }
 
-    // ---------------- Barricade ----------------
     private IEnumerator BarricadeRaiseThenIdle()
     {
-        if (barricadeRb == null || barricadeDown == null || barricadeUp == null) yield break;
+        if (!IsBarricadeConfigured()) yield break;
 
-        // Garantiza que arranca abajo
         float toDown = Vector3.Distance(barricadeRb.position, barricadeDown.position);
         if (toDown > barricadeArriveThreshold)
             yield return MoveBodyToDynamic(barricadeRb, barricadeDown.position, () => barricadeSpeed, barricadeArriveThreshold);
 
         if (!systemEnabled) yield break;
 
-        // Sube
         yield return MoveBodyToDynamic(barricadeRb, barricadeUp.position, () => barricadeSpeed, barricadeArriveThreshold);
 
-        // Al llegar arriba, habilita el tren
         RequestStartTrain();
 
         while (systemEnabled) yield return null;
@@ -216,7 +220,6 @@ public class TrainSystem : MonoBehaviour
         if (onTrainStarted != null) onTrainStarted.Invoke();
     }
 
-    // ---------------- Train: arranca en Departure, frena en Departure al quitar hedro ----------------
     private IEnumerator TrainSupervisor()
     {
         if (!ValidateTrainSetup()) yield break;
@@ -225,29 +228,23 @@ public class TrainSystem : MonoBehaviour
         int lastIdx = trainWaypoints.Count - 1;
         int depIdx = trainWaypoints.IndexOf(departure);
 
-        // Coloca el tren en Departure al iniciar
         if (!IsNear(trainRb.position, trainWaypoints[depIdx].position, trainArriveThreshold))
             yield return MoveBodyToDynamic(trainRb, trainWaypoints[depIdx].position, () => trainSpeed, trainArriveThreshold);
 
         while (true)
         {
-            // Espera a que la barricada habilite el tren o que se pida frenar (por si el hedro se quitó rápido)
             while (!trainRunRequested && !trainHaltAtDeparture) yield return null;
 
-            // Segmento: DEPARTURE -> ... -> END
             for (int i = depIdx + 1; i <= lastIdx; i++)
             {
-                // Si se pidió frenar mientras vamos hacia END, REVERSA inmediato hacia DEPARTURE y frenate ahí
                 if (trainHaltAtDeparture)
                 {
-                    // Reversa desde el waypoint actual hacia depIdx
                     for (int j = i - 1; j >= depIdx; j--)
                         yield return MoveBodyToDynamic(trainRb, trainWaypoints[j].position, () => trainSpeed, trainArriveThreshold);
 
                     trainRunRequested = false;
                     if (onTrainStoppedAtDeparture != null) onTrainStoppedAtDeparture.Invoke();
 
-                    // Quedar detenido en Departure hasta que vuelva a habilitarse
                     while (!systemEnabled) yield return null;
                     trainHaltAtDeparture = false;
                     goto ContinueLoop;
@@ -256,7 +253,6 @@ public class TrainSystem : MonoBehaviour
                 yield return MoveBodyToDynamic(trainRb, trainWaypoints[i].position, () => trainSpeed, trainArriveThreshold);
             }
 
-            // En END: espera y teletransporta a FIRST (solo si está habilitado)
             if (!trainHaltAtDeparture)
             {
                 yield return WaitSecondsRealtime(trainTeleportWaitSeconds);
@@ -264,7 +260,6 @@ public class TrainSystem : MonoBehaviour
             }
             else
             {
-                // Si justo se pidió frenar en END, ir hacia atrás hasta Departure y frenar
                 for (int j = lastIdx - 1; j >= depIdx; j--)
                     yield return MoveBodyToDynamic(trainRb, trainWaypoints[j].position, () => trainSpeed, trainArriveThreshold);
 
@@ -288,7 +283,6 @@ public class TrainSystem : MonoBehaviour
         return dep >= 0 && dep < trainWaypoints.Count;
     }
 
-    // ---------------- Helpers de movimiento: velocidad dinámica ----------------
     private IEnumerator MoveBodyToDynamic(Rigidbody rb, Vector3 targetPos, System.Func<float> getSpeed, float arriveThreshold)
     {
         if (rb == null) yield break;
@@ -300,7 +294,6 @@ public class TrainSystem : MonoBehaviour
             if (getSpeed != null) s = Mathf.Max(0f, getSpeed());
             if (s <= 0f)
             {
-                // velocidad 0: no avanzar
                 yield return wait;
                 continue;
             }
@@ -340,7 +333,6 @@ public class TrainSystem : MonoBehaviour
 #if UNITY_EDITOR
     void OnDrawGizmosSelected()
     {
-        // Gizmos de ayuda para ver alto/bajo y arriba/abajo
         if (elevatorWP1 != null && elevatorWP2 != null)
         {
             Transform low = (elevatorWP1.position.y <= elevatorWP2.position.y) ? elevatorWP1 : elevatorWP2;
