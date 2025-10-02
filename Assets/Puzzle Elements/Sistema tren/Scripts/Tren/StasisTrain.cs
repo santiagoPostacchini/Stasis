@@ -1,23 +1,32 @@
 using Player.Stasis;
 using UnityEngine;
 using UnityEngine.Splines;
+using System.Collections.Generic;
+
 public class StasisTrain : MonoBehaviour, IStasis
 {
     private bool _isFreezed = false;
     public bool IsFreezed => _isFreezed;
 
-
     public Material matStasis;
     public readonly string _outlineThicknessName = "_BorderThickness";
     public MaterialPropertyBlock _mpb;
-    private Renderer _rend;
+
+    [SerializeField] private List<Renderer> _rends = new List<Renderer>();
+
     private float _saveVelocity;
     private TrainSystem _trainSystem;
+
     private void Awake()
     {
         _mpb = new MaterialPropertyBlock();
-        _rend = GetComponent<Renderer>();
         _trainSystem = GetComponentInParent<TrainSystem>();
+
+        // Si no llenaste la lista en el inspector, busca todos los renderers hijos
+        if (_rends.Count == 0)
+        {
+            _rends.AddRange(GetComponentsInChildren<Renderer>());
+        }
     }
 
     public void StatisEffectActivate()
@@ -37,7 +46,6 @@ public class StasisTrain : MonoBehaviour, IStasis
             _saveVelocity = _trainSystem.trainSpeed;
             _trainSystem.trainSpeed = 0;
             _isFreezed = true;
-            //splineAnimate.Pause();
             SetOutlineThickness(1.05f);
             SetColorOutline(Color.green, 1f);
         }
@@ -48,24 +56,28 @@ public class StasisTrain : MonoBehaviour, IStasis
         if (!_isFreezed) return;
         _isFreezed = false;
         _trainSystem.trainSpeed = _saveVelocity;
-        //splineAnimate.Play();
         SetOutlineThickness(0f);
         Color lightGreen = new Color(0.6f, 1f, 0.6f);
         SetColorOutline(lightGreen, 1f);
     }
+
     public void SetOutlineThickness(float thickness)
     {
-        _rend.GetPropertyBlock(_mpb);
-        _mpb.SetFloat(_outlineThicknessName, thickness);
-        _rend.SetPropertyBlock(_mpb);
+        foreach (var rend in _rends)
+        {
+            rend.GetPropertyBlock(_mpb);
+            _mpb.SetFloat(_outlineThicknessName, thickness);
+            rend.SetPropertyBlock(_mpb);
+        }
     }
 
     public void SetColorOutline(Color color, float alpha)
     {
-        _rend.GetPropertyBlock(_mpb);
-        _mpb.SetColor("_Color", color);
-        _rend.SetPropertyBlock(_mpb);
+        foreach (var rend in _rends)
+        {
+            rend.GetPropertyBlock(_mpb);
+            _mpb.SetColor("_Color", color);
+            rend.SetPropertyBlock(_mpb);
+        }
     }
 }
-
-

@@ -179,6 +179,7 @@ public class MagicSwitch : MonoBehaviour
         foreach (Collider col in objs)
         {
             PhysicsBox hedro = col.GetComponent<PhysicsBox>();
+            
             if (hedro == null)
                 continue;
             Rigidbody rb = col.attachedRigidbody;
@@ -210,6 +211,7 @@ public class MagicSwitch : MonoBehaviour
                 rb.velocity = Vector3.zero;
                 rb.angularVelocity = Vector3.zero;
                 rb.useGravity = false;
+                col.enabled = false;
                 rb.MovePosition(basePosition);
                 rb.MoveRotation(Quaternion.identity); // opcional: resetea rotación
                 _objInCenter = true;
