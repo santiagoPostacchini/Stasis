@@ -57,6 +57,9 @@ namespace Puzzle_Elements.Hedron.Scripts
         [SerializeField] private float debugArrowLen     = 0.75f;
         [SerializeField] private float debugDrawTime     = 10f;
 
+
+        [HideInInspector] public Vector3 _posInitial;
+
         public PhysicsBox(bool isOverlappingAnything)
         {
             IsOverlappingAnything = isOverlappingAnything;
@@ -71,6 +74,7 @@ namespace Puzzle_Elements.Hedron.Scripts
             if (!mainCollider) mainCollider = GetComponentInChildren<Collider>(true);
 
             _originalScale = transform.localScale;
+            _posInitial = transform.position;
         }
 
         private void OnCollisionEnter(Collision collision)

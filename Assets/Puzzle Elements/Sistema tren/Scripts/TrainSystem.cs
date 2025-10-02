@@ -30,6 +30,7 @@ public class TrainSystem : MonoBehaviour
     public float trainSpeed = 4f;
     public float trainArriveThreshold = 0.03f;
     public float trainTeleportWaitSeconds = 2f;
+    public float trainRotationSpeed = 180f; // grados por segundo
 
     [Header("Events")]
     public UnityEvent onTrainStarted;
@@ -171,6 +172,7 @@ public class TrainSystem : MonoBehaviour
         return barricadeRb != null && barricadeDown != null && barricadeUp != null;
     }
 
+    // =============== Elevator (no rotation) ===============
     private IEnumerator ElevatorLoop()
     {
         if (!IsElevatorConfigured()) yield break;
@@ -196,6 +198,7 @@ public class TrainSystem : MonoBehaviour
         }
     }
 
+    // =============== Barricade (no rotation) ===============
     private IEnumerator BarricadeRaiseThenIdle()
     {
         if (!IsBarricadeConfigured()) yield break;
@@ -220,6 +223,7 @@ public class TrainSystem : MonoBehaviour
         if (onTrainStarted != null) onTrainStarted.Invoke();
     }
 
+    // =============== Train (with rotation) ===============
     private IEnumerator TrainSupervisor()
     {
         if (!ValidateTrainSetup()) yield break;
@@ -228,49 +232,47 @@ public class TrainSystem : MonoBehaviour
         int lastIdx = trainWaypoints.Count - 1;
         int depIdx = trainWaypoints.IndexOf(departure);
 
+        // Snap to DEPARTURE at boot
         if (!IsNear(trainRb.position, trainWaypoints[depIdx].position, trainArriveThreshold))
-            yield return MoveBodyToDynamic(trainRb, trainWaypoints[depIdx].position, () => trainSpeed, trainArriveThreshold);
+            yield return MoveBodyToDynamicWithRotation(trainRb, trainWaypoints[depIdx].position, () => trainSpeed, trainArriveThreshold, trainRotationSpeed);
 
         while (true)
         {
             while (!trainRunRequested && !trainHaltAtDeparture) yield return null;
 
+            // Phase A: DEPARTURE -> END
             for (int i = depIdx + 1; i <= lastIdx; i++)
             {
-                if (trainHaltAtDeparture)
-                {
-                    for (int j = i - 1; j >= depIdx; j--)
-                        yield return MoveBodyToDynamic(trainRb, trainWaypoints[j].position, () => trainSpeed, trainArriveThreshold);
-
-                    trainRunRequested = false;
-                    if (onTrainStoppedAtDeparture != null) onTrainStoppedAtDeparture.Invoke();
-
-                    while (!systemEnabled) yield return null;
-                    trainHaltAtDeparture = false;
-                    goto ContinueLoop;
-                }
-
-                yield return MoveBodyToDynamic(trainRb, trainWaypoints[i].position, () => trainSpeed, trainArriveThreshold);
+                yield return MoveBodyToDynamicWithRotation(trainRb, trainWaypoints[i].position, () => trainSpeed, trainArriveThreshold, trainRotationSpeed);
             }
 
-            if (!trainHaltAtDeparture)
-            {
-                yield return WaitSecondsRealtime(trainTeleportWaitSeconds);
-                TeleportBodyTo(trainRb, trainWaypoints[firstIdx].position);
-            }
-            else
-            {
-                for (int j = lastIdx - 1; j >= depIdx; j--)
-                    yield return MoveBodyToDynamic(trainRb, trainWaypoints[j].position, () => trainSpeed, trainArriveThreshold);
+            yield return WaitSecondsRealtime(trainTeleportWaitSeconds);
+            TeleportBodyTo(trainRb, trainWaypoints[firstIdx].position);
 
+            if (trainHaltAtDeparture && depIdx == firstIdx)
+            {
                 trainRunRequested = false;
                 if (onTrainStoppedAtDeparture != null) onTrainStoppedAtDeparture.Invoke();
                 while (!systemEnabled) yield return null;
                 trainHaltAtDeparture = false;
+                continue;
             }
 
-        ContinueLoop:
-            ;
+            // Phase B: FIRST -> END
+            for (int i = firstIdx; i <= lastIdx; i++)
+            {
+                if (!IsNear(trainRb.position, trainWaypoints[i].position, trainArriveThreshold))
+                    yield return MoveBodyToDynamicWithRotation(trainRb, trainWaypoints[i].position, () => trainSpeed, trainArriveThreshold, trainRotationSpeed);
+
+                if (trainHaltAtDeparture && i == depIdx)
+                {
+                    trainRunRequested = false;
+                    if (onTrainStoppedAtDeparture != null) onTrainStoppedAtDeparture.Invoke();
+                    while (!systemEnabled) yield return null;
+                    trainHaltAtDeparture = false;
+                    break;
+                }
+            }
         }
     }
 
@@ -283,6 +285,8 @@ public class TrainSystem : MonoBehaviour
         return dep >= 0 && dep < trainWaypoints.Count;
     }
 
+    // ===== Helpers =====
+    // Normal movement (no rotation)
     private IEnumerator MoveBodyToDynamic(Rigidbody rb, Vector3 targetPos, System.Func<float> getSpeed, float arriveThreshold)
     {
         if (rb == null) yield break;
@@ -290,8 +294,7 @@ public class TrainSystem : MonoBehaviour
 
         while (!IsNear(rb.position, targetPos, arriveThreshold))
         {
-            float s = 0f;
-            if (getSpeed != null) s = Mathf.Max(0f, getSpeed());
+            float s = (getSpeed != null) ? Mathf.Max(0f, getSpeed()) : 0f;
             if (s <= 0f)
             {
                 yield return wait;
@@ -300,7 +303,45 @@ public class TrainSystem : MonoBehaviour
 
             Vector3 dir = targetPos - rb.position;
             float step = s * Time.fixedDeltaTime;
-            Vector3 next = (dir.sqrMagnitude <= step * step) ? targetPos : rb.position + dir.normalized * step;
+            Vector3 next = (dir.sqrMagnitude <= step * step)
+                ? targetPos
+                : rb.position + dir.normalized * step;
+
+            rb.MovePosition(next);
+            yield return wait;
+        }
+        rb.MovePosition(targetPos);
+    }
+
+    // Movement with rotation (for train only)
+    private IEnumerator MoveBodyToDynamicWithRotation(Rigidbody rb, Vector3 targetPos, System.Func<float> getSpeed, float arriveThreshold, float rotationSpeed)
+    {
+        if (rb == null) yield break;
+        WaitForFixedUpdate wait = new WaitForFixedUpdate();
+
+        while (!IsNear(rb.position, targetPos, arriveThreshold))
+        {
+            float s = (getSpeed != null) ? Mathf.Max(0f, getSpeed()) : 0f;
+            if (s <= 0f)
+            {
+                yield return wait;
+                continue;
+            }
+
+            Vector3 dir = targetPos - rb.position;
+            float step = s * Time.fixedDeltaTime;
+            Vector3 next = (dir.sqrMagnitude <= step * step)
+                ? targetPos
+                : rb.position + dir.normalized * step;
+
+            if (dir.sqrMagnitude > 0.0001f)
+            {
+                Quaternion targetRot = Quaternion.LookRotation(dir.normalized, Vector3.up);
+                rb.MoveRotation(
+                    Quaternion.RotateTowards(rb.rotation, targetRot, rotationSpeed * Time.fixedDeltaTime)
+                );
+            }
+
             rb.MovePosition(next);
             yield return wait;
         }
@@ -350,7 +391,7 @@ public class TrainSystem : MonoBehaviour
             Gizmos.color = Color.green;
             Gizmos.DrawSphere(down.position, 0.08f);
             Gizmos.color = Color.red;
-            Gizmos.DrawCube(up.position, Vector3.one * 0.14f);
+            Gizmos.DrawCube(up.position, 0.14f * Vector3.one);
         }
     }
 #endif
