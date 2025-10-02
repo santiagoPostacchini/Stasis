@@ -13,6 +13,7 @@ public class TrainSystem : MonoBehaviour
     public Transform elevatorWP1;
     public Transform elevatorWP2;
     public float elevatorSpeed = 2f;
+    public float elevatorAcceleration = 20f; // suaviza arranque/frenado
     public float elevatorWaitSeconds = 2f;
     public float elevatorArriveThreshold = 0.02f;
 
@@ -26,11 +27,11 @@ public class TrainSystem : MonoBehaviour
     [Header("Train (Rigidbody + Waypoints)")]
     public Rigidbody trainRb;
     public List<Transform> trainWaypoints = new List<Transform>();
-    public Transform departure;
+    public Transform departure; // debe ser un elemento de trainWaypoints
     public float trainSpeed = 4f;
     public float trainArriveThreshold = 0.03f;
     public float trainTeleportWaitSeconds = 2f;
-    public float trainRotationSpeed = 180f; // grados por segundo
+    public float trainRotationSpeed = 180f; // grados/segundo
 
     [Header("Events")]
     public UnityEvent onTrainStarted;
@@ -48,6 +49,9 @@ public class TrainSystem : MonoBehaviour
     private Transform elevatorHigh;
     private Transform barricadeDown;
     private Transform barricadeUp;
+
+    // ---- Estado interno del elevador (reemplaza el ref) ----
+    private float elevatorCurrentSpeed = 0f;
 
     void Awake()
     {
@@ -172,7 +176,7 @@ public class TrainSystem : MonoBehaviour
         return barricadeRb != null && barricadeDown != null && barricadeUp != null;
     }
 
-    // =============== Elevator (no rotation) ===============
+    // ================= Elevator (aceleración suave, sin rotación) =================
     private IEnumerator ElevatorLoop()
     {
         if (!IsElevatorConfigured()) yield break;
@@ -181,24 +185,36 @@ public class TrainSystem : MonoBehaviour
         float dHigh = Vector3.Distance(elevatorRb.position, elevatorHigh.position);
         Transform next = (dLow <= dHigh) ? elevatorHigh : elevatorLow;
 
+        // velocidad actual del elevador almacenada en campo: elevatorCurrentSpeed
+
         while (systemEnabled && IsElevatorConfigured())
         {
             Transform a = next;
             Transform b = (a == elevatorLow) ? elevatorHigh : elevatorLow;
 
-            yield return MoveBodyToDynamic(elevatorRb, a.position, () => elevatorSpeed, elevatorArriveThreshold);
+            // Ir hasta 'a' con rampa de aceleración/frenado
+            yield return MoveElevatorWithAccel(a.position);
+
+            // Frenar a 0 y esperar
+            yield return DecelerateElevatorToZero();
             yield return WaitSecondsRealtime(elevatorWaitSeconds);
             if (!systemEnabled || !IsElevatorConfigured()) break;
 
-            yield return MoveBodyToDynamic(elevatorRb, b.position, () => elevatorSpeed, elevatorArriveThreshold);
+            // Ir hasta 'b' con rampa de aceleración/frenado
+            yield return MoveElevatorWithAccel(b.position);
+
+            yield return DecelerateElevatorToZero();
             yield return WaitSecondsRealtime(elevatorWaitSeconds);
             if (!systemEnabled || !IsElevatorConfigured()) break;
 
-            next = a;
+            next = a; // ping–pong
         }
+
+        elevatorRb.velocity = Vector3.zero;
+        elevatorCurrentSpeed = 0f;
     }
 
-    // =============== Barricade (no rotation) ===============
+    // ================= Barricade (sin rotación) =================
     private IEnumerator BarricadeRaiseThenIdle()
     {
         if (!IsBarricadeConfigured()) yield break;
@@ -223,7 +239,7 @@ public class TrainSystem : MonoBehaviour
         if (onTrainStarted != null) onTrainStarted.Invoke();
     }
 
-    // =============== Train (with rotation) ===============
+    // ================= Train (con rotación suave, reglas de departure) =================
     private IEnumerator TrainSupervisor()
     {
         if (!ValidateTrainSetup()) yield break;
@@ -232,7 +248,7 @@ public class TrainSystem : MonoBehaviour
         int lastIdx = trainWaypoints.Count - 1;
         int depIdx = trainWaypoints.IndexOf(departure);
 
-        // Snap to DEPARTURE at boot
+        // Posicionar en DEPARTURE al iniciar
         if (!IsNear(trainRb.position, trainWaypoints[depIdx].position, trainArriveThreshold))
             yield return MoveBodyToDynamicWithRotation(trainRb, trainWaypoints[depIdx].position, () => trainSpeed, trainArriveThreshold, trainRotationSpeed);
 
@@ -246,9 +262,11 @@ public class TrainSystem : MonoBehaviour
                 yield return MoveBodyToDynamicWithRotation(trainRb, trainWaypoints[i].position, () => trainSpeed, trainArriveThreshold, trainRotationSpeed);
             }
 
+            // Espera y teleporte a FIRST
             yield return WaitSecondsRealtime(trainTeleportWaitSeconds);
             TeleportBodyTo(trainRb, trainWaypoints[firstIdx].position);
 
+            // Si hay stop pendiente y departure es FIRST, parar inmediatamente tras teleporte
             if (trainHaltAtDeparture && depIdx == firstIdx)
             {
                 trainRunRequested = false;
@@ -258,7 +276,7 @@ public class TrainSystem : MonoBehaviour
                 continue;
             }
 
-            // Phase B: FIRST -> END
+            // Phase B: FIRST -> END (parar solo cuando lleguemos a 'departure' si hay halt)
             for (int i = firstIdx; i <= lastIdx; i++)
             {
                 if (!IsNear(trainRb.position, trainWaypoints[i].position, trainArriveThreshold))
@@ -285,8 +303,7 @@ public class TrainSystem : MonoBehaviour
         return dep >= 0 && dep < trainWaypoints.Count;
     }
 
-    // ===== Helpers =====
-    // Normal movement (no rotation)
+    // ================= Helpers genéricos (sin rotación) =================
     private IEnumerator MoveBodyToDynamic(Rigidbody rb, Vector3 targetPos, System.Func<float> getSpeed, float arriveThreshold)
     {
         if (rb == null) yield break;
@@ -313,7 +330,66 @@ public class TrainSystem : MonoBehaviour
         rb.MovePosition(targetPos);
     }
 
-    // Movement with rotation (for train only)
+    // ================= Elevador: movimiento con aceleración limitada (sin ref) =================
+    private IEnumerator MoveElevatorWithAccel(Vector3 targetPos)
+    {
+        if (elevatorRb == null) yield break;
+        WaitForFixedUpdate wait = new WaitForFixedUpdate();
+
+        while (!IsNear(elevatorRb.position, targetPos, elevatorArriveThreshold))
+        {
+            float maxSpeed = Mathf.Max(0f, elevatorSpeed);
+            float accel = Mathf.Max(0f, elevatorAcceleration);
+
+            Vector3 toTarget = targetPos - elevatorRb.position;
+            float distance = toTarget.magnitude;
+            Vector3 dir = (distance > 1e-5f) ? toTarget / distance : Vector3.zero;
+
+            // velocidad máxima que permite frenar a tiempo: v <= sqrt(2*a*d)
+            float maxSpeedForStop = Mathf.Sqrt(Mathf.Max(0f, 2f * accel * distance));
+            float desiredSpeed = Mathf.Min(maxSpeed, maxSpeedForStop);
+
+            // suavizado por aceleración (usa el campo elevatorCurrentSpeed)
+            elevatorCurrentSpeed = Mathf.MoveTowards(elevatorCurrentSpeed, desiredSpeed, accel * Time.fixedDeltaTime);
+
+            if (elevatorCurrentSpeed <= 1e-4f)
+            {
+                elevatorRb.velocity = Vector3.zero;
+                yield return wait;
+                continue;
+            }
+
+            float step = elevatorCurrentSpeed * Time.fixedDeltaTime;
+            Vector3 nextPos = (step >= distance) ? targetPos : elevatorRb.position + dir * step;
+
+            // publicar "velocidad cinemática" útil para controladores/contacts
+            elevatorRb.velocity = (nextPos - elevatorRb.position) / Time.fixedDeltaTime;
+
+            elevatorRb.MovePosition(nextPos);
+            yield return wait;
+        }
+
+        elevatorRb.MovePosition(targetPos);
+        elevatorRb.velocity = Vector3.zero;
+    }
+
+    private IEnumerator DecelerateElevatorToZero()
+    {
+        if (elevatorRb == null) yield break;
+        WaitForFixedUpdate wait = new WaitForFixedUpdate();
+
+        float accel = Mathf.Max(0f, elevatorAcceleration);
+        while (elevatorCurrentSpeed > 1e-3f)
+        {
+            elevatorCurrentSpeed = Mathf.MoveTowards(elevatorCurrentSpeed, 0f, accel * Time.fixedDeltaTime);
+            elevatorRb.velocity = Vector3.zero;
+            yield return wait;
+        }
+        elevatorCurrentSpeed = 0f;
+        elevatorRb.velocity = Vector3.zero;
+    }
+
+    // ================= Movimiento con rotación (tren) =================
     private IEnumerator MoveBodyToDynamicWithRotation(Rigidbody rb, Vector3 targetPos, System.Func<float> getSpeed, float arriveThreshold, float rotationSpeed)
     {
         if (rb == null) yield break;
@@ -337,9 +413,7 @@ public class TrainSystem : MonoBehaviour
             if (dir.sqrMagnitude > 0.0001f)
             {
                 Quaternion targetRot = Quaternion.LookRotation(dir.normalized, Vector3.up);
-                rb.MoveRotation(
-                    Quaternion.RotateTowards(rb.rotation, targetRot, rotationSpeed * Time.fixedDeltaTime)
-                );
+                rb.MoveRotation(Quaternion.RotateTowards(rb.rotation, targetRot, rotationSpeed * Time.fixedDeltaTime));
             }
 
             rb.MovePosition(next);

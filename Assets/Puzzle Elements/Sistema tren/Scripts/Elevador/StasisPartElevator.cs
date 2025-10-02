@@ -36,7 +36,8 @@ public class StasisPartElevator : MonoBehaviour, IStasis
     {
         _elevator.StatisEffectDeactivate();
     }
-
+    
+    
 }
 
 
