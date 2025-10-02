@@ -5,7 +5,7 @@ using UnityEngine.Rendering.Universal;
 namespace VolumetricFogAndMist2 {
 
     [CustomEditor(typeof(VolumetricFogManager))]
-    public class VolumetricFogManagerEditor : Editor {
+    public class VolumetricFogManagerEditor : UnityEditor.Editor {
 
         SerializedProperty mainCamera, sun, fogLayer, includeTransparent, flipDepthTexture;
 

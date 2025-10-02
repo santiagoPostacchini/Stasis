@@ -28,7 +28,7 @@ namespace CurvedPathGenerator
     /// GUI Script to help generate path based on Bézier curve
     /// </summary>
     [CustomEditor(typeof(PathGenerator))]
-    internal class PathGeneratorGUI : Editor
+    internal class PathGeneratorGUI : UnityEditor.Editor
     {
         #region PathGenerator_GUI_Variables
 

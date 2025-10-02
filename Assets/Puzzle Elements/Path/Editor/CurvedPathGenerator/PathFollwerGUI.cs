@@ -25,7 +25,7 @@ namespace CurvedPathGenerator
     /// A follower script GUI that GameObject to follow the created path
     /// </summary>
     [CustomEditor(typeof(PathFollower))]
-    internal class PathFollowerGUI : Editor
+    internal class PathFollowerGUI : UnityEditor.Editor
     {
         #region PathFollower_GUI_Variables
 

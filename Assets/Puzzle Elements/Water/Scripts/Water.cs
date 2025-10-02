@@ -29,7 +29,7 @@ namespace Puzzle_Elements.Water.Scripts
             PhysicsBox hedro = other.GetComponent<PhysicsBox>();
             if(hedro != null)
             {
-                hedro.transform.position = hedro._posInitial;
+                hedro.transform.position = hedro.posInitial;
                 Rigidbody rb = hedro.GetComponent<Rigidbody>();
                 if (rb != null)
                 {
@@ -54,7 +54,7 @@ namespace Puzzle_Elements.Water.Scripts
             PhysicsBox hedro = collision.gameObject.GetComponent<PhysicsBox>();
             if (hedro != null)
             {
-                hedro.transform.position = hedro._posInitial;
+                hedro.transform.position = hedro.posInitial;
 
                 Rigidbody rb = hedro.GetComponent<Rigidbody>();
                 if (rb != null)

@@ -1,13 +1,13 @@
-using Managers.Events;
+using System;
 using Player.Stasis;
 using Puzzle_Elements.AllInterfaces;
 using UnityEngine;
-using Audio.Scripts;
 using System.Collections;
+using Audio.Scripts;
 
 namespace Puzzle_Elements.Hedron.Scripts
 {
-    public class PhysicsBox : MonoBehaviour, IStasis, IPlateActivator
+    public class PhysicsBox : MonoBehaviour, IStasis, IPlateActivator, ISoundPlayer
     {
         private static readonly int Color1 = Shader.PropertyToID("_Color");
         public Material matStasis;
@@ -34,7 +34,6 @@ namespace Puzzle_Elements.Hedron.Scripts
         public bool IsFreezed => _isFreezed;
 
         [SerializeField] private ParticleSystem particleFrozen;
-        private AudioEventListener _audioEventListener;
 
         [Header("Hold FX")]
         [SerializeField] private float heldScaleFactor = 0.35f;
@@ -56,9 +55,12 @@ namespace Puzzle_Elements.Hedron.Scripts
         [SerializeField] private Color debugFreezeColor  = new Color(1f, 0.85f, 0.2f, 1f);
         [SerializeField] private float debugArrowLen     = 0.75f;
         [SerializeField] private float debugDrawTime     = 10f;
+        
+        public Action OnCollision;
+        public Action OnFreezeStart;
+        public Action OnFreezeStop;
 
-
-        [HideInInspector] public Vector3 _posInitial;
+        [HideInInspector] public Vector3 posInitial;
 
         public PhysicsBox(bool isOverlappingAnything)
         {
@@ -69,19 +71,18 @@ namespace Puzzle_Elements.Hedron.Scripts
         {
             _mpb = new MaterialPropertyBlock();
             if (!_renderer) _renderer = GetComponent<Renderer>();
-            _audioEventListener = GetComponent<AudioEventListener>();
 
             if (!mainCollider) mainCollider = GetComponentInChildren<Collider>(true);
 
             _originalScale = transform.localScale;
-            _posInitial = transform.position;
+            posInitial = transform.position;
         }
 
         private void OnCollisionEnter(Collision collision)
         {
             if (rb && rb.velocity.magnitude != 0f)
             {
-                EventManager.TriggerEvent("ObjectInGround", gameObject);
+                OnCollision?.Invoke();
             }
         }
 
@@ -180,13 +181,12 @@ namespace Puzzle_Elements.Hedron.Scripts
 
         private IEnumerator Co_MoveWhileHolding(Transform newPalm, float palmHeight, float tDur)
         {
-            // soltar parent temporalmente para interpolar en mundo limpio
             Transform oldParent = transform.parent;
             transform.SetParent(null, true);
 
             Vector3 startPos = transform.position;
             Quaternion startRot = transform.rotation;
-            Vector3 currentScale = transform.localScale; // mantener escala reducida
+            Vector3 currentScale = transform.localScale;
 
             Vector3 endPos = newPalm.position + newPalm.up * palmHeight;
             Quaternion endRot = Quaternion.LookRotation(newPalm.forward, newPalm.up);
@@ -338,7 +338,7 @@ namespace Puzzle_Elements.Hedron.Scripts
         {
             if (_isFreezed) return;
 
-            EventManager.TriggerEvent("ObjInStasis", gameObject);
+            OnFreezeStart?.Invoke();
             SaveObjectState();
             rb.velocity = Vector3.zero;
             rb.angularVelocity = Vector3.zero;
@@ -372,6 +372,8 @@ namespace Puzzle_Elements.Hedron.Scripts
         private void UnfreezeObject()
         {
             if (!_isFreezed) return;
+            
+            OnFreezeStop?.Invoke();
             RestoreObjectState();
             _isFreezed = false;
             rb.useGravity = true;
@@ -379,7 +381,6 @@ namespace Puzzle_Elements.Hedron.Scripts
 
             SetColorOutline(Color.white, 0.2f);
             SetOutlineThickness(0f);
-            if (_audioEventListener) _audioEventListener.StopSound("ObjInStasis");
         }
 
         private void SetOutlineThickness(float thickness)
@@ -400,21 +401,13 @@ namespace Puzzle_Elements.Hedron.Scripts
             _renderer.SetPropertyBlock(_mpb);
         }
         
-        // -------- Helpers de dirección / debug --------
         private Vector3 GetOwnerForward()
         {
             if (_ownerForward) return _ownerForward.forward;
             if (_objGrabPointTransform) return _objGrabPointTransform.forward;
             return transform.forward;
         }
-
-        /*private Vector3 GetEjectDirection()
-        {
-            Vector3 fwd = GetOwnerForward();
-            Vector3 up  = _ownerForward ? _ownerForward.up : Vector3.up;
-            return (fwd + up * 0.25f).normalized;
-        }*/
-
+        
         private void UpdateSavedVelocityDirection(float newSpeed)
         {
             float speed = (newSpeed >= 0f) ? newSpeed : _savedVelocity.magnitude;

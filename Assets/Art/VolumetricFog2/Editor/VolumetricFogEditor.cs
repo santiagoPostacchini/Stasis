@@ -4,10 +4,10 @@ using UnityEditor;
 namespace VolumetricFogAndMist2 {
 
     [CustomEditor(typeof(VolumetricFog))]
-    public partial class VolumetricFogEditor : Editor {
+    public partial class VolumetricFogEditor : UnityEditor.Editor {
 
         VolumetricFogProfile cachedProfile;
-        Editor cachedProfileEditor;
+        UnityEditor.Editor cachedProfileEditor;
         SerializedProperty profile;
         SerializedProperty maskEditorEnabled, maskBrushMode, maskBrushColor, maskBrushWidth, maskBrushFuzziness, maskBrushOpacity;
         SerializedProperty enablePointLights;
