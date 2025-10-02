@@ -1,25 +1,23 @@
 using Player.Stasis;
 using UnityEngine;
 using UnityEngine.Splines;
-
-[RequireComponent(typeof(SplineAnimate))]
 public class StasisTrain : MonoBehaviour, IStasis
 {
     private bool _isFreezed = false;
     public bool IsFreezed => _isFreezed;
 
-    private SplineAnimate splineAnimate;
 
     public Material matStasis;
     public readonly string _outlineThicknessName = "_BorderThickness";
     public MaterialPropertyBlock _mpb;
     private Renderer _rend;
-
+    private float _saveVelocity;
+    private TrainSystem _trainSystem;
     private void Awake()
     {
-        splineAnimate = GetComponent<SplineAnimate>();
         _mpb = new MaterialPropertyBlock();
         _rend = GetComponent<Renderer>();
+        _trainSystem = GetComponentInParent<TrainSystem>();
     }
 
     public void StatisEffectActivate()
@@ -36,8 +34,10 @@ public class StasisTrain : MonoBehaviour, IStasis
     {
         if (!_isFreezed)
         {
+            _saveVelocity = _trainSystem.trainSpeed;
+            _trainSystem.trainSpeed = 0;
             _isFreezed = true;
-            splineAnimate.Pause();
+            //splineAnimate.Pause();
             SetOutlineThickness(1.05f);
             SetColorOutline(Color.green, 1f);
         }
@@ -47,7 +47,8 @@ public class StasisTrain : MonoBehaviour, IStasis
     {
         if (!_isFreezed) return;
         _isFreezed = false;
-        splineAnimate.Play();
+        _trainSystem.trainSpeed = _saveVelocity;
+        //splineAnimate.Play();
         SetOutlineThickness(0f);
         Color lightGreen = new Color(0.6f, 1f, 0.6f);
         SetColorOutline(lightGreen, 1f);
