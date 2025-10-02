@@ -304,7 +304,7 @@ Transform:
   m_GameObject: {fileID: 7511541719265762720}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 0, y: 0, z: 0.78}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -5338,11 +5338,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_moveObject: {fileID: 8605527138207810488}
   m_shaderPropertyName: _MoveToMaterialUV
-  m_shaderPropertyID: 1126
+  m_shaderPropertyID: 1038
   m_materialData:
   - m_trailRenderer: {fileID: 2289120248479258985}
     m_uvTiling: {x: 0.5, y: 0.2}
-    m_move: 0
+    m_move: 0.128865
 --- !u!114 &-3980221443622203718
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5355,14 +5355,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 65a6ed342655d55489ce9d99edb8913d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  soundEventGroups:
-  - eventName: StasisSuccess
-    soundDelays:
-    - soundName: StasisSuccess
-      delay: 0
-    isStopEvent: 0
-  - eventName: StasisFail
-    soundDelays:
-    - soundName: StasisFail
-      delay: 0
-    isStopEvent: 0
+  targetScript: {fileID: 0}
+  defaultMixerGroup: {fileID: 0}
+  initialSourcePool: 3
+  sourceTemplate: {fileID: 0}
+  events: []
+  debugScan: 0
