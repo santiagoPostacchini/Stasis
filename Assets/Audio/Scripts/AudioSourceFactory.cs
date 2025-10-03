@@ -1,21 +1,33 @@
 using System.Collections;
 using UnityEngine;
 using UnityEngine.Audio;
+using ObjectPool;
 
-namespace ObjectPool
+namespace Audio.Scripts
 {
     public class AudioSourceFactory : MonoBehaviour
     {
         public static AudioSourceFactory Instance;
 
-        [Header("Prefab")]
+        [Header("Prefab 3D (SFX)")]
         public AudioSource prefab;
 
-        [Header("Pooling")]
-        public int stonks = 15;     // cantidad inicial
-        public bool dynamic = true; // permite crecer si se agota
+        [Header("Pooling 3D")]
+        public int stonks = 15;
+        public bool dynamic = true;
 
-        private ObjectPool<AudioSource> _pool;
+        [Space]
+        [Header("Prefab 2D (Music/Stingers)")]
+        public AudioSource prefab2D;
+
+        [Header("Pooling 2D")]
+        public int stonks2D = 8;
+        public bool dynamic2D = true;
+
+        private ObjectPool<AudioSource> _pool3D;
+        private ObjectPool<AudioSource> _pool2D;
+
+        public bool Has2DPool => _pool2D != null;
 
         private void Awake()
         {
@@ -23,23 +35,45 @@ namespace ObjectPool
 
             if (!prefab)
             {
-                Debug.LogError("[AudioSourceFactory] Asigná el prefab de AudioSource.", this);
+                Debug.LogError("[AudioSourceFactory] Asigná el prefab 3D (prefab).", this);
                 enabled = false;
                 return;
             }
 
-            _pool = new ObjectPool<AudioSource>(
-                factoryMethod: CreateInstance,
+            _pool3D = new ObjectPool<AudioSource>(
+                factoryMethod: CreateInstance3D,
                 callback: TurnOnOff,
                 initialStonks: stonks,
                 dynamic: dynamic
             );
+
+            if (prefab2D)
+            {
+                _pool2D = new ObjectPool<AudioSource>(
+                    factoryMethod: CreateInstance2D,
+                    callback: TurnOnOff,
+                    initialStonks: stonks2D,
+                    dynamic: dynamic2D
+                );
+            }
+            else
+            {
+                Debug.LogWarning("[AudioSourceFactory] Sin prefab2D: la música no podrá usar pool 2D.", this);
+            }
         }
 
         // ---------- Core pooling ----------
-        private AudioSource CreateInstance()
+        private AudioSource CreateInstance3D()
         {
             var inst = Instantiate(prefab, transform);
+            return inst;
+        }
+
+        private AudioSource CreateInstance2D()
+        {
+            var inst = Instantiate(prefab2D, transform);
+            // reforzamos 2D
+            inst.spatialBlend = 0f;
             return inst;
         }
 
@@ -57,27 +91,51 @@ namespace ObjectPool
                 src.loop = false;
                 src.pitch = 1f;
                 src.volume = 1f;
+                src.panStereo = 0f;
+                // NOTA: no tocamos outputAudioMixerGroup para permitir reuse controlado por caller
             }
         }
 
-        /// <summary>Obtiene una instancia del pool.</summary>
+        // ---------- API 3D ----------
         public AudioSource GetSource()
         {
-            return _pool.GetObject();
+            return _pool3D.GetObject();
         }
 
-        /// <summary>Devuelve una instancia al pool.</summary>
         public void ReturnSource(AudioSource src)
         {
             if (!src) return;
-            _pool.ReturnObject(src);
+            _pool3D.ReturnObject(src);
         }
 
-        // ---------- Helpers opcionales (auto-return si no es loop) ----------
-        /// <summary>
-        /// Reproduce un clip en una posición y lo devuelve al terminar si no es loop.
-        /// Para loops, devolvelo manualmente con ReturnSource().
-        /// </summary>
+        // ---------- API 2D ----------
+        /// <summary>Obtiene un source 2D (musical) del pool y lo opcionalmente parenta.</summary>
+        public AudioSource Get2DSource(Transform parent = null, AudioMixerGroup mixerOverride = null)
+        {
+            if (_pool2D == null)
+            {
+                Debug.LogWarning("[AudioSourceFactory] No hay pool 2D inicializado (asigná prefab2D).");
+                return null;
+            }
+
+            var src = _pool2D.GetObject();
+            if (parent) src.transform.SetParent(parent, false);
+            src.transform.localPosition = Vector3.zero;
+            src.spatialBlend = 0f;
+            src.playOnAwake = false;
+            if (mixerOverride) src.outputAudioMixerGroup = mixerOverride;
+            return src;
+        }
+
+        public void Return2DSource(AudioSource src)
+        {
+            if (!src) return;
+            
+            src.transform.SetParent(transform, false);
+            _pool2D.ReturnObject(src);
+        }
+
+        // ---------- Helpers 3D existentes ----------
         public AudioSource PlayClipAt(
             Vector3 position,
             AudioClip clip,
@@ -100,9 +158,6 @@ namespace ObjectPool
             return src;
         }
 
-        /// <summary>
-        /// Reproduce un clip siguiendo un transform y lo devuelve al terminar si no es loop.
-        /// </summary>
         public AudioSource PlayClipFollowing(
             Transform follow,
             AudioClip clip,
@@ -127,9 +182,6 @@ namespace ObjectPool
             return src;
         }
 
-        /// <summary>
-        /// OneShot en posición (también auto-devuelve tras la duración aproximada).
-        /// </summary>
         public AudioSource PlayOneShotAt(
             Vector3 position,
             AudioClip clip,
@@ -144,7 +196,6 @@ namespace ObjectPool
             var src = GetSource();
             src.transform.position = position;
 
-            // configurar mixer/blend/pitch para el oneshot
             if (mixerOverride) src.outputAudioMixerGroup = mixerOverride;
 
             src.spatialBlend = Mathf.Clamp01(spatialBlend);
@@ -157,7 +208,6 @@ namespace ObjectPool
             return src;
         }
 
-        /// <summary>Detiene el source y lo devuelve al pool.</summary>
         public void StopAndReturn(AudioSource src)
         {
             if (!src) return;
@@ -186,7 +236,6 @@ namespace ObjectPool
 
         private IEnumerator Co_AutoReturn(AudioSource src, float clipLength, float pitch)
         {
-            // duración aproximada considerando pitch
             float t = 0f;
             float dur = clipLength / Mathf.Max(0.01f, Mathf.Abs(pitch));
             while (t < dur && src && src.isActiveAndEnabled)
@@ -199,14 +248,11 @@ namespace ObjectPool
 
         private IEnumerator Co_FollowWhilePlaying(AudioSource src, Transform follow, bool loop)
         {
-            // sigue el transform mientras el clip se reproduce
             while (src && follow && src.isPlaying)
             {
                 src.transform.position = follow.position;
                 yield return null;
             }
-
-            // si era loop, no auto-devolvemos (espera StopAndReturn del caller)
             if (!loop && src)
                 ReturnSource(src);
         }
