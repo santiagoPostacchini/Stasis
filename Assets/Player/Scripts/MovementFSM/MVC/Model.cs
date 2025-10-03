@@ -1,4 +1,5 @@
 using System;
+using Audio.Scripts;
 using Player.FullBody_Scripts.MovementFSM;
 using Player.Scripts.Interactor;
 using Player.Stasis;
@@ -6,7 +7,7 @@ using UnityEngine;
 
 namespace Player.Scripts.MovementFSM.MVC
 {
-    public class Model : MonoBehaviour
+    public class Model : MonoBehaviour, ISoundPlayer
     {
         public event Action<bool, float> OnGroundedChanged = delegate { };
         public event Action<float, float> OnMove = delegate { };
