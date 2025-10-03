@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEngine.Splines;
 public class StasisPartTrain : MonoBehaviour, IStasis
 {
-    private bool _isFreezed = false;
+    public bool _isFreezed = false;
     public bool IsFreezed => _isFreezed;
 
     private StasisTrain _train;
@@ -29,12 +29,19 @@ public class StasisPartTrain : MonoBehaviour, IStasis
         if (!_isFreezed)
         {
             _train.StatisEffectActivate();
+            _isFreezed = true;
         }
+        
     }
 
     private void UnfreezeObject()
     {
-        _train.StatisEffectDeactivate();
+        if (_isFreezed)
+        {
+            _train.StatisEffectDeactivate();
+            _isFreezed = false;
+        }
+        
     }
     
 }

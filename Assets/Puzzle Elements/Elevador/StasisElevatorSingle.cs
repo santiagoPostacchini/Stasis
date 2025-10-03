@@ -15,6 +15,7 @@ public class StasisElevatorSingle : MonoBehaviour,IStasis
     private Renderer _rend;
     private float _saveVelocity;
     private ElevatorPlatform _elevatorPlatform;
+    [SerializeField] private StasisPartElevator _stasisPartElevator;
     private void Awake()
     {
         _mpb = new MaterialPropertyBlock();
@@ -40,6 +41,7 @@ public class StasisElevatorSingle : MonoBehaviour,IStasis
             _elevatorPlatform.elevatorSpeed = 0;
             
             _isFreezed = true;
+            _stasisPartElevator._isFreezed = true;
             //splineAnimate.Pause();
             SetOutlineThickness(1.05f);
             SetColorOutline(Color.green, 1f);
@@ -50,6 +52,7 @@ public class StasisElevatorSingle : MonoBehaviour,IStasis
     {
         if (!_isFreezed) return;
         _isFreezed = false;
+        _stasisPartElevator._isFreezed = false;
         _elevatorPlatform.elevatorSpeed = _saveVelocity;
         //splineAnimate.Play();
         SetOutlineThickness(0f);

@@ -27,12 +27,19 @@ public class RebootSequenceController : MonoBehaviour
     public UnityEvent onSequenceStart;
     public UnityEvent onSequenceEnd;
 
+    // --- Fade final de TEXTO (siempre se ejecuta al terminar la secuencia) ---
+    [Header("Fade final de texto")]
+    [SerializeField] private bool fadeTextOnEnd = true;
+    [SerializeField] private float endFadeDelay = 4f;
+    [SerializeField] private float endFadeDuration = 1.25f;
+    [SerializeField] private bool clearTextOnEnd = true;
+    [SerializeField] private bool deactivateTextGOOnEnd = false;
+
     private bool _skipping;
 
     // ---------- LIFECYCLE ----------
     private void Reset()
     {
-        // Intento de autocompletar refs al agregar el componente
         TryAutoBind(true);
     }
 
@@ -48,9 +55,15 @@ public class RebootSequenceController : MonoBehaviour
         TryAutoBind(false);
 
         if (canvasGroup != null) canvasGroup.alpha = 1f;
-        if (consoleText != null) consoleText.text = string.Empty;
-    }
 
+        if (consoleText != null)
+        {
+            consoleText.text = string.Empty;
+            // Asegura visibilidad y estado coherente del renderer
+            consoleText.alpha = 1f;
+            consoleText.canvasRenderer.SetAlpha(1f);
+        }
+    }
 
     private void Start()
     {
@@ -74,11 +87,13 @@ public class RebootSequenceController : MonoBehaviour
         onSequenceStart?.Invoke();
 
         consoleText.text = string.Empty;
+        consoleText.alpha = 1f;
+        consoleText.canvasRenderer.SetAlpha(1f);
 
         foreach (var step in asset.steps)
         {
             float typing = step.typingSpeed > 0 ? step.typingSpeed : asset.defaultTypingSpeed;
-            float delay  = step.afterDelay   > 0 ? step.afterDelay   : asset.defaultAfterDelay;
+            float delay = step.afterDelay > 0 ? step.afterDelay : asset.defaultAfterDelay;
 
             yield return StartCoroutine(TypeLine(step.text, typing, step.playTypeBeep));
 
@@ -89,6 +104,17 @@ public class RebootSequenceController : MonoBehaviour
 
         Play(asset.finishSfx);
 
+        // 1) SIEMPRE: Fade del TEXTO tras esperar endFadeDelay (por defecto 4s)
+        if (fadeTextOnEnd && consoleText != null)
+        {
+            yield return StartCoroutine(DelayOrSkip(endFadeDelay));
+            yield return StartCoroutine(FadeTMPText(consoleText, 1f, 0f, endFadeDuration));
+
+            if (clearTextOnEnd) consoleText.text = string.Empty;
+            if (deactivateTextGOOnEnd) consoleText.gameObject.SetActive(false);
+        }
+
+        // 2) OPCIONAL: luego, si el asset lo pide, fade del Canvas completo
         if (asset.autoFadeOut && canvasGroup != null)
         {
             yield return StartCoroutine(DelayOrSkip(asset.fadeDelay));
@@ -96,6 +122,11 @@ public class RebootSequenceController : MonoBehaviour
         }
 
         onSequenceEnd?.Invoke();
+        // Al final de RunSequence()
+        if (canvasGroup != null)
+            canvasGroup.gameObject.SetActive(false);
+        else
+            gameObject.SetActive(false);
     }
 
     private IEnumerator TypeLine(string line, float typingSpeed, bool beepPerChar)
@@ -149,6 +180,34 @@ public class RebootSequenceController : MonoBehaviour
             yield return null;
         }
         cg.alpha = to;
+    }
+
+    // --- Fade robusto de TMP usando CanvasRenderer (ignora timeScale y respeta 'skip') ---
+    private IEnumerator FadeTMPText(TextMeshProUGUI tmp, float from, float to, float duration)
+    {
+        if (tmp == null) yield break;
+
+        // Normaliza estado inicial
+        tmp.alpha = 1f; // mantiene colores/material
+        tmp.canvasRenderer.SetAlpha(from);
+
+        if (duration <= 0f)
+        {
+            tmp.canvasRenderer.SetAlpha(to);
+            yield break;
+        }
+
+        float t = 0f;
+        while (t < duration)
+        {
+            if (Input.GetKey(skipKey)) { tmp.canvasRenderer.SetAlpha(to); break; }
+            t += Time.unscaledDeltaTime;
+            float a = Mathf.Lerp(from, to, t / duration);
+            tmp.canvasRenderer.SetAlpha(a);
+            yield return null;
+        }
+
+        tmp.canvasRenderer.SetAlpha(to);
     }
 
     private void Play(AudioClip clip)

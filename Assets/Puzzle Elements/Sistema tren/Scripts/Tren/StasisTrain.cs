@@ -14,6 +14,8 @@ public class StasisTrain : MonoBehaviour, IStasis
 
     [SerializeField] private List<Renderer> _rends = new List<Renderer>();
 
+    [SerializeField] private List<StasisPartTrain> _listaObjetosStasisPartTrain = new List<StasisPartTrain>();
+
     private float _saveVelocity;
     private TrainSystem _trainSystem;
 
@@ -46,6 +48,10 @@ public class StasisTrain : MonoBehaviour, IStasis
             _saveVelocity = _trainSystem.trainSpeed;
             _trainSystem.trainSpeed = 0;
             _isFreezed = true;
+            foreach (var item in _listaObjetosStasisPartTrain)
+            {
+                item._isFreezed = true;
+            }
             SetOutlineThickness(1.05f);
             SetColorOutline(Color.green, 1f);
         }
@@ -55,6 +61,10 @@ public class StasisTrain : MonoBehaviour, IStasis
     {
         if (!_isFreezed) return;
         _isFreezed = false;
+        foreach (var item in _listaObjetosStasisPartTrain)
+        {
+            item._isFreezed = false;
+        }
         _trainSystem.trainSpeed = _saveVelocity;
         SetOutlineThickness(0f);
         Color lightGreen = new Color(0.6f, 1f, 0.6f);

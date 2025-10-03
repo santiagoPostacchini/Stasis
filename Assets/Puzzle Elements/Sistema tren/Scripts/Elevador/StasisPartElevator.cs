@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEngine.Splines;
 public class StasisPartElevator : MonoBehaviour, IStasis
 {
-    private bool _isFreezed = false;
+    public bool _isFreezed = false;
     public bool IsFreezed => _isFreezed;
 
     private StasisElevator _elevator;
@@ -34,7 +34,12 @@ public class StasisPartElevator : MonoBehaviour, IStasis
 
     private void UnfreezeObject()
     {
-        _elevator.StatisEffectDeactivate();
+
+        if (_isFreezed)
+        {
+            _elevator.StatisEffectDeactivate();
+            _isFreezed = false;
+        }
     }
     
     
