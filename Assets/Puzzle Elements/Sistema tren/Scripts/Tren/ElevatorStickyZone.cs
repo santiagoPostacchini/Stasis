@@ -10,7 +10,7 @@ public class ElevatorStickyZone : MonoBehaviour
     [Tooltip("Solo para depuración: muestra el modelo del jugador detectado.")]
     public Model debugModel;
 
-    [Header("Box Detect (en vez de esfera)")]
+    [Header("Box Detect (OverlapBox sobre la plataforma)")]
     [Tooltip("Altura del volumen de detección sobre la plataforma.")]
     public float castDistance = 0.6f;
 
@@ -26,44 +26,20 @@ public class ElevatorStickyZone : MonoBehaviour
     [Tooltip("Si está activado, dibuja el volumen de detección en la escena.")]
     public bool drawGizmos = true;
 
-    [Header("Follow Down")]
-    [Tooltip("Cuánto se mezcla la velocidad vertical del jugador con la de la plataforma al bajar.")]
-    [Range(0f, 1f)] public float amount = 1f;
+    [Header("Hover")]
+    [Tooltip("Altura fija desde el top de la plataforma hasta los pies del jugador.")]
+    public float hoverOffset = 0.2f;
 
-    [Tooltip("Tiempo de suavizado para el movimiento vertical de la plataforma.")]
-    public float downSmoothingSeconds = 0.0f;
-
-    [Tooltip("Zona muerta descendente: en módulo menor a esto no se considera descenso.")]
-    public float downDeadzone = 0.0005f;
-
-    [Header("Follow Up")]
-    [Tooltip("Zona muerta ascendente: mayor a esto se considera que la plataforma está subiendo.")]
-    public float upDeadzone = 0.0005f;
-
-    [Header("Contacto firme")]
-    [Tooltip("Distancia mínima entre los pies del jugador y la superficie de la plataforma.")]
-    public float contactSkin = 0.002f;
-
-    [Tooltip("Desplazamiento máximo permitido para ajustar al contacto.")]
-    public float maxSnapStep = 0.25f;
-
-    [Tooltip("Pequeño sesgo descendente para mantener contacto constante.")]
-    public float contactBiasDown = 0.0015f;
-
-    [Header("Apex")]
-    [Tooltip("Umbral de velocidad vertical para considerar que llegó al punto más alto.")]
-    public float apexThreshold = 0.05f;
-
-    [Tooltip("Offset adicional para ajustar la altura entre pies y plataforma.")]
-    public float valor;
+    [Header("Suavizado opcional de la velocidad de la plataforma (para cálculos de v.y)")]
+    [Tooltip("Suavizado (en segundos) de la velocidad vertical de la plataforma. 0 = sin suavizado.")]
+    public float platVelSmoothSeconds = 0.0f;
 
     Rigidbody _playerRb;
     Collider _playerCol;
     Collider _col;
+
     float _lastPlatY;
-    float _lastPlatVy;
     float _smoothedPlatVy;
-    bool _apexZeroDone;
 
     void Awake()
     {
@@ -72,34 +48,23 @@ public class ElevatorStickyZone : MonoBehaviour
         if (_col && _col.isTrigger) _col.isTrigger = false;
 
         _lastPlatY = platformRb ? platformRb.position.y : 0f;
-        _lastPlatVy = 0f;
         _smoothedPlatVy = 0f;
-        _apexZeroDone = false;
-    }
-
-    bool NearPlayer()
-    {
-        var gm = GameManager.Instance;
-        if (gm == null || gm.player == null) return true;
-        return Vector3.Distance(transform.position, gm.player.transform.position) < 12f;
     }
 
     void FixedUpdate()
     {
-        if (platformRb == null) return;
-        if (!NearPlayer()) return;
+        if (platformRb == null || _col == null) return;
 
-        bool detected = TryDetectPlayer(out Rigidbody hitRb, out Model hitModel, out Collider hitCol);
-
+        // Velocidad vertical (suavizada) de la plataforma: la usamos solo para estabilizar v.y del player
         float platY = platformRb.position.y;
-        float rawPlatVy = (platY - _lastPlatY) / Time.fixedDeltaTime;
+        float rawVy = (platY - _lastPlatY) / Time.fixedDeltaTime;
+        float alpha = (platVelSmoothSeconds <= 0f)
+            ? 1f
+            : Mathf.Clamp01(Time.fixedDeltaTime / (platVelSmoothSeconds + Time.fixedDeltaTime));
+        _smoothedPlatVy = Mathf.Lerp(_smoothedPlatVy, rawVy, alpha);
 
-        float alpha = (downSmoothingSeconds <= 0f) ? 1f
-            : Mathf.Clamp01(Time.fixedDeltaTime / (downSmoothingSeconds + Time.fixedDeltaTime));
-        _smoothedPlatVy = Mathf.Lerp(_smoothedPlatVy, rawPlatVy, alpha);
-
-        bool goingDown = _smoothedPlatVy < -downDeadzone;
-        bool goingUp = _smoothedPlatVy > upDeadzone;
+        // Detección
+        bool detected = TryDetectPlayer(out Rigidbody hitRb, out Model hitModel, out Collider hitCol);
 
         if (detected)
         {
@@ -110,78 +75,58 @@ public class ElevatorStickyZone : MonoBehaviour
             }
             debugModel = hitModel;
 
-            // APEX: al llegar arriba, un solo zero suave (opcional)
-            if (!_apexZeroDone && _lastPlatVy > apexThreshold && Mathf.Abs(rawPlatVy) <= apexThreshold)
+            if (_playerRb != null && _playerCol != null)
             {
-                var v0 = _playerRb.velocity; v0.y = 0f; _playerRb.velocity = v0;
-                _apexZeroDone = true;
-            }
-            if (rawPlatVy > apexThreshold) _apexZeroDone = false;
+                // 1) Apagar gravedad mientras está “anclado” al hover para que no pelee contra el snap
+                _playerRb.useGravity = false;
+               
+                // 2) Altura objetivo: pies del jugador a hoverOffset sobre el top de la plataforma
+                float topY = _col.bounds.max.y;
+                float feetY = _playerCol.bounds.min.y;
+                float wantY = topY + hoverOffset;
+                float deltaY = wantY - feetY; // cuánto hay que mover en Y para dejar los pies en wantY
 
-            if (goingDown)
-            {
-                // REGLA: descendiendo dentro del box
-                _playerRb.useGravity = true;     // tu decisión anterior
-                if (!_playerRb.isKinematic) _playerRb.isKinematic = true;
+                // 3) Mover SOLO en Y (X/Z libres para que el jugador se mueva lateralmente)
+                Vector3 p = _playerRb.position;
+                if (platformRb.velocity.magnitude > 0.002f)
+                {
+                    _playerRb.MovePosition(new Vector3(p.x, p.y + deltaY, p.z));
+                }
+                else
+                {
+                    _playerRb.useGravity = true;
+                }
+               
 
-                // (opcional) acompaño velocidad vertical hacia abajo y mantengo contacto
+                // 4) Ajustar la velocidad vertical para acompañar el movimiento general del elevador
+                //    (no empujar hacia arriba si la plataforma cae)
                 var v = _playerRb.velocity;
                 float targetVy = _smoothedPlatVy;
-                float blended = Mathf.Lerp(v.y, targetVy, Mathf.Clamp01(amount));
-                if (blended > targetVy) blended = targetVy;
-                if (blended > 0f) blended = 0f;
-                v.y = blended;
+                // si la plataforma sube, acompañamos; si baja, nunca ponemos v.y positiva
+                if (targetVy > 0f)
+                    v.y = targetVy;
+                else
+                    v.y = Mathf.Min(v.y, targetVy);
+
                 _playerRb.velocity = v;
-
-                if (_playerCol != null && _col != null)
-                {
-                    float topY = _col.bounds.max.y;
-                    float feetY = _playerCol.bounds.min.y;
-                    float wantY = topY + contactSkin + valor;
-                    float gap = feetY - wantY;
-
-                    if (gap > 0f)
-                    {
-                        float down = (maxSnapStep <= 0f) ? (gap + contactBiasDown)
-                                                          : Mathf.Min(gap + contactBiasDown, maxSnapStep);
-                        Vector3 p = _playerRb.position;
-                        _playerRb.MovePosition(new Vector3(p.x, p.y - down, p.z));
-
-                        var vv = _playerRb.velocity;
-                        if (vv.y > 0f) vv.y = 0f;
-                        _playerRb.velocity = vv;
-                    }
-                }
-            }
-            else
-            {
-                if (_playerRb.isKinematic) _playerRb.isKinematic = false;
-                _playerRb.useGravity = true;
-
-                if (goingUp && _playerRb.isKinematic) _playerRb.isKinematic = false;
             }
         }
         else
         {
-            if (_playerRb != null)
-            {
-                _playerRb.useGravity = true;
-                if (_playerRb.isKinematic) _playerRb.isKinematic = false;
-            }
+            // No detectado: devolver control
+            if (_playerRb != null) _playerRb.useGravity = true;
             _playerRb = null;
             _playerCol = null;
             debugModel = null;
-            _apexZeroDone = false;
         }
 
         _lastPlatY = platY;
-        _lastPlatVy = rawPlatVy;
     }
 
+    // OverlapBox para detectar jugador
     bool TryDetectPlayer(out Rigidbody rb, out Model m, out Collider playerCol)
     {
         rb = null; m = null; playerCol = null;
-        if (_col == null) return false;
 
         Bounds b = _col.bounds;
         Vector3 half = new Vector3(
