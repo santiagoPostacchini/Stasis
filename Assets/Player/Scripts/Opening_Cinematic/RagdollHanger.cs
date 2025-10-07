@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public class RagdollHang : MonoBehaviour
+public class RagdollHanger : MonoBehaviour
 {
     [Header("Ragdoll Hang Settings")]
     public Rigidbody neckRigidbody;      // El rigidbody de la cabeza o cuello
@@ -59,4 +59,3 @@ public class RagdollHang : MonoBehaviour
         }
     }
 }
-
