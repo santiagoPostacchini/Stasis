@@ -9,7 +9,14 @@ public class RagdollHanger : MonoBehaviour
     public float damper = 50f;           // Amortiguación para que no vibre
     public float maxDistance = 0.1f;     // Qué tanto puede moverse del punto
 
+    [Header("Release Settings")]
+    public bool releaseRagdoll = false;      // Si está en true, suelta el ragdoll manualmente
+    public bool useTimer = false;            // Si está en true, el ragdoll se soltará después de cierto tiempo
+    public float releaseDelay = 2f;          // Tiempo (en segundos) antes de soltar el ragdoll
+
     private ConfigurableJoint joint;
+    private bool hasReleased = false;        // Para evitar que se suelte más de una vez
+    private float timer = 0f;
 
     void Start()
     {
@@ -19,7 +26,36 @@ public class RagdollHanger : MonoBehaviour
             return;
         }
 
-        // Crear un joint configurable dinámicamente
+        CreateJoint();
+    }
+
+    void Update()
+    {
+        // Suelta manualmente si el bool está activo
+        if (releaseRagdoll && !hasReleased)
+        {
+            ReleaseRagdoll();
+        }
+
+        // Suelta automáticamente con timer
+        if (useTimer && !hasReleased)
+        {
+            timer += Time.deltaTime;
+            if (timer >= releaseDelay)
+            {
+                ReleaseRagdoll();
+            }
+        }
+
+        // Actualizar el punto de anclaje si el hangPoint se mueve
+        if (joint != null && hangPoint != null)
+        {
+            joint.connectedAnchor = hangPoint.position;
+        }
+    }
+
+    void CreateJoint()
+    {
         joint = neckRigidbody.gameObject.AddComponent<ConfigurableJoint>();
         joint.connectedBody = null;
         joint.anchor = Vector3.zero;
@@ -50,12 +86,16 @@ public class RagdollHanger : MonoBehaviour
         joint.angularZMotion = ConfigurableJointMotion.Free;
     }
 
-    void Update()
+    public void ReleaseRagdoll()
     {
-        if (joint != null && hangPoint != null)
+        if (joint != null)
         {
-            // Mantener el punto de anclaje actualizado si el hangPoint se mueve
-            joint.connectedAnchor = hangPoint.position;
+            Destroy(joint);
+            joint = null;
         }
+
+        hasReleased = true;
     }
 }
+
+
