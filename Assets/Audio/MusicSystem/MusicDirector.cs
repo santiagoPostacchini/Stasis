@@ -4,12 +4,12 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.Audio;
-using Audio.Scripts; // para AudioSourceFactory
+using Audio.Scripts; // AudioSourceFactory
 
 namespace Audio.MusicSystem
 {
     /// <summary>
-    /// Orquesta cues por capas con PlayScheduled, cuantización, crossfades, stingers e intensidad.
+    /// Orquesta cues por capas con PlayScheduled, cuantización, crossfades y stingers (salida/entrada).
     /// Usa pool 2D (AudioSourceFactory.prefab2D) para instancias musicales.
     /// </summary>
     [DisallowMultipleComponent]
@@ -17,21 +17,19 @@ namespace Audio.MusicSystem
     {
         public static MusicDirector Instance { get; private set; }
 
-        [Header("Graph")]
-        public MusicGraph graph;
+        [Header("Graph")] public MusicGraph graph;
 
         [Header("Runtime Routing")]
-        public Transform audioRoot;                 // contenedor para sources
-        public int voicesPerLayer = 1;             // usualmente 1 (por stem)
-        [Range(0f,1f)] public float globalVolume = 1f;
+        public Transform audioRoot;               // contenedor para sources
+        public int voicesPerLayer = 1;
+        [Range(0f, 1f)] public float globalVolume = 1f;
 
-        [Header("Debug")]
-        public bool logTransitions;
+        [Header("Debug")] public bool logTransitions;
 
         // --- Runtime state ---
         private string _currentNodeId;
         private MusicCue _currentCue;
-        private double _cueStartDspTime;           // dónde arrancó el cue en la grilla
+        private double _cueStartDspTime;
         private readonly Dictionary<string, AudioSource> _activeLayerSources = new(); // layerId -> src
         private readonly Dictionary<string, float> _parameters = new();               // nombre->valor
         private readonly HashSet<string> _triggers = new();                           // one-shot triggers
@@ -39,7 +37,7 @@ namespace Audio.MusicSystem
         // Crossfade
         private readonly List<AudioSource> _fadingOut = new();
 
-        // ---- Exposición para el Editor/Debug ----
+        // Exposición (debug)
         public string CurrentNodeId => _currentNodeId;
         public MusicCue CurrentCue => _currentCue;
         public IReadOnlyDictionary<string, AudioSource> ActiveLayerSources => _activeLayerSources;
@@ -50,25 +48,34 @@ namespace Audio.MusicSystem
         {
             if (Instance && Instance != this) { Destroy(gameObject); return; }
             Instance = this;
-
             if (!audioRoot) audioRoot = transform;
         }
 
         private void Start()
         {
-            if (!graph) { Debug.LogWarning("[MusicDirector] No graph asignado."); return; }
-            var start = string.IsNullOrEmpty(graph.startNodeId) ? graph.nodes.FirstOrDefault()?.id : graph.startNodeId;
+            if (!graph)
+            {
+                Debug.LogWarning("[MusicDirector] No graph asignado.");
+                return;
+            }
+
+            var start = string.IsNullOrEmpty(graph.startNodeId)
+                ? graph.nodes.FirstOrDefault()?.id
+                : graph.startNodeId;
+
             if (string.IsNullOrEmpty(start))
             {
                 Debug.LogWarning("[MusicDirector] Graph sin nodo de inicio.");
                 return;
             }
-            GoToNode(start, MusicGraph.Quantization.Immediate, 0f, playStinger: false, stingerId: null);
+
+            // Arranque inmediato sin stinger
+            GoToNode(start, MusicGraph.Quantization.Immediate, 0f, false, null);
         }
 
         private void Update()
         {
-            // 1) procesar triggers (one-shot)
+            // 1) triggers
             if (_triggers.Count > 0)
             {
                 foreach (var trg in _triggers.ToArray())
@@ -76,7 +83,7 @@ namespace Audio.MusicSystem
                 _triggers.Clear();
             }
 
-            // 2) procesar transiciones por parámetros
+            // 2) parámetros
             TryTransitionByParameters();
         }
 
@@ -85,7 +92,7 @@ namespace Audio.MusicSystem
         public float GetParameter(string name, float fallback = 0f) => _parameters.TryGetValue(name, out var v) ? v : fallback;
         public void Trigger(string triggerName) => _triggers.Add(triggerName);
 
-        /// <summary>Activa/desactiva capas por id dentro del cue actual con fade local.</summary>
+        /// <summary>Activa/desactiva una capa del cue actual con fade local.</summary>
         public void SetLayerEnabled(string layerId, bool enabled, float fadeSeconds = 0.5f)
         {
             if (!_currentCue) return;
@@ -97,14 +104,16 @@ namespace Audio.MusicSystem
             else FadeOutAndStopLayer(layerId, fadeSeconds);
         }
 
-        /// <summary>Ajusta volumen por capa (no destruye el mix por snapshots).</summary>
+        /// <summary>Ajusta volumen por capa.</summary>
         public void SetLayerVolume(string layerId, float volume, float fadeSeconds = 0.2f)
         {
             if (_activeLayerSources.TryGetValue(layerId, out var src) && src)
                 StartCoroutine(FadeVolume(src, Mathf.Clamp01(volume) * globalVolume, fadeSeconds));
         }
 
-        /// <summary>Cambia a otro nodo/cue con cuantización y crossfade.</summary>
+        /// <summary>
+        /// Cambio manual por nodeId (mantiene compatibilidad). Usa un stinger de entrada opcional.
+        /// </summary>
         public void GoToNode(string nodeId, MusicGraph.Quantization q = MusicGraph.Quantization.Bar,
                              float crossfadeSeconds = 1f, bool playStinger = false, string stingerId = null)
         {
@@ -118,20 +127,51 @@ namespace Audio.MusicSystem
             var nextCue = node.cue;
             var when = GetNextQuantizedDspTime(_currentCue ? _currentCue : nextCue, q);
 
-            if (logTransitions) Debug.Log($"[MusicDirector] -> {nodeId} at {q} (t={when:0.000})");
+            if (logTransitions) Debug.Log($"[MusicDirector] -> {nodeId} @ {q} (when={when:0.000})");
 
-            // programar reproducción del nuevo cue
+            if (_currentCue) CrossfadeOutCurrent(crossfadeSeconds, when);
             StartCoroutine(PlayCueScheduled(nextCue, when));
-
-            // hacer crossfade de las capas actuales
-            if (_currentCue)
-                CrossfadeOutCurrent(crossfadeSeconds, when);
-
-            // stinger optional
-            if (playStinger && !string.IsNullOrEmpty(stingerId))
-                FireStinger(nextCue, stingerId, when);
+            if (playStinger && !string.IsNullOrEmpty(stingerId)) FireStinger(nextCue, stingerId, when);
 
             _currentNodeId = nodeId;
+            _currentCue = nextCue;
+            _cueStartDspTime = when;
+        }
+
+        /// <summary>
+        /// Cambio usando una Transition completa (lee stingers de salida/entrada, cuantización, crossfade).
+        /// </summary>
+        public void GoToNode(MusicGraph.Transition t)
+        {
+            if (t == null) return;
+
+            var node = graph.nodes.FirstOrDefault(n => n.id == t.toNodeId);
+            if (node == null || !node.cue)
+            {
+                Debug.LogWarning($"[MusicDirector] Node '{t.toNodeId}' inválido.");
+                return;
+            }
+
+            var nextCue = node.cue;
+            var when = GetNextQuantizedDspTime(_currentCue ? _currentCue : nextCue, t.quantization);
+
+            if (logTransitions) Debug.Log($"[MusicDirector] -> {t.toNodeId} @ {t.quantization} (when={when:0.000})");
+
+            // EXIT stinger (del cue actual)
+            if (t.playExitStinger && !string.IsNullOrEmpty(t.exitStingerId))
+                FireExitStinger(t, when);
+
+            // Crossfade alineado (fade-out termina en 'when')
+            if (_currentCue) CrossfadeOutCurrent(t.crossfadeSeconds, when);
+
+            // Programar nuevo cue
+            StartCoroutine(PlayCueScheduled(nextCue, when));
+
+            // ENTRY stinger (del cue destino)
+            if (t.playEntryStinger && !string.IsNullOrEmpty(t.entryStingerId))
+                FireEntryStinger(nextCue, t, when);
+
+            _currentNodeId = t.toNodeId;
             _currentCue = nextCue;
             _cueStartDspTime = when;
         }
@@ -144,7 +184,7 @@ namespace Audio.MusicSystem
                 if (t.fromNodeId != _currentNodeId) continue;
                 if (!string.IsNullOrEmpty(t.triggerName) && t.triggerName == triggerName)
                 {
-                    GoToNode(t.toNodeId, t.quantization, t.crossfadeSeconds, t.fireStingerOnEnter, t.stingerId);
+                    GoToNode(t);
                     return;
                 }
             }
@@ -155,13 +195,13 @@ namespace Audio.MusicSystem
             foreach (var t in graph.transitions)
             {
                 if (t.fromNodeId != _currentNodeId) continue;
-                if (!string.IsNullOrEmpty(t.triggerName)) continue; // estas se manejan en Trigger()
+                if (!string.IsNullOrEmpty(t.triggerName)) continue;
 
                 if (!string.IsNullOrEmpty(t.paramName) && _parameters.TryGetValue(t.paramName, out var val))
                 {
                     if (t.Matches(val))
                     {
-                        GoToNode(t.toNodeId, t.quantization, t.crossfadeSeconds, t.fireStingerOnEnter, t.stingerId);
+                        GoToNode(t);
                         return;
                     }
                 }
@@ -174,11 +214,9 @@ namespace Audio.MusicSystem
             foreach (var layer in cue.layers)
             {
                 if (!layer.clip) continue;
-
                 if (!layer.isOptional || layer.enabledByDefault)
                     EnsureLayerScheduled(cue, layer, whenDsp);
             }
-
             yield break;
         }
 
@@ -190,37 +228,63 @@ namespace Audio.MusicSystem
             src.loop = layer.loop;
             AlignSourceSettingsForCue(src, cue);
             src.PlayScheduled(whenDsp);
-
             _activeLayerSources[layer.id] = src;
         }
 
         private void EnsureLayerPlaying(MusicCue.Layer layer, float fadeSeconds)
         {
-            if (!_currentCue) return;
-            if (!layer.clip) return;
+            if (!_currentCue || !layer.clip) return;
 
             var when = GetNextQuantizedDspTime(_currentCue, MusicGraph.Quantization.Bar);
             var src = GetOrCreateMusic2DSource(layer.id, _currentCue.outputMixer);
             AlignSourceSettingsForCue(src, _currentCue);
             src.clip = layer.clip;
             src.loop = layer.loop;
-            src.volume = 0f; // fade-in
+            src.volume = 0f;
             src.PlayScheduled(when);
             StartCoroutine(FadeVolume(src, layer.defaultVolume * globalVolume, fadeSeconds, when));
             _activeLayerSources[layer.id] = src;
         }
 
+        // Crossfade out actual (el fade termina EXACTAMENTE en 'anchorWhen')
         private void CrossfadeOutCurrent(float fadeSeconds, double anchorWhen)
         {
             foreach (var kv in _activeLayerSources.ToArray())
             {
                 var src = kv.Value;
                 if (!src) { _activeLayerSources.Remove(kv.Key); continue; }
-
                 _fadingOut.Add(src);
-                StartCoroutine(FadeOutAndReturnToPool(src, fadeSeconds, anchorWhen));
+                StartCoroutine(FadeOutAndReturnToPool_Aligned(src, fadeSeconds, anchorWhen));
                 _activeLayerSources.Remove(kv.Key);
             }
+        }
+
+        private IEnumerator FadeOutAndReturnToPool_Aligned(AudioSource src, float seconds, double anchorWhen)
+        {
+            if (!src) yield break;
+
+            var now = AudioSettings.dspTime;
+            double startAt = Math.Max(now, anchorWhen - Math.Max(0.0, seconds));
+            float wait = (float)Math.Max(0, startAt - now);
+            if (wait > 0) yield return new WaitForSecondsRealtime(wait);
+
+            float startVol = src.volume;
+            float t = 0f;
+            float dur = Mathf.Max(0.0001f, seconds);
+
+            while (t < dur && src)
+            {
+                t += Time.unscaledDeltaTime;
+                src.volume = Mathf.Lerp(startVol, 0f, t / dur);
+                yield return null;
+            }
+
+            if (src)
+            {
+                src.Stop();
+                ReturnMusic2DSource(src);
+            }
+            _fadingOut.Remove(src);
         }
 
         private void FadeOutAndStopLayer(string layerId, float fadeSeconds)
@@ -228,7 +292,7 @@ namespace Audio.MusicSystem
             if (_activeLayerSources.TryGetValue(layerId, out var src) && src)
             {
                 _fadingOut.Add(src);
-                StartCoroutine(FadeOutAndReturnToPool(src, fadeSeconds, /*anchor*/AudioSettings.dspTime));
+                StartCoroutine(FadeOutAndReturnToPool(src, fadeSeconds, AudioSettings.dspTime));
                 _activeLayerSources.Remove(layerId);
             }
         }
@@ -243,7 +307,7 @@ namespace Audio.MusicSystem
             if (!factory || !factory.Has2DPool)
             {
                 Debug.LogError("[MusicDirector] No hay AudioSourceFactory con prefab2D asignado.", this);
-                // fallback de emergencia (no recomendado en producción)
+                // Fallback de emergencia
                 var go = new GameObject($"Music2D_{layerId}");
                 go.transform.SetParent(audioRoot, false);
                 var fallback = go.AddComponent<AudioSource>();
@@ -269,15 +333,14 @@ namespace Audio.MusicSystem
         {
             src.pitch = 1f;
             src.panStereo = 0f;
-            src.spatialBlend = 0f; // música 2D
-            // Si quisieras loop regions, configurarías timeSamples aquí.
+            src.spatialBlend = 0f;
         }
 
         // ---------- Internals: timing ----------
         private double GetNextQuantizedDspTime(MusicCue cue, MusicGraph.Quantization q)
         {
             var dspNow = AudioSettings.dspTime;
-            if (q == MusicGraph.Quantization.Immediate || cue == null) return dspNow + 0.02; // pequeño margen
+            if (q == MusicGraph.Quantization.Immediate || cue == null) return dspNow + 0.02;
 
             double grid = q switch
             {
@@ -292,31 +355,68 @@ namespace Audio.MusicSystem
             var anchor = _currentCue ? _cueStartDspTime : dspNow;
             var t = dspNow - anchor;
             var n = Math.Ceiling(t / grid);
-            return anchor + Math.Max(1, n) * grid; // al menos el próximo grid
+            return anchor + Math.Max(1, n) * grid;
         }
 
         // ---------- Internals: stingers ----------
+        // Compatibilidad: stinger simple (entrada) por id
         private void FireStinger(MusicCue targetCue, string stingerId, double whenDsp)
         {
             var st = targetCue.stingers.FirstOrDefault(s => s.id == stingerId);
             if (st?.clip == null) return;
+            FireStinger(targetCue, st, whenDsp);
+        }
 
+        // Exit (del cue actual)
+        private void FireExitStinger(MusicGraph.Transition t, double whenDsp)
+        {
+            if (_currentCue == null) return;
+
+            var st = _currentCue.stingers.FirstOrDefault(s => s.id == t.exitStingerId);
+            if (st?.clip == null) return;
+
+            double dspNow = AudioSettings.dspTime;
+            double at = t.quantizeExitStinger ? (whenDsp + t.exitOffsetSeconds)
+                                              : (dspNow + t.exitOffsetSeconds);
+            at = Math.Max(dspNow + 0.02, at);
+
+            FireStinger(_currentCue, st, at);
+        }
+
+        // Entry (del cue destino)
+        private void FireEntryStinger(MusicCue targetCue, MusicGraph.Transition t, double whenDsp)
+        {
+            if (!targetCue) return;
+
+            var st = targetCue.stingers.FirstOrDefault(s => s.id == t.entryStingerId);
+            if (st?.clip == null) return;
+
+            double dspNow = AudioSettings.dspTime;
+            double at = t.quantizeEntryStinger ? (whenDsp + t.entryOffsetSeconds)
+                                               : (dspNow + t.entryOffsetSeconds);
+            at = Math.Max(dspNow + 0.02, at);
+
+            FireStinger(targetCue, st, at);
+        }
+
+        // Genérico (pool 2D + devolución)
+        private void FireStinger(MusicCue cue, MusicCue.Stinger st, double whenDsp)
+        {
             var factory = AudioSourceFactory.Instance;
-            AudioSource src = null;
+            AudioSource src;
 
             if (factory && factory.Has2DPool)
             {
-                src = factory.Get2DSource(audioRoot, targetCue.outputMixer);
+                src = factory.Get2DSource(audioRoot, cue.outputMixer);
             }
             else
             {
-                // fallback emergencia
-                var go = new GameObject($"Stinger_{stingerId}");
+                var go = new GameObject($"Stinger_{st.id}");
                 go.transform.SetParent(audioRoot, false);
                 src = go.AddComponent<AudioSource>();
                 src.playOnAwake = false;
                 src.spatialBlend = 0f;
-                src.outputAudioMixerGroup = targetCue.outputMixer;
+                src.outputAudioMixerGroup = cue.outputMixer;
             }
 
             src.clip = st.clip;
@@ -324,19 +424,18 @@ namespace Audio.MusicSystem
             src.loop = false;
             src.PlayScheduled(whenDsp);
 
-            // devolver al pool al finalizar
             StartCoroutine(ReturnStingerWhenDone(src, whenDsp, st.clip.length));
         }
 
         private IEnumerator ReturnStingerWhenDone(AudioSource src, double when, float len)
         {
-            var wait = (float)Math.Max(0, when - AudioSettings.dspTime) + len + 0.1f;
-            yield return new WaitForSecondsRealtime(wait);
+            float wait = (float)Math.Max(0, when - AudioSettings.dspTime) + len + 0.05f;
+            if (wait > 0) yield return new WaitForSecondsRealtime(wait);
             ReturnMusic2DSource(src);
         }
 
         // ---------- Coroutines: fades ----------
-        private IEnumerator FadeOutAndReturnToPool(AudioSource src, float seconds, double anchorWhen)
+        private IEnumerator FadeOutAndReturnToPool(AudioSource src, float seconds, double _)
         {
             if (!src) yield break;
             float start = src.volume;
@@ -359,7 +458,6 @@ namespace Audio.MusicSystem
         {
             if (!src) yield break;
 
-            // si está programado en el futuro, esperamos a que empiece
             if (playAnchor > 0)
             {
                 var wait = (float)Math.Max(0, playAnchor - AudioSettings.dspTime);

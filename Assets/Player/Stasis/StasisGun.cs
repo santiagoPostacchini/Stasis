@@ -332,8 +332,7 @@ namespace Player.Stasis
                     SpawnOneBeam((left ? left.position : right.position),  hitPoint, stasisHit);
                     break;
             }
-
-            EventManager.TriggerEvent("LaserFX", gameObject);
+            
         }
 
         private void SpawnOneBeam(Vector3 origin, Vector3 hitPoint, bool stasisHit)
@@ -343,13 +342,6 @@ namespace Player.Stasis
             var beam = go.GetComponent<StasisBeam>();
             if (beam) beam.SetBeam(origin, hitPoint, stasisHit);
             _activeBeam = beam;
-        }
-
-        private Ray GetCenterScreenRay(UnityEngine.Camera cam)
-        {
-            var r = cam.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
-            float offset = Mathf.Max(0.02f, cam.nearClipPlane + 0.02f);
-            return new Ray(r.origin + r.direction * offset, r.direction);
         }
 
         private IEnumerator ResetShootAfter(float t)
