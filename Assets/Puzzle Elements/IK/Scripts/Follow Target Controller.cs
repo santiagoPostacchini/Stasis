@@ -47,8 +47,8 @@ public class FollowTargetController : MonoBehaviour
     public Transform frame;
 
     private Rigidbody rb;
-    private Transform startAnchor;     // ancla A
-    public Transform currentTip;       // destino actual (A o brother)
+    private Transform startAnchor;
+    public Transform currentTip;
     private bool atStart = true;
     private Coroutine moveRoutine;
 
@@ -60,7 +60,6 @@ public class FollowTargetController : MonoBehaviour
     private float distFiltered;
     public float dist { get; private set; }
 
-    // Punto A en mundo o en local (según anchorInParentFrame)
     private Vector3 aPosWorld;
     private Quaternion aRotWorld;
     private Vector3 aPosLocal;
@@ -79,7 +78,6 @@ public class FollowTargetController : MonoBehaviour
     {
         rb = GetComponent<Rigidbody>();
         rb.isKinematic = true;
-        // Interpolación depende del modo; se ajusta en Start
     }
 
     private void Start()
@@ -87,7 +85,6 @@ public class FollowTargetController : MonoBehaviour
         if (GameManager.Instance != null && player == null)
             player = GameManager.Instance.player;
 
-        // Crear ancla A
         startAnchor = new GameObject(name + "_StartAnchor").transform;
 
         if (anchorInParentFrame)
@@ -96,11 +93,9 @@ public class FollowTargetController : MonoBehaviour
             startAnchor.SetParent(f, true);
             startAnchor.SetPositionAndRotation(transform.position, transform.rotation);
 
-            // Guardar A en local del frame
             aPosLocal = f.InverseTransformPoint(transform.position);
             aRotLocal = Quaternion.Inverse(f.rotation) * transform.rotation;
 
-            // En modo frame, evitamos el lag del RB cinemático frente a movimiento por Transform del padre
             rb.interpolation = RigidbodyInterpolation.None;
         }
         else
@@ -108,7 +103,6 @@ public class FollowTargetController : MonoBehaviour
             startAnchor.SetParent(null, true);
             startAnchor.SetPositionAndRotation(transform.position, transform.rotation);
 
-            // Guardar A en mundo
             aPosWorld = transform.position;
             aRotWorld = transform.rotation;
 
@@ -121,6 +115,7 @@ public class FollowTargetController : MonoBehaviour
         if (rig != null)
         {
             currentWeight = Mathf.Clamp01(rig.weight);
+            if (currentWeight > 0.95f) currentWeight = 1f; // snap a 1
             targetWeight = currentWeight;
             rig.weight = currentWeight;
         }
@@ -135,15 +130,12 @@ public class FollowTargetController : MonoBehaviour
 
     private void FixedUpdate()
     {
-        // Evitar lag del RB cuando el padre (tren) se mueve por Transform:
-        // sincronizamos el estado del RB con el Transform ANTES de cálculos.
         if (anchorInParentFrame)
         {
             rb.position = transform.position;
             rb.rotation = transform.rotation;
         }
 
-        // Distancia filtrada
         if (player != null)
         {
             Vector3 delta = player.position - rb.position;
@@ -172,11 +164,10 @@ public class FollowTargetController : MonoBehaviour
         float raw = math.remap(inMin, inMax, outMin, outMax, distFiltered);
         float curved = remapLerp.Evaluate(raw);
 
-        // Lógica estable con umbral mínimo hacia brother
         if (currentTip == startAnchor)
         {
             targetWeight = Mathf.Clamp01(curved);
-            brotherCurrentMin = 0f; // reset
+            brotherCurrentMin = 0f;
         }
         else if (currentTip == brother)
         {
@@ -202,6 +193,7 @@ public class FollowTargetController : MonoBehaviour
         {
             currentWeight = Mathf.SmoothDamp(currentWeight, desired, ref weightVel, weightSmoothTime, Mathf.Infinity, Time.deltaTime);
             currentWeight = Mathf.Clamp01(currentWeight);
+            if (currentWeight > 0.95f) currentWeight = 1f; // snap a 1
             rig.weight = currentWeight;
         }
 
@@ -271,7 +263,6 @@ public class FollowTargetController : MonoBehaviour
 
         atStart = (to == startAnchor);
 
-        // Actualizar Punto A al llegar (en el marco correcto)
         if (anchorInParentFrame)
         {
             Transform f = GetFrame();
@@ -292,7 +283,6 @@ public class FollowTargetController : MonoBehaviour
         Transform dest = currentTip != null ? currentTip : (brother != null ? brother : startAnchor);
         if (dest == null) return;
 
-        // Punto A en mundo según modo
         Vector3 aPos;
         Quaternion aRot;
         if (anchorInParentFrame)
