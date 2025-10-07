@@ -14,15 +14,22 @@ namespace Player.Scripts.MovementFSM
         public float checkForward = 0.45f; // alcance del sondeo
         public float ankleHeight = 0.12f; // altura del ray a riser
         public float kneeHeight = 0.60f; // altura del ray a clearance
-        
-        [Header("Low ramp-as-step")]
-        public bool enableLowRampStep = true;
+
+        [Header("Riser vertical sweep")] public bool enableVerticalRiserSweep = true;
+
+        [Tooltip("Radio del probe para el CapsuleCast entre ankle y knee")]
+        public float riserCapsuleRadius = 0.06f;
+
+        [Header("Low ramp-as-step")] public bool enableLowRampStep = true;
+
         [Tooltip("Qué tan adelante muestreamos la altura de 'tapa'")]
         public float rampProbeAhead = 0.28f;
+
         [Tooltip("Altura desde la cual casteamos hacia abajo para hallar 'tapa'")]
         public float rampTopProbeUp = 0.25f;
-        [Tooltip("Normal.y mínima aceptable para considerar la 'tapa' caminable")]
-        [Range(0f,1f)] public float topMinNormalY = 0.25f; // 0.25 ~ 75°
+
+        [Tooltip("Normal.y mínima aceptable para considerar la 'tapa' caminable")] [Range(0f, 1f)]
+        public float topMinNormalY = 0.25f; // 0.25 ~ 75°
 
         [Header("Forces")] public float liftDeltaVy = 0.75f; // Δv vertical instantáneo (m/s)
         public float assistAccelXZ = 1.2f; // empuje XZ mientras dura el step (m/s^2)
@@ -49,7 +56,37 @@ namespace Player.Scripts.MovementFSM
 
         [Header("Debug")] public bool debugDraw;
 
-        // internals
+        [Header("Height-invariant rise")] public bool heightInvariantRise = true;
+
+        [Tooltip("Duración fija de la subida, sin importar la altura del escalón")] [Range(0.06f, 0.30f)]
+        public float riseTime = 0.12f;
+
+        [Tooltip("Desactivar gravedad durante la subida para trayectoria exacta")]
+        public bool disableGravityDuringRise = true;
+
+        [Tooltip("Ajuste final de posición vertical al terminar la subida")]
+        public float snapTopEpsilon = 0.01f;
+
+        [Tooltip("Terminar la subida con vy=0 usando perfil bi-fase (recomendado)")]
+        public bool zeroVyAtTop = true;
+        
+        [Header("Snap smoothing")]
+        public bool smoothSnapDown = true;
+        [Range(0.02f, 0.25f)] public float snapBlendTime = 0.10f; // duración del aterrizaje suave
+        [Range(1f, 20f)] public float snapSpring = 10f;           // fuerza hacia la tapa
+        [Range(0f, 2f)] public float snapDamping = 0.8f;   
+        
+        bool _snapBlending;
+        float _snapTargetY;
+        float _snapBlendUntil;
+        float _riseAUp; // módulo de aceleración en la 1ª mitad; en la 2ª se aplica -_riseAUp
+        float _riseMidTime; // fin de la 1ª mitad
+        float _plannedHeight; // s = topY - y0 (para escalar asistencia XZ)
+        float _riseA; // aceleración vertical (net) planificada
+        float _riseEndTime; // fin de la subida
+        float _targetTopY; // altura objetivo del escalón
+        bool _rising; // estamos en fase de subida (subconjunto de _stepping)
+        bool _prevUseGravity; // para restaurar gravedad
         const float Skin = 0.02f;
         float _lastSnapTime = -999f;
         Vector3 _stepDir;
@@ -67,7 +104,7 @@ namespace Player.Scripts.MovementFSM
             if (!model) model = GetComponent<Model>();
             if (model) SyncFromModel(model);
         }
-        
+
         void FixedUpdate()
         {
             Vector3 moveDir = GetWishDir(out var wishSpeed);
@@ -78,6 +115,26 @@ namespace Player.Scripts.MovementFSM
             bool hasRecentIntent = (Time.time - _lastMoveIntentTime) <= intentGrace;
             bool allowStep = (!requireMoveInput) || hasRecentIntent || (actualMps >= minActualMps);
             
+            if (_snapBlending)
+            {
+                float now = Time.time;
+                
+                float e = _snapTargetY - rb.position.y;
+
+                float vy = rb.velocity.y;
+                float a  = snapSpring * e - snapDamping * vy;
+
+                a = Mathf.Clamp(a, -30f, 12f);
+
+                rb.AddForce(Vector3.up * a, ForceMode.Acceleration);
+                
+                bool closeEnough = Mathf.Abs(e) < 0.005f;
+                if (closeEnough || now >= _snapBlendUntil)
+                    _snapBlending = false;
+
+                return;
+            }
+
             if (enableLowRampStep && TryLowRampAsStep(moveDir, out var topY, out var fakeRiserNormal))
             {
                 BeginStep(moveDir, fakeRiserNormal, topY);
@@ -100,15 +157,14 @@ namespace Player.Scripts.MovementFSM
             Vector3 ankle = foot + Vector3.up * (ankleHeight + Skin);
             Vector3 knee = foot + Vector3.up * (kneeHeight + Skin);
 
-            const float riserProbeRadius = 0.05f; // pequeño, evita falsos positivos
-            if (!Physics.SphereCast(ankle, riserProbeRadius, moveDir, out RaycastHit riserHit, checkForward, walkableMask,
-                    QueryTriggerInteraction.Ignore))
+            // --- NUEVA DETECCIÓN DE RISER ---
+            if (!TryFindRiser(moveDir, ankle, knee, out RaycastHit riserHit))
             {
                 TrySnapDown(moveDir);
                 return;
             }
 
-            // descartamos pendientes no-riser
+            // descartamos pendientes no-riser (no “pared”)
             if (riserHit.normal.y > maxRiserNormalY)
             {
                 TrySnapDown(moveDir);
@@ -130,41 +186,114 @@ namespace Player.Scripts.MovementFSM
                 return;
             }
 
-            // 3) buscar la tapa por encima del borde
+            // 3) buscar la tapa por encima del borde (igual que antes)
             Vector3 over = riserHit.point + moveDir * 0.16f + Vector3.up * (maxStepUp + Skin);
             if (!Physics.Raycast(over, Vector3.down, out RaycastHit top, maxStepUp + 2f * Skin, walkableMask,
                     QueryTriggerInteraction.Ignore))
             {
-                TrySnapDown(moveDir);
-                return;
+                // pequeño “ajuste” por si el punto está muy pegado a la cara
+                Vector3 over2 = riserHit.point + moveDir * 0.10f + Vector3.up * (maxStepUp + Skin);
+                if (!Physics.Raycast(over2, Vector3.down, out top, maxStepUp + 2f * Skin, walkableMask,
+                        QueryTriggerInteraction.Ignore))
+                {
+                    TrySnapDown(moveDir);
+                    return;
+                }
             }
 
-            // listo: hay step válido → subimos tipo CC
+            // listo: hay step válido → subimos tipo CC (misma cinemática de siempre)
             BeginStep(moveDir, riserHit.normal, top.point.y + Skin);
+        }
+
+        // NEW: barrido vertical del riser entre ankle y knee.
+        // Si está desactivado, cae al SphereCast clásico a la altura del ankle.
+        bool TryFindRiser(Vector3 moveDir, Vector3 ankle, Vector3 knee, out RaycastHit riserHit)
+        {
+            if (enableVerticalRiserSweep)
+            {
+                // CapsuleCast vertical adelante — capta caras entre ankle y knee
+                if (Physics.CapsuleCast(
+                        ankle, knee, riserCapsuleRadius,
+                        moveDir, out riserHit, checkForward, walkableMask,
+                        QueryTriggerInteraction.Ignore))
+                {
+                    if (debugDraw)
+                    {
+                        Debug.DrawLine(ankle, knee, Color.yellow, 0.05f);
+                        Debug.DrawRay((ankle + knee) * 0.5f, moveDir.normalized * Mathf.Min(checkForward, 0.4f),
+                            Color.yellow, 0.05f);
+                    }
+
+                    return true;
+                }
+            }
+            else
+            {
+                const float riserProbeRadius = 0.05f;
+                if (Physics.SphereCast(ankle, riserProbeRadius, moveDir, out riserHit, checkForward, walkableMask,
+                        QueryTriggerInteraction.Ignore))
+                {
+                    if (debugDraw)
+                        Debug.DrawRay(ankle, moveDir.normalized * Mathf.Min(checkForward, 0.4f), Color.cyan, 0.05f);
+                    return true;
+                }
+            }
+
+            riserHit = default;
+            return false;
         }
 
         void BeginStep(Vector3 moveDir, Vector3 riserNormal, float topY)
         {
-            // 1) micro-lift instantáneo
-            rb.AddForce(Vector3.up * liftDeltaVy, ForceMode.VelocityChange);
-            ClampUp();
+            _riserNormal = riserNormal;
+            _targetTopY = topY;
 
-            // 2) guardar dirección “deslizante” (proyectada sobre el plano de la riser)
+            // Dirección deslizante (como antes)
             Vector3 tangential = moveDir - Vector3.Project(moveDir, riserNormal);
             _stepDir = Vector3.Lerp(moveDir, tangential, slideBlend).normalized;
 
-            // 3) fijar una ventana corta de asistencia (como si CC te empujara un poco)
-            _stepEndTime =
-                Time.time + Mathf.Clamp((topY - rb.position.y) / Mathf.Max(0.08f, liftDeltaVy), 0.06f, 0.22f);
+            // Ventana de asistencia XZ (como antes, pero guardamos altura planeada)
+            _plannedHeight = Mathf.Max(0f, topY - rb.position.y);
+            _stepEndTime = Time.time + Mathf.Clamp(_plannedHeight / Mathf.Max(0.08f, liftDeltaVy), 0.06f, 0.22f);
+
+            if (heightInvariantRise && _plannedHeight > 0f)
+            {
+                float t = Mathf.Max(0.06f, riseTime);
+                _prevUseGravity = rb.useGravity;
+                if (disableGravityDuringRise) rb.useGravity = false;
+
+                if (zeroVyAtTop)
+                {
+                    // Perfil bi-fase simétrico (+a, -a) que termina con vy=0 y recorre s en tiempo t:
+                    // s = a * t^2 / 4  =>  a = 4*s/t^2
+                    _riseAUp = 4f * _plannedHeight / (t * t);
+                    _riseMidTime = Time.time + t * 0.5f;
+                }
+                else
+                {
+                    // Perfil de a constante (el anterior)
+                    float vy0 = rb.velocity.y;
+                    _riseAUp = 2f * (_plannedHeight - vy0 * t) / (t * t); // se usa como 'a' única
+                    _riseMidTime = -1f; // no se usa
+                }
+
+                _riseEndTime = Time.time + t;
+                _rising = true;
+            }
+            else
+            {
+                // Modo clásico
+                rb.AddForce(Vector3.up * liftDeltaVy, ForceMode.VelocityChange);
+                ClampUp();
+                _rising = false;
+            }
+
             _stepping = true;
             _lastSnapTime = Time.time;
 
-
-            _riserNormal = riserNormal;
-
             if (debugDraw)
             {
-                Debug.DrawRay(BottomSphereCenter() + Vector3.up * (ankleHeight + Skin), _stepDir * 0.35f, Color.cyan,
+                Debug.DrawRay(BottomSphereCenter() + Vector3.up * (ankleHeight + 0.02f), _stepDir * 0.35f, Color.cyan,
                     0.1f);
                 Debug.DrawRay(rb.position, riserNormal * 0.25f, Color.magenta, 0.15f);
             }
@@ -172,22 +301,69 @@ namespace Player.Scripts.MovementFSM
 
         void ContinueStep(Vector3 moveDir)
         {
+            // ---- Horizontal (igual que antes, pero con escala por altura) ----
             Vector3 tangentialInput = moveDir - Vector3.Project(moveDir, _riserNormal);
             Vector3 targetDir = tangentialInput.sqrMagnitude > 1e-5f ? tangentialInput.normalized : _stepDir;
-
             _stepDir = Vector3.Slerp(_stepDir, targetDir, Mathf.Clamp01(steerLerp * Time.fixedDeltaTime));
 
             GetWishDir(out var wishSpeed);
+
+            // Escalá la asistencia según la altura planeada: escalón chico => menos empuje
+            float h01 = Mathf.Clamp01(_plannedHeight / Mathf.Max(0.0001f, maxStepUp));
             float speed01 = Mathf.Clamp01(wishSpeed / Mathf.Max(0.1f, speedForcesRef));
+            float accelXZ = assistAccelXZ * Mathf.Lerp(0.35f, 1f, h01) * Mathf.Lerp(0.5f, 1f, speed01);
+            rb.AddForce(_stepDir * accelXZ, ForceMode.Acceleration);
 
-            float accel = assistAccelXZ * Mathf.Lerp(0.5f, 1f, speed01);
-            rb.AddForce(_stepDir * accel, ForceMode.Acceleration);
+            // ---- Vertical (perfil isócrono) ----
+            if (_rising)
+            {
+                if (Time.time < _riseEndTime)
+                {
+                    if (zeroVyAtTop)
+                    {
+                        // 1ª mitad: +a ; 2ª mitad: -a  (compensando gravedad si sigue encendida)
+                        bool firstHalf = Time.time < _riseMidTime;
+                        float aNet = firstHalf ? _riseAUp : -_riseAUp;
+                        float aCmd = disableGravityDuringRise ? aNet : (aNet - Physics.gravity.y);
+                        rb.AddForce(Vector3.up * aCmd, ForceMode.Acceleration);
+                    }
+                    else
+                    {
+                        // a constante (versión anterior)
+                        float aNet = _riseAUp;
+                        float aCmd = disableGravityDuringRise ? aNet : (aNet - Physics.gravity.y);
+                        rb.AddForce(Vector3.up * aCmd, ForceMode.Acceleration);
+                    }
+                }
+                else
+                {
+                    // Fin de subida: posar suave en la tapa y “apagar” vy hacia arriba
+                    if (disableGravityDuringRise) rb.useGravity = _prevUseGravity;
 
-            ClampUp();
+                    // Snap suave a top
+                    Vector3 p = rb.position;
+                    float dy = _targetTopY - p.y;
+                    p.y = Mathf.Abs(dy) <= snapTopEpsilon ? _targetTopY : Mathf.MoveTowards(p.y, _targetTopY, Mathf.Abs(dy));
+                    rb.position = p;
+
+                    // Certeza de no “salir volando”
+                    var v = rb.velocity;
+                    if (v.y > 0f) v.y = 0f;
+                    rb.velocity = v;
+
+                    _rising = false;
+                }
+            }
+            else
+            {
+                // Modo clásico
+                ClampUp();
+            }
 
             if (Time.time >= _stepEndTime)
-                _stepping = false;
+                _stepping = _rising; // mantené mientras dure la subida
         }
+
 
         void TrySnapDown(Vector3 moveDir)
         {
@@ -203,44 +379,47 @@ namespace Player.Scripts.MovementFSM
             float dy = targetY - rb.position.y;
             if (dy >= -0.03f) return;
 
-            float downDeltaVy = Mathf.Clamp(dy / Time.fixedDeltaTime, -2.5f, 0f);
-            rb.AddForce(Vector3.up * downDeltaVy, ForceMode.VelocityChange);
             _lastSnapTime = Time.time;
+
+            if (smoothSnapDown)
+            {
+                _snapTargetY    = targetY;
+                _snapBlendUntil = Time.time + Mathf.Max(0.02f, snapBlendTime);
+                _snapBlending   = true;
+            }
+            else
+            {
+                float downDeltaVy = Mathf.Clamp(dy / Time.fixedDeltaTime, -2.5f, 0f);
+                rb.AddForce(Vector3.up * downDeltaVy, ForceMode.VelocityChange);
+            }
         }
-        
+
         bool TryLowRampAsStep(Vector3 moveDir, out float topY, out Vector3 fakeRiserNormal)
         {
             topY = 0f;
             fakeRiserNormal = Vector3.zero;
 
-            // 1) punto adelante en XZ donde “queremos” estar
             Vector3 foot = BottomSphereCenter();
             Vector3 aheadXZ = foot + moveDir.normalized * Mathf.Clamp(rampProbeAhead, 0.1f, checkForward);
 
-            // 2) ray hacia abajo para encontrar la “tapa” (aunque sea inclinada)
             Vector3 downOrigin = new Vector3(aheadXZ.x, foot.y + maxStepUp + rampTopProbeUp, aheadXZ.z);
             if (!Physics.Raycast(downOrigin, Vector3.down, out RaycastHit topHit,
                     maxStepUp + rampTopProbeUp + 0.1f, walkableMask,
                     QueryTriggerInteraction.Ignore))
                 return false;
 
-            // 3) que la “tapa” sea físicamente alcanzable como step
             float candidateTopY = topHit.point.y + Skin;
             float dy = candidateTopY - rb.position.y;
             if (dy < 0.02f || dy > maxStepUp + 0.001f) return false;
 
-            // 4) y que no sea una pared total (aceptamos inclinadas fuertes, pero no techo)
             if (topHit.normal.y < topMinNormalY) return false;
 
-            // 5) clearance a rodilla entre acá y ahead (evitar clavarnos en la cara de la rampa)
             Vector3 knee = foot + Vector3.up * (kneeHeight + Skin);
             if (Physics.Raycast(knee, moveDir, rampProbeAhead, walkableMask, QueryTriggerInteraction.Ignore))
                 return false;
 
-            // 6) "riser" sintético: usamos la componente frontal opuesta a la marcha
-            // para construir un plano tangencial donde deslizar durante el step
             fakeRiserNormal = Vector3.ProjectOnPlane(-moveDir, Vector3.up).normalized;
-            if (fakeRiserNormal.sqrMagnitude < 1e-5f) fakeRiserNormal = Vector3.forward; // fallback estable
+            if (fakeRiserNormal.sqrMagnitude < 1e-5f) fakeRiserNormal = Vector3.forward;
 
             topY = candidateTopY;
             return true;
@@ -297,7 +476,7 @@ namespace Player.Scripts.MovementFSM
                 rb.velocity = v;
             }
         }
-        
+
         public bool IsStepping => _stepping;
         public float LastSnapTime => _lastSnapTime;
 
@@ -313,16 +492,23 @@ namespace Player.Scripts.MovementFSM
         public bool RecentlySnapped(float graceSeconds = 0.06f)
             => (Time.time - _lastSnapTime) <= Mathf.Max(0f, graceSeconds);
 
+        void OnDisable()
+        {
+            if (_rising && disableGravityDuringRise && rb) rb.useGravity = _prevUseGravity;
+            _rising = false;
+            _stepping = false;
+        }
 
         void OnValidate()
         {
             maxStepDown = Mathf.Max(maxStepDown, maxStepUp + 0.05f);
             checkForward = Mathf.Max(0.1f, checkForward);
             ankleHeight = Mathf.Max(-0.3f, ankleHeight);
-            kneeHeight = Mathf.Max(0.5f, kneeHeight);
+            kneeHeight = Mathf.Max(0.1f, kneeHeight);
             assistAccelXZ = Mathf.Max(0f, assistAccelXZ);
             liftDeltaVy = Mathf.Max(0.05f, liftDeltaVy);
             maxUpVel = Mathf.Max(0.6f, maxUpVel);
+            riserCapsuleRadius = Mathf.Clamp(riserCapsuleRadius, 0.02f, 0.2f);
         }
     }
 }

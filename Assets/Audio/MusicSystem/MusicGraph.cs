@@ -1,6 +1,8 @@
+// MusicGraph.cs
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization; // <— para FormerlySerializedAs
 
 namespace Audio.MusicSystem
 {
@@ -10,13 +12,12 @@ namespace Audio.MusicSystem
         public List<Node> nodes = new();
         public List<Transition> transitions = new();
 
-        [Header("Start")]
-        public string startNodeId;
+        [Header("Start")] public string startNodeId;
 
         [Serializable]
         public class Node
         {
-            public string id;                 // único
+            public string id;     // único
             public MusicCue cue;
         }
 
@@ -27,16 +28,28 @@ namespace Audio.MusicSystem
             public string toNodeId;
 
             [Header("Trigger / Condición")]
-            public string triggerName;        // si no está vacío, se dispara con Director.Trigger(triggerName)
-            public string paramName;          // opcional: nombre parámetro
+            public string triggerName;
+            public string paramName;
             public CompareOp compare = CompareOp.GreaterOrEqual;
             public float paramThreshold = 0.5f;
 
             [Header("Blend")]
             public Quantization quantization = Quantization.Bar;
             [Min(0f)] public float crossfadeSeconds = 1.5f;
-            public bool fireStingerOnEnter;
-            public string stingerId;
+
+            // --- NUEVO: Stingers separados ---
+            [Header("Stingers")]
+            // Compatibilidad: si ya tenías "fireStingerOnEnter" y "stingerId"
+            [FormerlySerializedAs("fireStingerOnEnter")] public bool playEntryStinger;
+            [FormerlySerializedAs("stingerId")]         public string entryStingerId;
+
+            public bool  quantizeEntryStinger = true;
+            public float entryOffsetSeconds;   // relativo al arranque del nuevo cue (si cuantizado) o "ahora"
+
+            public bool  playExitStinger;     // tapa el fade-out
+            public string exitStingerId;
+            public bool  quantizeExitStinger; // tip: exit suele ir "ya"
+            public float exitOffsetSeconds;    // si cuantizado: relativo a 'when'; si no: relativo al dspNow
 
             public enum CompareOp { Less, LessOrEqual, Greater, GreaterOrEqual, Equal, NotEqual }
 
