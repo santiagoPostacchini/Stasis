@@ -20,7 +20,7 @@ public class RagdollHanger : MonoBehaviour
     public float fadeDelayAfterRelease = 2f; // Segundos después de soltar el ragdoll para activar fade
 
     private ConfigurableJoint joint;
-    private bool hasReleased = false;        // Para evitar que se suelte más de una vez
+    public bool hasReleased = false;        // Para evitar que se suelte más de una vez
     private float timer = 0f;
 
     void Start()

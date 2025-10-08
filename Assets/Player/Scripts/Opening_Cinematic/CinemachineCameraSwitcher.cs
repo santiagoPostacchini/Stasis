@@ -21,7 +21,10 @@ public class CinemachineCameraSwitcher : MonoBehaviour
     public bool transitionToC;
 
     [Header("Referencia al RagdollHanger")]
-    public RagdollHanger ragdollHanger; // Referencia al script del hanger
+    public RagdollHanger ragdollHanger;
+
+    [Header("Objeto a desactivar en transición A→B")]
+    public GameObject objectToDeactivate;
 
     private bool isTransitioning = false;
 
@@ -43,7 +46,6 @@ public class CinemachineCameraSwitcher : MonoBehaviour
 
     private void Update()
     {
-        // Detectar cambios en los toggles manuales
         if (transitionToA && !prevA)
             StartCoroutine(SwitchRoutine(cameraA));
 
@@ -53,12 +55,11 @@ public class CinemachineCameraSwitcher : MonoBehaviour
         if (transitionToC && !prevC)
             StartCoroutine(SwitchRoutine(cameraC));
 
-        // Guardar estado actual
         prevA = transitionToA;
         prevB = transitionToB;
         prevC = transitionToC;
 
-        // Detectar cambio en fadeBlack para hacer transición automática
+        // Detectar cambio en fadeBlack
         if (ragdollHanger != null && ragdollHanger.fadeBlack && !fadeBlackPrev)
         {
             StartCoroutine(SwitchRoutine(cameraB));
@@ -114,6 +115,12 @@ public class CinemachineCameraSwitcher : MonoBehaviour
         newCam.Priority = 20;
 
         yield return new WaitForSeconds(blendTime);
+
+        // Si la transición fue A→B, desactivamos el objeto asignado
+        if (newCam == cameraB && objectToDeactivate != null)
+        {
+            objectToDeactivate.SetActive(false);
+        }
 
         isTransitioning = false;
     }

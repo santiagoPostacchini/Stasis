@@ -4,20 +4,25 @@ using System.Collections;
 public class CanvasManager : MonoBehaviour
 {
     [Header("Referencias")]
-    public CanvasGroup canvasGroup;          // CanvasGroup del canvas
+    public CanvasGroup canvasGroup;          // CanvasGroup del canvas principal
     public RagdollHanger ragdollHanger;      // Referencia al script del hanger
 
     [Header("Fade Inicial")]
-    public float startFadeDelay = 2f;        // Segundos antes de empezar el fade inicial
-    public float startFadeDuration = 5f;     // Duración del fade inicial
+    public float startFadeDelay = 2f;
+    public float startFadeDuration = 5f;
 
     [Header("Fade Después de FadeBlack")]
-    public float fadeBlackDelay = 2f;        // Segundos antes de empezar el fade después de fadeBlack
-    public float fadeBlackDuration = 5f;     // Duración del fade después de fadeBlack
+    public float fadeBlackDelay = 2f;
+    public float fadeBlackDuration = 5f;
+
+    [Header("Canvas Extra al Release")]
+    public Canvas extraCanvas;               // Canvas que se activa al Release
+    public float extraCanvasActiveTime = 3f; // Tiempo antes de desactivarlo
 
     private bool hasStartedFade = false;
     private bool hasReappeared = false;
     private bool hasFadedAfterBlack = false;
+    private bool hasActivatedExtraCanvas = false;
 
     void Start()
     {
@@ -29,6 +34,9 @@ public class CanvasManager : MonoBehaviour
 
         canvasGroup.alpha = 1f;
 
+        if (extraCanvas != null)
+            extraCanvas.gameObject.SetActive(false); // Empieza desactivado
+
         StartCoroutine(FadeOutAfterDelay());
     }
 
@@ -37,7 +45,13 @@ public class CanvasManager : MonoBehaviour
         if (ragdollHanger == null || canvasGroup == null)
             return;
 
-        // Cuando se activa fadeBlack
+        // Cuando se activa fadeBlack → cortar canvas extra
+        if (ragdollHanger.fadeBlack && extraCanvas != null && extraCanvas.gameObject.activeSelf)
+        {
+            extraCanvas.gameObject.SetActive(false);
+        }
+
+        // Cuando se activa fadeBlack en canvas principal
         if (ragdollHanger.fadeBlack && !hasReappeared)
         {
             canvasGroup.alpha = 1f;
@@ -45,8 +59,14 @@ public class CanvasManager : MonoBehaviour
             canvasGroup.blocksRaycasts = true;
             hasReappeared = true;
 
-            // Inicia fade después del delay
             StartCoroutine(FadeOutAfterFadeBlack());
+        }
+
+        // Cuando se libera el ragdoll
+        if (ragdollHanger.hasReleased && !hasActivatedExtraCanvas && extraCanvas != null)
+        {
+            hasActivatedExtraCanvas = true;
+            StartCoroutine(ActivateExtraCanvas());
         }
     }
 
@@ -92,7 +112,18 @@ public class CanvasManager : MonoBehaviour
 
         hasFadedAfterBlack = true;
     }
+
+    private IEnumerator ActivateExtraCanvas()
+    {
+        extraCanvas.gameObject.SetActive(true);
+
+        yield return new WaitForSeconds(extraCanvasActiveTime);
+
+        if (extraCanvas != null)
+            extraCanvas.gameObject.SetActive(false);
+    }
 }
+
 
 
 
