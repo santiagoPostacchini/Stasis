@@ -6,7 +6,8 @@ public class ElevatorStickyZone : MonoBehaviour
 {
     [Tooltip("Rigidbody de la plataforma (si no se asigna, se toma automáticamente).")]
     public Rigidbody platformRb;
-
+    public Collider _smallCollider;
+    public Collider _bigCollider;
     [Tooltip("Solo para depuración: muestra el modelo del jugador detectado.")]
     public Model debugModel;
 
@@ -40,7 +41,12 @@ public class ElevatorStickyZone : MonoBehaviour
 
     float _lastPlatY;
     float _smoothedPlatVy;
+    [Header("Volumen de detección manual (no depende del collider)")]
+    [Tooltip("Centro del volumen local respecto a la plataforma.")]
+    public Vector3 customBoxCenter = new Vector3(0f, 1f, 0f);
 
+    [Tooltip("Tamaño total del volumen de detección (en unidades).")]
+    public Vector3 customBoxSize = new Vector3(1f, 0.6f, 1f);
     void Awake()
     {
         if (platformRb == null) platformRb = GetComponent<Rigidbody>();
@@ -78,7 +84,7 @@ public class ElevatorStickyZone : MonoBehaviour
             if (_playerRb != null && _playerCol != null)
             {
                 // 1) Apagar gravedad mientras está “anclado” al hover para que no pelee contra el snap
-                _playerRb.useGravity = false;
+               
                
                 // 2) Altura objetivo: pies del jugador a hoverOffset sobre el top de la plataforma
                 float topY = _col.bounds.max.y;
@@ -90,10 +96,18 @@ public class ElevatorStickyZone : MonoBehaviour
                 Vector3 p = _playerRb.position;
                 if (platformRb.velocity.magnitude > 0.002f)
                 {
-                    _playerRb.MovePosition(new Vector3(p.x, p.y + deltaY, p.z));
+                    _playerRb.useGravity = false;
+                    _bigCollider.enabled = false;
+                    _smallCollider.enabled = true;
+                    _playerRb.MovePosition(new Vector3(p.x, p.y , p.z));
+                   
+
+
                 }
                 else
                 {
+                    _bigCollider.enabled = true;
+                    _smallCollider.enabled = false;
                     _playerRb.useGravity = true;
                 }
                
@@ -108,6 +122,7 @@ public class ElevatorStickyZone : MonoBehaviour
                 else
                     v.y = Mathf.Min(v.y, targetVy);
 
+                if(platformRb.velocity.magnitude >0.02f)
                 _playerRb.velocity = v;
             }
         }
@@ -128,19 +143,17 @@ public class ElevatorStickyZone : MonoBehaviour
     {
         rb = null; m = null; playerCol = null;
 
-        Bounds b = _col.bounds;
+        // --- AHORA: No depende del collider ---
         Vector3 half = new Vector3(
-            b.extents.x + castPaddingXZ.x,
-            castDistance * 0.5f,
-            b.extents.z + castPaddingXZ.y
-        );
-        Vector3 center = new Vector3(
-            b.center.x,
-            b.max.y + castStartOffset + half.y,
-            b.center.z
+            customBoxSize.x * 0.5f,
+            customBoxSize.y * 0.5f,
+            customBoxSize.z * 0.5f
         );
 
-        var hits = Physics.OverlapBox(center, half, Quaternion.identity, castMask, QueryTriggerInteraction.Ignore);
+        Vector3 center = transform.TransformPoint(customBoxCenter);
+
+        var hits = Physics.OverlapBox(center, half, transform.rotation, castMask, QueryTriggerInteraction.Ignore);
+
         for (int i = 0; i < hits.Length; i++)
         {
             var c = hits[i];
@@ -162,24 +175,13 @@ public class ElevatorStickyZone : MonoBehaviour
     void OnDrawGizmos()
     {
         if (!drawGizmos) return;
-        var col = GetComponent<Collider>();
-        if (col == null) return;
 
-        Bounds b = col.bounds;
-        Vector3 half = new Vector3(
-            b.extents.x + castPaddingXZ.x,
-            castDistance * 0.5f,
-            b.extents.z + castPaddingXZ.y
-        );
-        Vector3 center = new Vector3(
-            b.center.x,
-            b.max.y + castStartOffset + half.y,
-            b.center.z
-        );
+        Vector3 half = customBoxSize * 0.5f;
+        Vector3 center = transform.TransformPoint(customBoxCenter);
 
         Gizmos.color = Color.cyan;
-        Gizmos.matrix = Matrix4x4.TRS(center, Quaternion.identity, Vector3.one);
-        Gizmos.DrawWireCube(Vector3.zero, half * 2f);
+        Gizmos.matrix = Matrix4x4.TRS(center, transform.rotation, Vector3.one);
+        Gizmos.DrawWireCube(Vector3.zero, customBoxSize);
         Gizmos.matrix = Matrix4x4.identity;
     }
 #endif
