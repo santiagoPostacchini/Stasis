@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections;
 
 public class RagdollHanger : MonoBehaviour
 {
@@ -13,6 +14,10 @@ public class RagdollHanger : MonoBehaviour
     public bool releaseRagdoll = false;      // Si está en true, suelta el ragdoll manualmente
     public bool useTimer = false;            // Si está en true, el ragdoll se soltará después de cierto tiempo
     public float releaseDelay = 2f;          // Tiempo (en segundos) antes de soltar el ragdoll
+
+    [Header("Fade Settings")]
+    public bool fadeBlack = false;           // Bool que se activa tras la espera
+    public float fadeDelayAfterRelease = 2f; // Segundos después de soltar el ragdoll para activar fade
 
     private ConfigurableJoint joint;
     private bool hasReleased = false;        // Para evitar que se suelte más de una vez
@@ -95,7 +100,17 @@ public class RagdollHanger : MonoBehaviour
         }
 
         hasReleased = true;
+
+        // Inicia el contador para activar el fade
+        StartCoroutine(FadeAfterDelay());
+    }
+
+    private IEnumerator FadeAfterDelay()
+    {
+        yield return new WaitForSeconds(fadeDelayAfterRelease);
+        fadeBlack = true;
     }
 }
+
 
 
