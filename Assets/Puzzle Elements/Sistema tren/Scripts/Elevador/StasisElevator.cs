@@ -3,22 +3,18 @@ using UnityEngine;
 using UnityEngine.Splines;
 public class StasisElevator : MonoBehaviour, IStasis
 {
-    private bool _isFreezed = false;
+    private bool _isFreezed;
     public bool IsFreezed => _isFreezed;
-
-
-    public Material matStasis;
-    public readonly string _outlineThicknessName = "_BorderThickness";
-    public MaterialPropertyBlock _mpb;
     private Renderer _rend;
     private float _saveVelocity;
     private TrainSystem _trainSystem;
     [SerializeField] private StasisPartElevator _stasisPartElevator;
-    
+    public StasisEffect StasisEffect { get; private set; }
+
     private void Awake()
     {
-        _mpb = new MaterialPropertyBlock();
         _rend = GetComponent<Renderer>();
+        StasisEffect = new StasisEffect(_rend, null);
         _trainSystem = GetComponentInParent<TrainSystem>();
     }
 
@@ -41,8 +37,7 @@ public class StasisElevator : MonoBehaviour, IStasis
             _isFreezed = true;
             _stasisPartElevator._isFreezed = true;
             //splineAnimate.Pause();
-            SetOutlineThickness(1.05f);
-            SetColorOutline(Color.green, 1f);
+            StasisEffect.StasisEffectStart();
         }
     }
 
@@ -53,22 +48,7 @@ public class StasisElevator : MonoBehaviour, IStasis
         _stasisPartElevator._isFreezed = false;
         _trainSystem.elevatorSpeed = _saveVelocity;
         //splineAnimate.Play();
-        SetOutlineThickness(0f);
-        Color lightGreen = new Color(0.6f, 1f, 0.6f);
-        SetColorOutline(lightGreen, 1f);
-    }
-    public void SetOutlineThickness(float thickness)
-    {
-        _rend.GetPropertyBlock(_mpb);
-        _mpb.SetFloat(_outlineThicknessName, thickness);
-        _rend.SetPropertyBlock(_mpb);
-    }
-
-    public void SetColorOutline(Color color, float alpha)
-    {
-        _rend.GetPropertyBlock(_mpb);
-        _mpb.SetColor("_Color", color);
-        _rend.SetPropertyBlock(_mpb);
+        StasisEffect.StasisEffectStop();
     }
 }
 

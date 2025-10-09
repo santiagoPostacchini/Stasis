@@ -1,5 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using Player.Stasis;
 using IKSuite;
@@ -7,22 +5,18 @@ using IKSuite;
 public class StasisPartArmIK : MonoBehaviour,IStasis,IStasisPartIK
 {
     public bool IsFreezed => _isFreezed;
+    public StasisEffect StasisEffect { get; }
     private bool _isFreezed = false;
     [SerializeField] private StasisTipController _stasisTipController;
-
     
-  
-    // Start is called before the first frame update
     void Start()
     {
-        if(_stasisTipController != null)
+        if(_stasisTipController)
         {
             _stasisTipController.OnFreezeEvent += StatisEffectActivate;
             _stasisTipController.OnUnFreezeEvent += StatisEffectDeactivate;
         }
-      
     }
-
 
     public void StatisEffectActivate()
     {
@@ -44,11 +38,6 @@ public class StasisPartArmIK : MonoBehaviour,IStasis,IStasisPartIK
         {
             _stasisTipController.StatisEffectDeactivate();
         }
-    }
-
-    private void Update()
-    {
-       
     }
 
     public void SetTipController(Component tipController)

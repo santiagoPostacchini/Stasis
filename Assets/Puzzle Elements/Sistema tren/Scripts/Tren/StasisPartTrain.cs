@@ -1,11 +1,11 @@
 using Player.Stasis;
 using UnityEngine;
-using UnityEngine.Splines;
+
 public class StasisPartTrain : MonoBehaviour, IStasis
 {
-    public bool _isFreezed = false;
+    public bool _isFreezed;
     public bool IsFreezed => _isFreezed;
-
+    public StasisEffect StasisEffect { get; }
     private StasisTrain _train;
 
 
@@ -43,7 +43,6 @@ public class StasisPartTrain : MonoBehaviour, IStasis
         }
         
     }
-    
 }
 
 

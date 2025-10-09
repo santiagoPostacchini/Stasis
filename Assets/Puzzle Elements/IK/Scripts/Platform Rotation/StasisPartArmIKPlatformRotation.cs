@@ -9,6 +9,7 @@ public class StasisPartArmIKPlatformRotation : MonoBehaviour, IStasis, IStasisPa
     public bool IsFreezed => _isFreezed;
     private bool _isFreezed = false;
     [SerializeField] private StasisTipControllerPlatformRotation _stasisTipControllerPlatformRotation;
+    public StasisEffect StasisEffect { get; }
 
 
     // Start is called before the first frame update

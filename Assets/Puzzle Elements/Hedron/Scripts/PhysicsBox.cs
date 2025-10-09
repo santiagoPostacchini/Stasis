@@ -9,10 +9,6 @@ namespace Puzzle_Elements.Hedron.Scripts
 {
     public class PhysicsBox : MonoBehaviour, IStasis, IPlateActivator, ISoundPlayer
     {
-        private static readonly int Color1 = Shader.PropertyToID("_Color");
-        public Material matStasis;
-        private readonly string _outlineThicknessName = "_BorderThickness";
-        private MaterialPropertyBlock _mpb;
         [SerializeField] private Renderer _renderer;
 
         [Header("Components")] 
@@ -32,6 +28,7 @@ namespace Puzzle_Elements.Hedron.Scripts
 
         public bool IsOverlappingAnything { get; }
         public bool IsFreezed => _isFreezed;
+        public StasisEffect StasisEffect { get; private set; }
 
         [SerializeField] private ParticleSystem particleFrozen;
 
@@ -69,13 +66,14 @@ namespace Puzzle_Elements.Hedron.Scripts
 
         private void Start()
         {
-            _mpb = new MaterialPropertyBlock();
             if (!_renderer) _renderer = GetComponent<Renderer>();
 
             if (!mainCollider) mainCollider = GetComponentInChildren<Collider>(true);
 
             _originalScale = transform.localScale;
             posInitial = transform.position;
+            
+            StasisEffect = new StasisEffect(_renderer);
         }
 
         private void OnCollisionEnter(Collision collision)
@@ -102,10 +100,9 @@ namespace Puzzle_Elements.Hedron.Scripts
             rb.isKinematic = true;
             rb.useGravity = false;
 
-            SetSelfColliderTrigger(true); // en mano: trigger
+            SetSelfColliderTrigger(true);
         }
 
-        // Clásico (compat). El flujo actual usa BeginHoldSmooth al agarrar.
         public void BeginHold()
         {
             if (_holding) return;
@@ -116,7 +113,6 @@ namespace Puzzle_Elements.Hedron.Scripts
             SetSelfColliderTrigger(true);
         }
 
-        // Nuevo: pickup suave (aproximación + escala simultánea)
         public void BeginHoldSmooth(Transform palm, float palmHeight, float approachTime)
         {
             if (!palm) return;
@@ -129,7 +125,6 @@ namespace Puzzle_Elements.Hedron.Scripts
             rb.useGravity  = false;
             SetSelfColliderTrigger(true);
 
-            // aseguramos que las referencias internas apunten a esa palma
             _objGrabPointTransform = palm;
 
             StartCoroutine(Co_ApproachAndScale(palm, palmHeight, approachTime));
@@ -167,7 +162,6 @@ namespace Puzzle_Elements.Hedron.Scripts
             IsApproachingHand = false;
         }
 
-        // Nuevo: mover mientras está en mano a OTRA palma (mantiene escala actual)
         public void MoveWhileHoldingToPalm(Transform newPalm, float palmHeight, float tDur)
         {
             if (!newPalm) return;
@@ -175,7 +169,6 @@ namespace Puzzle_Elements.Hedron.Scripts
             StopAllCoroutines();
             IsApproachingHand = true;
 
-            // ya está kinematic + trigger; solo interpolamos en mundo
             StartCoroutine(Co_MoveWhileHolding(newPalm, palmHeight, tDur));
         }
 
@@ -330,7 +323,6 @@ namespace Puzzle_Elements.Hedron.Scripts
             _ownerRb = ownerRb;
         }
 
-        // ================= STASIS =================
         public void StatisEffectActivate()  => FreezeObject();
         public void StatisEffectDeactivate()=> UnfreezeObject();
 
@@ -345,9 +337,7 @@ namespace Puzzle_Elements.Hedron.Scripts
             rb.useGravity = false;
             rb.isKinematic = true;
             _isFreezed = true;
-
-            SetColorOutline(Color.green, 1);
-            SetOutlineThickness(1.05f);
+            StasisEffect.StasisEffectStart();
         }
 
         private void SaveObjectState()
@@ -378,27 +368,7 @@ namespace Puzzle_Elements.Hedron.Scripts
             _isFreezed = false;
             rb.useGravity = true;
             rb.isKinematic = false;
-
-            SetColorOutline(Color.white, 0.2f);
-            SetOutlineThickness(0f);
-        }
-
-        private void SetOutlineThickness(float thickness)
-        {
-            if (!_renderer) return;
-            _mpb ??= new MaterialPropertyBlock();
-            _renderer.GetPropertyBlock(_mpb);
-            _mpb.SetFloat(_outlineThicknessName, thickness);
-            _renderer.SetPropertyBlock(_mpb);
-        }
-
-        private void SetColorOutline(Color color, float alpha)
-        {
-            if (!_renderer) return;
-            _mpb ??= new MaterialPropertyBlock();
-            _renderer.GetPropertyBlock(_mpb);
-            _mpb.SetColor(Color1, color);
-            _renderer.SetPropertyBlock(_mpb);
+            StasisEffect.StasisEffectStop();
         }
         
         private Vector3 GetOwnerForward()

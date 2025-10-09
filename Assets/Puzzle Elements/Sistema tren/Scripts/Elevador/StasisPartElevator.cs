@@ -3,8 +3,9 @@ using UnityEngine;
 using UnityEngine.Splines;
 public class StasisPartElevator : MonoBehaviour, IStasis
 {
-    public bool _isFreezed = false;
+    public bool _isFreezed;
     public bool IsFreezed => _isFreezed;
+    public StasisEffect StasisEffect { get; }
 
     private StasisElevator _elevator;
 
@@ -41,8 +42,6 @@ public class StasisPartElevator : MonoBehaviour, IStasis
             _isFreezed = false;
         }
     }
-    
-    
 }
 
 

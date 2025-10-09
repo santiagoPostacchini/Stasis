@@ -1,5 +1,3 @@
-using UnityEngine;
-
 namespace Player.Stasis
 {
     public interface IStasis
@@ -8,5 +6,7 @@ namespace Player.Stasis
         void StatisEffectDeactivate();
 
         bool IsFreezed { get; }
+
+        StasisEffect StasisEffect { get; }
     }
 }

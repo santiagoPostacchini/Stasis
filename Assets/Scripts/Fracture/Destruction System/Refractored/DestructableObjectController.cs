@@ -23,18 +23,17 @@ public class DestructableObjectController : MonoBehaviour
         {
             var child = transform.GetChild(i);
             var _dpc = child.gameObject.AddComponent<DestroyedPieceController>();
-            _dpc.matStasis = stasisMaterial;
+            
             var _rigidbody = child.gameObject.AddComponent<Rigidbody>();
             _rigidbody.isKinematic = false;
             _rigidbody.useGravity = false;
 
             var _mc = child.gameObject.AddComponent<MeshCollider>();
             _mc.convex = true;
-            _dpc.meshCollider = _mc;
+           
             var _mct = child.gameObject.AddComponent<MeshCollider>();
             _mct.convex = true;
             _mct.isTrigger = true;
-            _dpc.meshColliderTrigger = _mct;
             destroyed_pieces.Add(_dpc);
         }
 

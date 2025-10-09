@@ -1,13 +1,12 @@
-using System.Collections;
 using System.Collections.Generic;
+using Player.Stasis;
 using UnityEngine;
 
 namespace Puzzle_Elements.Fan.Scripts
 {
     [RequireComponent(typeof(Rigidbody))]
-    public class Fan : MonoBehaviour, Player.Stasis.IStasis
+    public class Fan : MonoBehaviour, IStasis
     {
-        // ======================== ROTACIÓN ========================
         [Header("Rotación")]
         [Tooltip("Eje en el que girará el ventilador.")]
         public Vector3 ejeRotacion = new Vector3(0, 1, 0);
@@ -22,12 +21,10 @@ namespace Puzzle_Elements.Fan.Scripts
         private bool _isRunning;
         private bool _isStasis;
 
-        // ======================== OFFSET VOLUMEN ========================
         [Header("Offset Volumen")]
         [Tooltip("Offset del volumen de aire y gizmos en los 3 ejes.")]
         public Vector3 offsetVolumen = Vector3.zero;
 
-        // ======================== VOLUMEN FRONTAL ========================
         [Header("Volumen del aire (frontal)")]
         public float length = 10f;
         public float startRadius = 1.0f;
@@ -38,7 +35,6 @@ namespace Puzzle_Elements.Fan.Scripts
         public AnimationCurve longitudinalFalloff = AnimationCurve.Linear(0f, 1f, 1f, 0f);
         public AnimationCurve radialFalloff = AnimationCurve.Linear(0f, 1f, 1f, 0f);
 
-        // ======================== SUCCIÓN TRASERA ========================
         [Header("Succión trasera (opcional)")]
         public bool enableBackSuction = true;
         public float backLength = 6f;
@@ -73,21 +69,6 @@ namespace Puzzle_Elements.Fan.Scripts
         [Header("Stasis VFX (Shader)")]
         public Renderer[] targetRenderers;
         public ParticleSystem windParticles;
-        public string outlineThicknessProperty = "_BorderThickness";
-        public string outlineColorProperty = "_Color";
-        public float stasisOutlineThickness = 1.05f;
-        public float normalOutlineThickness;
-        public Color stasisOutlineColor = Color.green;
-        public Color normalOutlineColor = new Color(0.6f, 1f, 0.6f, 1f);
-        public bool smoothTransition = true;
-        public float transitionDuration = 0.12f;
-
-        private int _outlineThicknessID;
-        private int _outlineColorID;
-        private MaterialPropertyBlock[] _mpbs;
-        private Color[] _currentColors;
-        private float[] _currentThickness;
-        private Coroutine _vfxRoutine;
 
         [Header("Gizmos")]
         public bool drawGizmos = true;
@@ -100,32 +81,10 @@ namespace Puzzle_Elements.Fan.Scripts
         {
             _rb = GetComponent<Rigidbody>();
 
-            _outlineThicknessID = Shader.PropertyToID(outlineThicknessProperty);
-            _outlineColorID = Shader.PropertyToID(outlineColorProperty);
-
             if (targetRenderers == null || targetRenderers.Length == 0)
                 targetRenderers = GetComponentsInChildren<Renderer>(true);
-
-            int n = targetRenderers?.Length ?? 0;
-            _mpbs = new MaterialPropertyBlock[n];
-            _currentColors = new Color[n];
-            _currentThickness = new float[n];
-
-            for (int i = 0; i < n; i++)
-            {
-                _mpbs[i] = new MaterialPropertyBlock();
-                _currentColors[i] = normalOutlineColor;
-                _currentThickness[i] = normalOutlineThickness;
-
-                if (targetRenderers != null)
-                {
-                    var r = targetRenderers[i];
-                    r.GetPropertyBlock(_mpbs[i]);
-                    _mpbs[i].SetFloat(_outlineThicknessID, _currentThickness[i]);
-                    _mpbs[i].SetColor(_outlineColorID, _currentColors[i]);
-                    r.SetPropertyBlock(_mpbs[i]);
-                }
-            }
+            
+            StasisEffect = new StasisEffect(null, targetRenderers);
         }
 
         private void Start()
@@ -159,11 +118,12 @@ namespace Puzzle_Elements.Fan.Scripts
         {
             _isRunning = running;
             if (!running) _rb.angularVelocity = Vector3.zero;
-            if (running && windParticles != null) windParticles.Play();
-            else if (windParticles != null) windParticles.Pause();
+            if (running && windParticles) windParticles.Play();
+            else if (windParticles) windParticles.Pause();
         }
 
         public bool IsFreezed => _isStasis;
+        public StasisEffect StasisEffect { get; private set; }
 
         public void EventPositiveFan()
         {
@@ -181,108 +141,18 @@ namespace Puzzle_Elements.Fan.Scripts
             _rb.isKinematic = true;
             _rb.angularVelocity = Vector3.zero;
             _ccExternalVel.Clear();
-            if (windParticles != null) windParticles.Stop();
-            ApplyStasisVFX(true);
+            if (windParticles) windParticles.Stop();
+            StasisEffect.StasisEffectStart();
         }
 
         public void StatisEffectDeactivate()
         {
             _isStasis = false;
             _rb.isKinematic = false;
-            if (windParticles != null) windParticles.Play();
-            ApplyStasisVFX(false);
+            if (windParticles) windParticles.Play();
+            StasisEffect.StasisEffectStop();
         }
-
-        private void ApplyStasisVFX(bool on)
-        {
-            if (smoothTransition && transitionDuration > 0f)
-            {
-                if (_vfxRoutine != null) StopCoroutine(_vfxRoutine);
-                _vfxRoutine = StartCoroutine(VFXBlend(on));
-            }
-            else
-            {
-                SetOutlineThicknessAll(on ? stasisOutlineThickness : normalOutlineThickness);
-                SetOutlineColorAll(on ? stasisOutlineColor : normalOutlineColor);
-            }
-        }
-
-        private IEnumerator VFXBlend(bool toStasis)
-        {
-            float dur = transitionDuration;
-            float t = 0f;
-
-            float fromThick, toThick;
-            Color fromCol, toCol;
-
-            if (toStasis)
-            {
-                fromThick = (_currentThickness.Length > 0) ? _currentThickness[0] : normalOutlineThickness;
-                toThick = stasisOutlineThickness;
-                fromCol = (_currentColors.Length > 0) ? _currentColors[0] : normalOutlineColor;
-                toCol = stasisOutlineColor;
-            }
-            else
-            {
-                fromThick = (_currentThickness.Length > 0) ? _currentThickness[0] : stasisOutlineThickness;
-                toThick = normalOutlineThickness;
-                fromCol = (_currentColors.Length > 0) ? _currentColors[0] : stasisOutlineColor;
-                toCol = normalOutlineColor;
-            }
-
-            while (t < dur)
-            {
-                float k = t / dur;
-                float thick = Mathf.Lerp(fromThick, toThick, k);
-                Color col = Color.Lerp(fromCol, toCol, k);
-                SetOutlineThicknessAll(thick);
-                SetOutlineColorAll(col);
-
-                t += Time.deltaTime;
-                yield return null;
-            }
-
-            SetOutlineThicknessAll(toThick);
-            SetOutlineColorAll(toCol);
-            _vfxRoutine = null;
-        }
-
-        private void SetOutlineThicknessAll(float thickness)
-        {
-            for (int i = 0; i < (targetRenderers?.Length ?? 0); i++)
-            {
-                if (targetRenderers != null)
-                {
-                    var r = targetRenderers[i];
-                    if (!r) continue;
-                    _currentThickness[i] = thickness;
-
-                    var mpb = _mpbs[i];
-                    r.GetPropertyBlock(mpb);
-                    mpb.SetFloat(_outlineThicknessID, thickness);
-                    r.SetPropertyBlock(mpb);
-                }
-            }
-        }
-
-        private void SetOutlineColorAll(Color color)
-        {
-            for (int i = 0; i < (targetRenderers?.Length ?? 0); i++)
-            {
-                if (targetRenderers != null)
-                {
-                    var r = targetRenderers[i];
-                    if (!r) continue;
-                    _currentColors[i] = color;
-
-                    var mpb = _mpbs[i];
-                    r.GetPropertyBlock(mpb);
-                    mpb.SetColor(_outlineColorID, color);
-                    r.SetPropertyBlock(mpb);
-                }
-            }
-        }
-
+        
         private void ForwardForce()
         {
             if (length <= 0f) return;

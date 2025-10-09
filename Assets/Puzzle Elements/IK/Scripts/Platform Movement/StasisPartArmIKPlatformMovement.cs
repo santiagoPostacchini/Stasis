@@ -1,5 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using Player.Stasis;
 using IKSuite;
@@ -7,19 +5,17 @@ using IKSuite;
 public class StasisPartArmIKPlatformMovement : MonoBehaviour,IStasis,IStasisPartIK
 {
     public bool IsFreezed => _isFreezed;
+    public StasisEffect StasisEffect { get; }
     private bool _isFreezed = false;
-    [SerializeField] private StasisTipControllerPlatformMovement _stasisTipControllerPlatformMovement;
-
+    [SerializeField] private StasisTipControllerPlatformMovement stasisTipControllerPlatformMovement;
     [SerializeField] private bool a;
 
-    // Start is called before the first frame update
     void Start()
     {
-        _stasisTipControllerPlatformMovement.OnFreezeEvent += StatisEffectActivate;
-        _stasisTipControllerPlatformMovement.OnUnFreezeEvent += StatisEffectDeactivate;
+        stasisTipControllerPlatformMovement.OnFreezeEvent += StatisEffectActivate;
+        stasisTipControllerPlatformMovement.OnUnFreezeEvent += StatisEffectDeactivate;
     }
-
-
+    
     public void StatisEffectActivate()
     {
         NotifyTipController(true);
@@ -34,11 +30,11 @@ public class StasisPartArmIKPlatformMovement : MonoBehaviour,IStasis,IStasisPart
     {
         if (a == true)
         {
-            _stasisTipControllerPlatformMovement.StatisEffectActivate();
+            stasisTipControllerPlatformMovement.StatisEffectActivate();
         }
         else
         {
-            _stasisTipControllerPlatformMovement.StatisEffectDeactivate();
+            stasisTipControllerPlatformMovement.StatisEffectDeactivate();
         }
     }
 
@@ -61,7 +57,7 @@ public class StasisPartArmIKPlatformMovement : MonoBehaviour,IStasis,IStasisPart
         var a = tipController.GetComponent<StasisTipControllerPlatformMovement>();
         if (a != null)
         {
-            _stasisTipControllerPlatformMovement = a;
+            stasisTipControllerPlatformMovement = a;
         }
     }
 }

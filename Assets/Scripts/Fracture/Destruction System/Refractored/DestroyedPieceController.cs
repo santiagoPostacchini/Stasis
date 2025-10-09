@@ -1,44 +1,38 @@
-﻿using System.Collections;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using Player.Stasis;
-public class DestroyedPieceController : MonoBehaviour,IStasis
+
+public class DestroyedPieceController : MonoBehaviour, IStasis
 {
     public bool is_connected = true;
-    [HideInInspector] public bool visited = false;
+    [HideInInspector] public bool visited;
     public List<DestroyedPieceController> connected_to;
 
-    public static bool is_dirty = false;
+    public static bool is_dirty;
 
-    [SerializeField]private Rigidbody _rigidbody;
+    [SerializeField] private Rigidbody _rigidbody;
     private Vector3 _starting_pos;
     private Quaternion _starting_orientation;
     private Vector3 _starting_scale;
 
-    private bool _configured = false;
+    private bool _configured;
     private bool _connections_found = false;
 
     public bool IsFreezed => isFreezed;
+    public StasisEffect StasisEffect { get; set; }
     public bool isFreezed;
-    public bool wasHit = false;
+    public bool wasHit;
 
-    //
-    public Material matStasis;
-    public readonly string _outlineThicknessName = "_BorderThickness";
-    public MaterialPropertyBlock _mpb;
     public Renderer _renderer;
-    public MeshCollider meshCollider;
-    public MeshCollider meshColliderTrigger;
-    // Start is called before the first frame update
-
-    public bool alreadyColision= false;
 
     public int ID;
+    public bool alreadyColision;
+
     void Start()
     {
         ID = Random.Range(1, 10000);
         _renderer = GetComponent<Renderer>();
-        _mpb = new MaterialPropertyBlock();
+        StasisEffect = new StasisEffect(_renderer);
 
         connected_to = new List<DestroyedPieceController>();
         _starting_pos = transform.position;
@@ -49,23 +43,20 @@ public class DestroyedPieceController : MonoBehaviour,IStasis
 
         _rigidbody = GetComponent<Rigidbody>();
     }
+
     private void OnCollisionEnter(Collision collision)
     {
-       
         if (!_configured)
         {
             var neighbour = collision.gameObject.GetComponent<DestroyedPieceController>();
             if (neighbour)
             {
-                if(!connected_to.Contains(neighbour))
+                if (!connected_to.Contains(neighbour))
                     connected_to.Add(neighbour);
             }
         }
-        //else if (collision.gameObject.CompareTag("Floor"))
-        //{
-        //    VFXController.Instance.spawn_dust_cloud(transform.position);
-        //}
     }
+
     private void Update()
     {
         if (wasHit)
@@ -74,6 +65,7 @@ public class DestroyedPieceController : MonoBehaviour,IStasis
             _rigidbody.angularVelocity = Vector3.zero;
         }
     }
+
     public void make_static()
     {
         _configured = true;
@@ -91,8 +83,6 @@ public class DestroyedPieceController : MonoBehaviour,IStasis
         _rigidbody.isKinematic = false;
         is_dirty = true;
         _rigidbody.AddForce(force, ForceMode.Impulse);
-        //VFXController.Instance.spawn_dust_cloud(transform.position);
-        
     }
 
     public void drop()
@@ -110,51 +100,26 @@ public class DestroyedPieceController : MonoBehaviour,IStasis
     {
         UnfreezeObject();
     }
+
     private void FreezeObject()
     {
-        if (!isFreezed)
-        {
-            if (is_connected) return;
-            isFreezed = true;
-            SetOutlineThickness(1.05f);
-            SetColorOutline(Color.green, 1f);
-            _rigidbody.useGravity = false;
-            _rigidbody.isKinematic = true;
-            // Congelar posición y rotación para prevenir movimientos
-            _rigidbody.constraints = RigidbodyConstraints.FreezeAll;
-        }
+        if (isFreezed) return;
+        if (is_connected) return;
+        isFreezed = true;
+        _rigidbody.useGravity = false;
+        _rigidbody.isKinematic = true;
+        _rigidbody.constraints = RigidbodyConstraints.FreezeAll;
+        StasisEffect.StasisEffectStart();
     }
-
 
 
     private void UnfreezeObject()
     {
         if (!isFreezed) return;
         isFreezed = false;
-        SetOutlineThickness(0f);
-        Color lightRed = new Color(135, 93, 93);
-        SetColorOutline(Color.white, 1f);
         _rigidbody.useGravity = true;
         _rigidbody.isKinematic = false;
-        // Congelar posición y rotación para prevenir movimientos
         _rigidbody.constraints = RigidbodyConstraints.None;
-
-    }
-
-
-    public void SetOutlineThickness(float thickness)
-    {
-        if (_renderer == null || _mpb == null) return;
-        _renderer.GetPropertyBlock(_mpb);
-        _mpb.SetFloat(_outlineThicknessName, thickness);
-        _renderer.SetPropertyBlock(_mpb);
-    }
-
-    public void SetColorOutline(Color color, float alpha)
-    {
-        _renderer.GetPropertyBlock(_mpb);
-
-        _mpb.SetColor("_Color", color);
-        _renderer.SetPropertyBlock(_mpb);
+        StasisEffect.StasisEffectStop();
     }
 }

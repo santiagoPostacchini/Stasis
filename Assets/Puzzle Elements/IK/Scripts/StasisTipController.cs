@@ -7,6 +7,7 @@ using System;
 public class StasisTipController : MonoBehaviour,IStasis
 {
     public bool IsFreezed => _isFreezed;
+    public StasisEffect StasisEffect { get; }
     private bool _isFreezed = false;
     [Header("Stasis")]
     public Material matStasis;
@@ -14,7 +15,7 @@ public class StasisTipController : MonoBehaviour,IStasis
     public MaterialPropertyBlock _mpb;
 
 
-    // Soporta múltiples renderers
+    // Soporta mï¿½ltiples renderers
     public List<Renderer> renderers = new List<Renderer>();
 
     public event Action OnFreezeEvent;
@@ -31,12 +32,7 @@ public class StasisTipController : MonoBehaviour,IStasis
         _followTargetController = GetComponent<FollowTargetController>();
         StartCoroutine(wait());
     }
-
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
+    
     IEnumerator wait()
     {
         yield return new WaitForSeconds(2f);

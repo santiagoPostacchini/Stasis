@@ -7,6 +7,8 @@ namespace Puzzle_Elements.Fan.Scripts
     {
         public GameObject StasisObjToActivate;
         private Collider _col;
+        public bool IsFreezed { get; }
+        public StasisEffect StasisEffect { get; }
         private void Start()
         {
             _col = GetComponent<Collider>();
@@ -24,6 +26,5 @@ namespace Puzzle_Elements.Fan.Scripts
             _col.isTrigger = false;
         }
 
-        public bool IsFreezed { get; }
     }
 }

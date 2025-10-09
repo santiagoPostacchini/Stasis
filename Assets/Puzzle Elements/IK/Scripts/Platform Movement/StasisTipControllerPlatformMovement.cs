@@ -8,23 +8,21 @@ using CurvedPathGenerator;
 public class StasisTipControllerPlatformMovement : MonoBehaviour, IStasis
 {
     public bool IsFreezed => _isFreezed;
-    [SerializeField]private bool _isFreezed = false;
+    public StasisEffect StasisEffect { get; }
+    [SerializeField]private bool _isFreezed;
     [Header("Stasis")]
-    public Material matStasis;
     public readonly string _outlineThicknessName = "_BorderThickness";
     public MaterialPropertyBlock _mpb;
     private Rigidbody _rb;
 
-    // Soporta múltiples renderers
-    public List<Renderer> renderers = new List<Renderer>();
+    // Soporta mï¿½ltiples renderers
+    public List<Renderer> renderers = new();
     [SerializeField] private Transform _root;
     public event Action OnFreezeEvent;
     public event Action OnUnFreezeEvent;
 
     [SerializeField] private PathFollower1 _pathFollower1;
     
-
-    // Start is called before the first frame update
     void Start()
     {
         _mpb = new MaterialPropertyBlock();
@@ -33,11 +31,6 @@ public class StasisTipControllerPlatformMovement : MonoBehaviour, IStasis
         StartCoroutine(wait());
     }
 
-    // Update is called once per frame
-    void Update()
-    {
-
-    }
     IEnumerator wait()
     {
         yield return new WaitForSeconds(2f);
@@ -62,19 +55,20 @@ public class StasisTipControllerPlatformMovement : MonoBehaviour, IStasis
             if (!renderers.Contains(mesh))
                 renderers.Add(mesh);
         }
-
     }
+    
     public void EventPositiveTipPlatformMovement()
     {
         if(!IsFreezed) StatisEffectActivate();
     }
+    
     public void EventNegativeTipPlatformMovement()
     {
         if (IsFreezed) StatisEffectDeactivate();
     }
+    
     public void StatisEffectActivate()
     {
-
         FreezeObject();
         _pathFollower1.IsMove = false;
     }
@@ -104,6 +98,7 @@ public class StasisTipControllerPlatformMovement : MonoBehaviour, IStasis
         Color lightGreen = new Color(0.6f, 1f, 0.6f);
         SetColorOutline(lightGreen, 1f);
     }
+    
     public void SetOutlineThickness(float thickness)
     {
         if (renderers == null || _mpb == null) return;

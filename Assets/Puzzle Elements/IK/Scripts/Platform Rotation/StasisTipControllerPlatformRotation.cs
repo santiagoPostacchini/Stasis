@@ -3,18 +3,18 @@ using System.Collections.Generic;
 using UnityEngine;
 using Player.Stasis;
 using System;
-using CurvedPathGenerator;
 
 public class StasisTipControllerPlatformRotation : MonoBehaviour, IStasis
 {
     public bool IsFreezed => _isFreezed;
+    public StasisEffect StasisEffect { get; }
     [SerializeField]private bool _isFreezed = false;
     [Header("Stasis")]
     public Material matStasis;
     public readonly string _outlineThicknessName = "_BorderThickness";
     public MaterialPropertyBlock _mpb;
 
-    // Soporta múltiples renderers
+    // Soporta mï¿½ltiples renderers
     public List<Renderer> renderers = new List<Renderer>();
     [SerializeField] private Transform _root;
 
