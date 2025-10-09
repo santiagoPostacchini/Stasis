@@ -71,6 +71,9 @@ public class TrainSystem : MonoBehaviour
     private float trainWaitUntil;
     private bool trainConfigured;
 
+    // Marca si en la vuelta actual ya se pasó por departure
+    private bool trainPassedDepartureThisLap;
+
     void Awake()
     {
         ResolveHeights();
@@ -90,6 +93,7 @@ public class TrainSystem : MonoBehaviour
         systemEnabled = false;
     }
 
+    // --- API pública ---
     public void StartAllMovement()
     {
         systemEnabled = true;
@@ -100,17 +104,49 @@ public class TrainSystem : MonoBehaviour
 
     public void EnableSystem() => StartAllMovement();
 
-    public void DisableSystem()
+    /// <summary>
+    /// Solicita que el tren se detenga en la próxima vez que alcance 'departure',
+    /// respetando la regla: si ya pasó departure, completa la vuelta actual,
+    /// teletransporta del último al primero y se detiene en departure.
+    /// </summary>
+    public void RequestTrainHaltAtDeparture()
     {
-        systemEnabled = false;
+        if (!trainConfigured) return;
         trainHaltAtDeparture = true;
 
-        // Colocar barricada hacia abajo como “shutdown” suave
+        // Si estaba quieto en departure, que arranque para poder completar ciclo hasta frenarse en departure
+        if (trainPhase == TrainPhase.IdleAtDeparture)
+        {
+            trainRunRequested = true;
+        }
+    }
+
+    /// <summary>
+    /// “Apagar” suave: pedir alto en departure y bajar barricada.
+    /// No congela el tren en seco: deja que complete la lógica descrita.
+    /// </summary>
+    public void DisableSystem()
+    {
+        // No apagamos todo para no congelar en seco:
+        // solo pedimos alto en departure y bajamos la barricada.
+        RequestTrainHaltAtDeparture();
+
         if (barrConfigured && barricadeRb != null && barricadeDown != null)
         {
             barrState = BarricadeState.ToDown;
             barrTarget = barricadeDown.position;
         }
+    }
+
+    /// <summary>
+    /// Apagado duro: frena todo YA (si lo necesitás para debug o emergencia).
+    /// </summary>
+    public void HardStopAll()
+    {
+        systemEnabled = false;
+        if (elevatorRb) { elevatorRb.velocity = Vector3.zero; elevatorRb.angularVelocity = Vector3.zero; }
+        if (barricadeRb) { barricadeRb.velocity = Vector3.zero; barricadeRb.angularVelocity = Vector3.zero; }
+        if (trainRb) { trainRb.velocity = Vector3.zero; trainRb.angularVelocity = Vector3.zero; }
     }
 
     void FixedUpdate()
@@ -121,7 +157,7 @@ public class TrainSystem : MonoBehaviour
 
         if (!systemEnabled)
         {
-            // Frenos seguros
+            // Mantener todo quieto si el sistema está deshabilitado totalmente
             if (elevatorRb) { elevatorRb.velocity = Vector3.zero; elevatorRb.angularVelocity = Vector3.zero; }
             if (barricadeRb) { barricadeRb.velocity = Vector3.zero; barricadeRb.angularVelocity = Vector3.zero; }
             if (trainRb) { trainRb.velocity = Vector3.zero; trainRb.angularVelocity = Vector3.zero; }
@@ -140,12 +176,13 @@ public class TrainSystem : MonoBehaviour
         if (add)
         {
             container.onPlaced.AddListener(EnableSystem);
-            container.onRemoved.AddListener(DisableSystem);
+            // En remover: en vez de apagar duro, pedimos alto en departure (comportamiento suave)
+            container.onRemoved.AddListener(RequestTrainHaltAtDeparture);
         }
         else
         {
             container.onPlaced.RemoveListener(EnableSystem);
-            container.onRemoved.RemoveListener(DisableSystem);
+            container.onRemoved.RemoveListener(RequestTrainHaltAtDeparture);
         }
     }
 
@@ -158,6 +195,7 @@ public class TrainSystem : MonoBehaviour
             Vector3 p = elevatorRb.position;
             float dLow = Vector3.Distance(p, elevatorLow.position);
             float dHigh = Vector3.Distance(p, elevatorHigh.position);
+            // Arranca hacia el objetivo más lejano para “llenar” el recorrido completo
             Transform first = (dLow <= dHigh) ? elevatorHigh : elevatorLow;
             elevTarget = first.position;
             elevState = ElevatorState.ToA;
@@ -186,6 +224,7 @@ public class TrainSystem : MonoBehaviour
 
             trainPhase = TrainPhase.IdleAtDeparture;
             trainRunRequested = false;
+            trainPassedDepartureThisLap = false;
         }
         else trainPhase = TrainPhase.IdleAtDeparture;
     }
@@ -335,7 +374,7 @@ public class TrainSystem : MonoBehaviour
 
     private void RequestStartTrain()
     {
-        if (!systemEnabled) return;
+        if (!systemEnabled || !trainConfigured) return;
         trainRunRequested = true;
         onTrainStarted?.Invoke();
     }
@@ -356,7 +395,8 @@ public class TrainSystem : MonoBehaviour
 
                     if (trainRunRequested)
                     {
-                        trainCurrentIdx = trainDepIdx + 1;
+                        trainCurrentIdx = NextIndexFrom(trainDepIdx);
+                        trainPassedDepartureThisLap = true; // acabamos de salir de departure en esta vuelta
                         trainPhase = TrainPhase.RunDepToEnd;
                     }
                     break;
@@ -364,6 +404,7 @@ public class TrainSystem : MonoBehaviour
 
             case TrainPhase.RunDepToEnd:
                 {
+                    // Avanza del punto siguiente a departure hasta el último
                     if (trainCurrentIdx > trainLastIdx)
                     {
                         trainWaitUntil = Time.fixedUnscaledTime + trainTeleportWaitSeconds;
@@ -373,17 +414,28 @@ public class TrainSystem : MonoBehaviour
 
                     Vector3 target = trainWaypoints[trainCurrentIdx].position;
                     bool reached = MoveBodyLinearWithRot(trainRb, target, trainSpeed, trainArriveThreshold, trainRotationSpeed);
-                    if (reached) trainCurrentIdx++;
+                    if (reached)
+                    {
+                        // Si por algún motivo (cambio de depIdx) alcanzamos departure en esta fase, marcamos flag
+                        if (trainCurrentIdx == trainDepIdx) trainPassedDepartureThisLap = true;
+                        trainCurrentIdx++;
+                    }
                     break;
                 }
 
             case TrainPhase.TeleportWait:
                 {
+                    // ÚNICO teletransporte válido: último -> primero
                     trainRb.velocity = Vector3.zero;
                     if (Time.fixedUnscaledTime >= trainWaitUntil)
                     {
                         TeleportBodyTo(trainRb, trainWaypoints[trainFirstIdx].position);
 
+                        // Reset de vuelta
+                        trainCurrentIdx = trainFirstIdx;
+                        trainPassedDepartureThisLap = false;
+
+                        // Si departure ES el primero, y se pidió alto, frenamos ya
                         if (trainHaltAtDeparture && trainDepIdx == trainFirstIdx)
                         {
                             trainRunRequested = false;
@@ -393,7 +445,6 @@ public class TrainSystem : MonoBehaviour
                         }
                         else
                         {
-                            trainCurrentIdx = trainFirstIdx;
                             trainPhase = TrainPhase.RunFirstToEnd;
                         }
                     }
@@ -402,9 +453,10 @@ public class TrainSystem : MonoBehaviour
 
             case TrainPhase.RunFirstToEnd:
                 {
+                    // Recorremos desde el primero hasta el último
                     if (trainCurrentIdx > trainLastIdx)
                     {
-                        // vuelta completa, volver a esperar siguiente trigger
+                        // vuelta completa sin frenar en departure => volvemos a esperar trigger
                         trainPhase = TrainPhase.IdleAtDeparture;
                         break;
                     }
@@ -414,7 +466,7 @@ public class TrainSystem : MonoBehaviour
 
                     if (reached)
                     {
-                        // stop en departure si se pidió
+                        // Si alcanzamos departure y hay pedido de alto, frenamos aquí
                         if (trainHaltAtDeparture && trainCurrentIdx == trainDepIdx)
                         {
                             trainRunRequested = false;
@@ -424,6 +476,8 @@ public class TrainSystem : MonoBehaviour
                         }
                         else
                         {
+                            // Marcar que pasamos por departure en esta vuelta (por si dep no es 0)
+                            if (trainCurrentIdx == trainDepIdx) trainPassedDepartureThisLap = true;
                             trainCurrentIdx++;
                         }
                     }
@@ -431,6 +485,8 @@ public class TrainSystem : MonoBehaviour
                 }
         }
     }
+
+    private int NextIndexFrom(int idx) => Mathf.Clamp(idx + 1, 0, trainLastIdx);
 
     // --------- Helpers de movimiento ---------
     private bool MoveBodyLinear(Rigidbody rb, Vector3 targetPos, float speed, float arriveThreshold)
