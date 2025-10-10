@@ -6,6 +6,9 @@ using UnityEngine;
 public class StasisConteinerWithArms : MonoBehaviour,IStasis
 {
     public bool IsFreezed => isFreezed;
+
+    public StasisEffect StasisEffect { get; private set; }
+
     public bool isFreezed = false;
 
     public Material matStasis;
