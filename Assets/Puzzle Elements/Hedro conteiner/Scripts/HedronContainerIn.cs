@@ -1,3 +1,4 @@
+using Puzzle_Elements.Button.Scripts;
 using Puzzle_Elements.Hedron.Scripts;
 using System.Collections;
 using UnityEngine;
@@ -6,36 +7,47 @@ using UnityEngine.Events;
 [RequireComponent(typeof(Collider))]
 public class HedronContainerIn : MonoBehaviour
 {
-    [Header("Anchor (centro de acople)")]
-    public Transform anchor;
-    [SerializeField]private Animator _anim;
-    private PhysicsBox _box = null;
-    [Header("Evento")]
-    public UnityEvent onHedronPlaced;   // Se dispara cuando el PhysicsBox queda acoplado y quieto
+    [SerializeField] private Button _button;
 
-    [Header("Atracción")]
+    public Transform anchor;
+    [SerializeField] private Animator _anim;
+
+    [SerializeField] private string openTrigger = "OPEN";
+    [SerializeField] private string closeTrigger = "Close";
+
+    private PhysicsBox _box = null;
+
+    public UnityEvent onHedronPlaced;
+    public UnityEvent onHedronRemoved;
+
     public float attractionSpeed = 5f;
     public float stopDistance = 0.05f;
 
-    [Header("Filtro")]
     public LayerMask acceptMask = ~0;
 
-    [Header("Brillo (titila una vez al colocarse)")]
     public Renderer rightDoorRenderer;
     public Renderer leftDoorRenderer;
     public float brightnessFrequency = 2f;
     public float brightnessAmplitude = 0.05f;
     public Color glowColor = Color.white;
 
-    // ---- Internos brillo ----
+    public float openToEjectDelay = 2f;
+    public bool reenableColliderOnEject = true;
+    public float ejectNudgeDistance = 0.08f;
+    public float scaleUpSeconds = 0.35f;
+    public float ejectTorque = 0f;
+
+    public float ejectCooldown = 0.15f;
+
     Material _rightMat, _leftMat;
     Color _baseEmissionRight, _baseEmissionLeft;
 
-    // ---- Internos IN ----
     Transform _current;
     Rigidbody _rb;
     bool _attracting;
-    bool _placedFired; // para no disparar dos veces si re-entra por algún motivo
+    bool _placedFired;
+    bool _isEjecting;
+    float _lastEjectTime;
 
     public bool HasOccupant => _current != null;
 
@@ -58,8 +70,20 @@ public class HedronContainerIn : MonoBehaviour
         }
     }
 
+    void Start()
+    {
+        if (_button != null) _button.SetText(_button.E, "");
+    }
+
     void Update()
     {
+        Atracction();
+    }
+
+    void Atracction()
+    {
+        if (_box == null) return;
+
         if (_attracting && _current != null && anchor != null)
         {
             Vector3 target = anchor.position;
@@ -67,7 +91,6 @@ public class HedronContainerIn : MonoBehaviour
 
             if (Vector3.Distance(_current.position, target) <= stopDistance)
             {
-                // Snap y quieto
                 _attracting = false;
                 _current.position = target;
                 _current.rotation = anchor.rotation;
@@ -85,19 +108,24 @@ public class HedronContainerIn : MonoBehaviour
 
                 _current.SetParent(anchor, true);
 
-                // Disparar una sola vez
                 if (!_placedFired)
                 {
                     _placedFired = true;
                     onHedronPlaced?.Invoke();
-                    _box.GetComponent<Rigidbody>().useGravity = false;
+
+                    var rbBox = _box.GetComponent<Rigidbody>();
+                    if (rbBox != null) rbBox.useGravity = false;
+
                     _box.transform.SetParent(transform, true);
-                    _anim.SetTrigger("Close");
-                    if(_rightMat != null && _leftMat != null)
-                    {
+
+                    if (_anim != null && !string.IsNullOrEmpty(closeTrigger))
+                        _anim.SetTrigger(closeTrigger);
+
+                    if (_button != null)
+                        _button.SetText(_button.E, "¿Deseas extraer el Hedron?");
+
+                    if (_rightMat != null && _leftMat != null)
                         StartCoroutine(GlowPulseOnce());
-                    }
-                    
                 }
             }
         }
@@ -105,10 +133,11 @@ public class HedronContainerIn : MonoBehaviour
 
     void OnTriggerEnter(Collider other)
     {
-        if (_current != null) return;                 // ya hay ocupante
+        if (_current != null) return;
         if (!enabled || anchor == null) return;
         if (((1 << other.gameObject.layer) & acceptMask) == 0) return;
         if (!HasPhysicsBox(other.gameObject)) return;
+
         StartCoroutine(ShrinkOverTime(other.gameObject.transform, new Vector3(0.5f, 0.5f, 0.5f), 1.2f));
         _current = other.transform;
         _rb = other.attachedRigidbody;
@@ -118,11 +147,12 @@ public class HedronContainerIn : MonoBehaviour
             _rb.velocity = Vector3.zero;
             _rb.angularVelocity = Vector3.zero;
             _rb.useGravity = false;
-            _rb.isKinematic = false; // dinámico mientras atrae
+            _rb.isKinematic = false;
         }
 
         _attracting = true;
     }
+
     public IEnumerator ShrinkOverTime(Transform target, Vector3 finalScale, float duration)
     {
         if (target == null) yield break;
@@ -134,11 +164,8 @@ public class HedronContainerIn : MonoBehaviour
         {
             elapsed += Time.deltaTime;
             float t = Mathf.Clamp01(elapsed / duration);
-
-            // Interpolación suave (EaseInOut)
             float smooth = Mathf.SmoothStep(0, 1, t);
             target.localScale = Vector3.LerpUnclamped(initialScale, finalScale, smooth);
-
             yield return null;
         }
 
@@ -147,11 +174,7 @@ public class HedronContainerIn : MonoBehaviour
 
     void OnTriggerExit(Collider other)
     {
-        // Si se fue antes de ser acoplado, limpiar estado
-        if (other.transform == _current && _attracting)
-        {
-            ClearState();
-        }
+        if (other.transform == _current && _attracting) ClearState();
     }
 
     void ClearState()
@@ -160,23 +183,117 @@ public class HedronContainerIn : MonoBehaviour
         _rb = null;
         _attracting = false;
         _placedFired = false;
+        _box = null;
+        _isEjecting = false;
+        if (_button != null) _button.SetText(_button.E, "");
     }
 
     bool HasPhysicsBox(GameObject go)
     {
         PhysicsBox box = go.GetComponent<PhysicsBox>();
-        if (box != null)
-        {
-            _box = box;
-            return true;
-        } 
+        if (box != null) { _box = box; return true; }
+        _box = null;
         return false;
-    } 
+    }
 
-    // ---- Pulso de brillo único ----
+    public void OpenAndEject()
+    {
+        if (_isEjecting) return;
+        if (!HasOccupant || _box == null) return;
+        if (Time.time - _lastEjectTime < ejectCooldown) return;
+
+        _isEjecting = true;
+        _lastEjectTime = Time.time;
+
+        if (_anim != null && !string.IsNullOrEmpty(openTrigger))
+            _anim.SetTrigger(openTrigger);
+
+        StartCoroutine(EjectAfterDelay(openToEjectDelay));
+    }
+
+    public void EjectNow()
+    {
+        if (_isEjecting) return;
+        if (!HasOccupant || _box == null) return;
+        _isEjecting = true;
+        _lastEjectTime = Time.time;
+        StartCoroutine(EjectAfterDelay(0f));
+    }
+
+    IEnumerator EjectAfterDelay(float delay)
+    {
+        if (!HasOccupant || _box == null) { _isEjecting = false; yield break; }
+        if (delay > 0f) yield return new WaitForSeconds(delay);
+
+        if (_rb == null) _rb = _box.GetComponent<Rigidbody>();
+        Transform t = _current != null ? _current : _box.transform;
+        Rigidbody rb = _rb;
+        if (t == null || rb == null) { _isEjecting = false; yield break; }
+
+        t.SetParent(null, true);
+
+        if (reenableColliderOnEject) EnableAllColliders(t, true);
+
+        Vector3 dir = (anchor != null ? anchor.forward : transform.forward).normalized;
+        NudgeOutFromAnchor(t, dir, Mathf.Max(0f, ejectNudgeDistance));
+
+        rb.isKinematic = true;
+        rb.useGravity = false;
+        rb.velocity = Vector3.zero;
+        rb.angularVelocity = Vector3.zero;
+
+        onHedronRemoved?.Invoke();
+
+        yield return ScaleTo(t, Vector3.one, Mathf.Max(0.01f, scaleUpSeconds));
+
+        rb.isKinematic = false;
+        rb.useGravity = true;
+        rb.WakeUp();
+
+        if (ejectTorque > 0f)
+        {
+            Vector3 rand = Random.onUnitSphere * ejectTorque;
+            rb.AddTorque(rand, ForceMode.VelocityChange);
+        }
+
+        if (_box.transform.parent == transform)
+            _box.transform.SetParent(null, true);
+
+        _isEjecting = false;
+        ClearState();
+    }
+
+    IEnumerator ScaleTo(Transform target, Vector3 finalScale, float duration)
+    {
+        if (target == null) yield break;
+        Vector3 start = target.localScale;
+        float elapsed = 0f;
+
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float t = Mathf.Clamp01(elapsed / duration);
+            float s = Mathf.SmoothStep(0f, 1f, t);
+            target.localScale = Vector3.LerpUnclamped(start, finalScale, s);
+            yield return null;
+        }
+        target.localScale = finalScale;
+    }
+
+    void EnableAllColliders(Transform root, bool enabled)
+    {
+        var cols = root.GetComponentsInChildren<Collider>(true);
+        for (int i = 0; i < cols.Length; i++) cols[i].enabled = enabled;
+    }
+
+    void NudgeOutFromAnchor(Transform t, Vector3 dir, float distance)
+    {
+        if (anchor == null || distance <= 0f) return;
+        t.position = anchor.position + dir * distance;
+    }
+
     IEnumerator GlowPulseOnce()
     {
-       
         if (_rightMat != null) _rightMat.EnableKeyword("_EMISSION");
         if (_leftMat != null) _leftMat.EnableKeyword("_EMISSION");
 
@@ -188,7 +305,7 @@ public class HedronContainerIn : MonoBehaviour
         {
             t += Time.deltaTime;
             float phase = t * f;
-            float brightness = (Mathf.Cos(phase) + 1f) * 0.5f; // 0..1
+            float brightness = (Mathf.Cos(phase) + 1f) * 0.5f;
 
             if (_rightMat != null)
             {
@@ -204,7 +321,6 @@ public class HedronContainerIn : MonoBehaviour
             yield return null;
         }
 
-        // Reset
         if (_rightMat != null)
         {
             _rightMat.SetColor("_EmissionColor", _baseEmissionRight);

@@ -23,6 +23,15 @@ namespace Puzzle_Elements.Button.Scripts
         public Material yellow, green;
 
         private bool canCallEvent = true;
+
+        public TextMeshProUGUI E;
+        public TextMeshProUGUI text;
+
+        public void SetText(TextMeshProUGUI texto, string message)
+        {
+            if (E == null || text == null) return;
+            texto.text = message;
+        }
         public void Interact()
         {
             if (!canCallEvent) return;
