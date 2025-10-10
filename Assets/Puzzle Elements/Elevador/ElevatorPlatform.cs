@@ -1,11 +1,5 @@
-using System.Collections;
 using UnityEngine;
 
-/// <summary>
-/// Elevator platform that moves between two waypoints (auto-detects low/high by Y),
-/// with smooth acceleration/deceleration, optional wait at ends, and runtime speed changes.
-/// Exactly the same behavior as in your TrainSystem elevator, but isolated here.
-/// </summary>
 public class ElevatorPlatform : MonoBehaviour
 {
     [Header("Elevator (Rigidbody)")]
@@ -13,7 +7,7 @@ public class ElevatorPlatform : MonoBehaviour
     public Transform elevatorWP1;
     public Transform elevatorWP2;
 
-    [Tooltip("Max travel speed (units/sec). You can change this at runtime.")]
+    [Tooltip("Max travel speed (units/sec).")]
     public float elevatorSpeed = 2f;
 
     [Tooltip("Acceleration used to ramp up/down (units/sec^2).")]
@@ -28,22 +22,29 @@ public class ElevatorPlatform : MonoBehaviour
     [Tooltip("If true, starts moving automatically on Enable.")]
     public bool autoStart = true;
 
-    // Internal state
+    // Waypoints resueltos
     private Transform elevatorLow;
     private Transform elevatorHigh;
 
-    private Coroutine elevatorCo;
-    private bool isEnabledFlag;
-    private float elevatorCurrentSpeed = 0f;
+    // Estado (idéntico al del TrainSystem)
+    private enum ElevatorState { Idle, ToA, WaitAtA, ToB, WaitAtB }
+    private ElevatorState elevState = ElevatorState.Idle;
+    private Vector3 elevTarget;
+    private float elevCurrentSpeed;
+    private float elevWaitUntil;
+    private bool elevConfigured;
+    private bool systemEnabled;
 
-    // -------------- Unity lifecycle --------------
     void Awake()
     {
         ResolveHeights();
+        PrepareElevator();
     }
 
     void OnEnable()
     {
+        ResolveHeights();
+        PrepareElevator();
         if (autoStart) StartElevator();
     }
 
@@ -52,37 +53,41 @@ public class ElevatorPlatform : MonoBehaviour
         StopElevator();
     }
 
-    // -------------- Public API --------------
     public void StartElevator()
     {
-        isEnabledFlag = true;
-
+        systemEnabled = true;
         ResolveHeights();
-
-        if (elevatorCo != null) StopCoroutine(elevatorCo);
-        if (IsElevatorConfigured())
-            elevatorCo = StartCoroutine(ElevatorLoop());
+        PrepareElevator(true);
     }
 
     public void StopElevator()
     {
-        isEnabledFlag = false;
-
-        if (elevatorCo != null)
-        {
-            StopCoroutine(elevatorCo);
-            elevatorCo = null;
-        }
-
-        if (elevatorRb != null)
+        systemEnabled = false;
+        if (elevatorRb)
         {
             elevatorRb.velocity = Vector3.zero;
+            elevatorRb.angularVelocity = Vector3.zero;
         }
-
-        elevatorCurrentSpeed = 0f;
+        elevState = ElevatorState.Idle;
     }
 
-    // -------------- Setup helpers --------------
+    void FixedUpdate()
+    {
+        elevConfigured = IsElevatorConfigured();
+
+        if (!systemEnabled)
+        {
+            if (elevatorRb)
+            {
+                elevatorRb.velocity = Vector3.zero;
+                elevatorRb.angularVelocity = Vector3.zero;
+            }
+            return;
+        }
+
+        TickElevator();
+    }
+
     private void ResolveHeights()
     {
         if (elevatorWP1 != null && elevatorWP2 != null)
@@ -105,123 +110,120 @@ public class ElevatorPlatform : MonoBehaviour
         }
     }
 
-    private bool IsElevatorConfigured()
+    private bool IsElevatorConfigured() =>
+        elevatorRb != null && elevatorLow != null && elevatorHigh != null;
+
+    private void PrepareElevator(bool snapIfNeeded = false)
     {
-        return elevatorRb != null && elevatorLow != null && elevatorHigh != null;
-    }
+        elevCurrentSpeed = 0f;
 
-    // -------------- Main loop --------------
-    private IEnumerator ElevatorLoop()
-    {
-        if (!IsElevatorConfigured()) yield break;
-
-        float dLow = Vector3.Distance(elevatorRb.position, elevatorLow.position);
-        float dHigh = Vector3.Distance(elevatorRb.position, elevatorHigh.position);
-        Transform next = (dLow <= dHigh) ? elevatorHigh : elevatorLow;
-
-        while (isEnabledFlag && IsElevatorConfigured())
+        if (IsElevatorConfigured())
         {
-            Transform a = next;
-            Transform b = (a == elevatorLow) ? elevatorHigh : elevatorLow;
+            Vector3 p = elevatorRb.position;
+            float dLow = Vector3.Distance(p, elevatorLow.position);
+            float dHigh = Vector3.Distance(p, elevatorHigh.position);
 
-            // Move to 'a' with acceleration ramp
-            yield return MoveElevatorWithAccel(a.position);
+            Transform first = (dLow <= dHigh) ? elevatorHigh : elevatorLow;
+            elevTarget = first.position;
+            elevState = ElevatorState.ToA;
+            elevWaitUntil = 0f;
 
-            // Smooth stop and wait
-            yield return DecelerateElevatorToZero();
-            yield return WaitSecondsRealtime(elevatorWaitSeconds);
-            if (!isEnabledFlag || !IsElevatorConfigured()) break;
-
-            // Move to 'b' with acceleration ramp
-            yield return MoveElevatorWithAccel(b.position);
-
-            // Smooth stop and wait
-            yield return DecelerateElevatorToZero();
-            yield return WaitSecondsRealtime(elevatorWaitSeconds);
-            if (!isEnabledFlag || !IsElevatorConfigured()) break;
-
-            next = a; // ping-pong
-        }
-
-        if (elevatorRb != null)
-        {
-            elevatorRb.velocity = Vector3.zero;
-        }
-        elevatorCurrentSpeed = 0f;
-    }
-
-    // -------------- Motion helpers --------------
-    private IEnumerator MoveElevatorWithAccel(Vector3 targetPos)
-    {
-        if (elevatorRb == null) yield break;
-        WaitForFixedUpdate wait = new WaitForFixedUpdate();
-
-        while (!IsNear(elevatorRb.position, targetPos, elevatorArriveThreshold))
-        {
-            float maxSpeed = Mathf.Max(0f, elevatorSpeed);
-            float accel = Mathf.Max(0f, elevatorAcceleration);
-
-            Vector3 toTarget = targetPos - elevatorRb.position;
-            float distance = toTarget.magnitude;
-            Vector3 dir = (distance > 1e-5f) ? toTarget / distance : Vector3.zero;
-
-            // Ensure we can stop at the target: v <= sqrt(2*a*d)
-            float maxSpeedForStop = Mathf.Sqrt(Mathf.Max(0f, 2f * accel * distance));
-            float desiredSpeed = Mathf.Min(maxSpeed, maxSpeedForStop);
-
-            // Smoothly adjust current speed by accel
-            elevatorCurrentSpeed = Mathf.MoveTowards(elevatorCurrentSpeed, desiredSpeed, accel * Time.fixedDeltaTime);
-
-            if (elevatorCurrentSpeed <= 1e-4f)
+            if (snapIfNeeded)
             {
-                elevatorRb.velocity = Vector3.zero;
-                yield return wait;
-                continue;
+                // no teleporta salvo que quieras alinear al arranque
+                // acá dejamos la posición actual
             }
-
-            float step = elevatorCurrentSpeed * Time.fixedDeltaTime;
-            Vector3 nextPos = (step >= distance) ? targetPos : elevatorRb.position + dir * step;
-
-            // Publish kinematic "velocity" for more stable contacts
-            elevatorRb.velocity = (nextPos - elevatorRb.position) / Time.fixedDeltaTime;
-
-            elevatorRb.MovePosition(nextPos);
-            yield return wait;
         }
-
-        elevatorRb.MovePosition(targetPos);
-        elevatorRb.velocity = Vector3.zero;
-    }
-
-    private IEnumerator DecelerateElevatorToZero()
-    {
-        if (elevatorRb == null) yield break;
-        WaitForFixedUpdate wait = new WaitForFixedUpdate();
-
-        float accel = Mathf.Max(0f, elevatorAcceleration);
-        while (elevatorCurrentSpeed > 1e-3f)
+        else
         {
-            elevatorCurrentSpeed = Mathf.MoveTowards(elevatorCurrentSpeed, 0f, accel * Time.fixedDeltaTime);
-            elevatorRb.velocity = Vector3.zero; // no extra push while stopping at end
-            yield return wait;
+            elevState = ElevatorState.Idle;
+        }
+    }
+
+    // --------- Lógica (idéntica a TrainSystem) ---------
+    private void TickElevator()
+    {
+        if (!elevConfigured) return;
+
+        switch (elevState)
+        {
+            case ElevatorState.ToA:
+                {
+                    bool reached = MoveElevatorAcc(elevTarget);
+                    if (reached)
+                    {
+                        elevCurrentSpeed = 0f;
+                        elevWaitUntil = Time.fixedUnscaledTime + elevatorWaitSeconds;
+                        elevState = ElevatorState.WaitAtA;
+                    }
+                    break;
+                }
+            case ElevatorState.WaitAtA:
+                {
+                    elevatorRb.velocity = Vector3.zero;
+                    if (Time.fixedUnscaledTime >= elevWaitUntil)
+                    {
+                        elevTarget = (IsNear(elevTarget, elevatorHigh.position, 1e-4f)) ? elevatorLow.position : elevatorHigh.position;
+                        elevState = ElevatorState.ToB;
+                    }
+                    break;
+                }
+            case ElevatorState.ToB:
+                {
+                    bool reached = MoveElevatorAcc(elevTarget);
+                    if (reached)
+                    {
+                        elevCurrentSpeed = 0f;
+                        elevWaitUntil = Time.fixedUnscaledTime + elevatorWaitSeconds;
+                        elevState = ElevatorState.WaitAtB;
+                    }
+                    break;
+                }
+            case ElevatorState.WaitAtB:
+                {
+                    elevatorRb.velocity = Vector3.zero;
+                    if (Time.fixedUnscaledTime >= elevWaitUntil)
+                    {
+                        elevTarget = (IsNear(elevTarget, elevatorHigh.position, 1e-4f)) ? elevatorLow.position : elevatorHigh.position;
+                        elevState = ElevatorState.ToA;
+                    }
+                    break;
+                }
+        }
+    }
+
+    private bool MoveElevatorAcc(Vector3 targetPos)
+    {
+        Vector3 toTarget = targetPos - elevatorRb.position;
+        float distance = toTarget.magnitude;
+
+        if (distance <= elevatorArriveThreshold)
+        {
+            elevatorRb.MovePosition(targetPos);
+            elevatorRb.velocity = Vector3.zero;
+            return true;
         }
 
-        elevatorCurrentSpeed = 0f;
-        elevatorRb.velocity = Vector3.zero;
+        float maxSpeed = Mathf.Max(0f, elevatorSpeed);
+        float accel = Mathf.Max(0f, elevatorAcceleration);
+
+        // v_max para poder detenerse a tiempo: v <= sqrt(2*a*d)
+        float maxSpeedForStop = Mathf.Sqrt(Mathf.Max(0f, 2f * accel * distance));
+        float desiredSpeed = Mathf.Min(maxSpeed, maxSpeedForStop);
+
+        elevCurrentSpeed = Mathf.MoveTowards(elevCurrentSpeed, desiredSpeed, accel * Time.fixedDeltaTime);
+
+        float step = elevCurrentSpeed * Time.fixedDeltaTime;
+        Vector3 dir = (distance > 1e-5f) ? (toTarget / distance) : Vector3.zero;
+        Vector3 next = (step >= distance) ? targetPos : elevatorRb.position + dir * step;
+
+        elevatorRb.velocity = (next - elevatorRb.position) / Time.fixedDeltaTime;
+        elevatorRb.MovePosition(next);
+        return false;
     }
 
-    // -------------- Utility --------------
-    private static bool IsNear(Vector3 a, Vector3 b, float eps)
-    {
-        return (a - b).sqrMagnitude <= eps * eps;
-    }
-    //
-    private static IEnumerator WaitSecondsRealtime(float seconds)
-    {
-        float end = Time.unscaledTime + seconds;
-        while (Time.unscaledTime < end) yield return null;
-        
-    }
+    private static bool IsNear(Vector3 a, Vector3 b, float eps) =>
+        (a - b).sqrMagnitude <= eps * eps;
 
 #if UNITY_EDITOR
     void OnDrawGizmosSelected()

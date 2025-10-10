@@ -15,6 +15,9 @@ public class HedronContainerIn : MonoBehaviour
     [SerializeField] private string openTrigger = "OPEN";
     [SerializeField] private string closeTrigger = "Close";
 
+    [SerializeField] private Transform pos;              // destino para la expulsión
+    [SerializeField] private float posDelaySeconds = 1.5f; // espera exacta antes de mover a 'pos'
+
     private PhysicsBox _box = null;
 
     public UnityEvent onHedronPlaced;
@@ -196,6 +199,7 @@ public class HedronContainerIn : MonoBehaviour
         return false;
     }
 
+    // === ORDEN EXIGIDO: 1) Anim OPEN  2) esperar 1.5s  3) posicionar en 'pos' ===
     public void OpenAndEject()
     {
         if (_isEjecting) return;
@@ -208,7 +212,15 @@ public class HedronContainerIn : MonoBehaviour
         if (_anim != null && !string.IsNullOrEmpty(openTrigger))
             _anim.SetTrigger(openTrigger);
 
-        StartCoroutine(EjectAfterDelay(openToEjectDelay));
+        if (pos != null)
+        {
+            StartCoroutine(EjectToPosAfterDelay(posDelaySeconds));
+        }
+        else
+        {
+            // si no hay 'pos', usar flujo clásico (sin nudge fuerte ni fuerzas)
+            StartCoroutine(EjectAfterDelay(openToEjectDelay));
+        }
     }
 
     public void EjectNow()
@@ -217,7 +229,61 @@ public class HedronContainerIn : MonoBehaviour
         if (!HasOccupant || _box == null) return;
         _isEjecting = true;
         _lastEjectTime = Time.time;
-        StartCoroutine(EjectAfterDelay(0f));
+
+        if (pos != null)
+            StartCoroutine(EjectToPosAfterDelay(0f)); // sin esperar anim si llamás EjectNow manual
+        else
+            StartCoroutine(EjectAfterDelay(0f));
+    }
+
+    IEnumerator EjectToPosAfterDelay(float delay)
+    {
+        if (!HasOccupant || _box == null) { _isEjecting = false; yield break; }
+        if (delay > 0f) yield return new WaitForSeconds(delay);
+
+        if (_rb == null) _rb = _box.GetComponent<Rigidbody>();
+        Transform t = _current != null ? _current : _box.transform;
+        Rigidbody rb = _rb;
+        if (t == null || rb == null) { _isEjecting = false; yield break; }
+
+        // Desanclar
+        t.SetParent(null, true);
+        if (reenableColliderOnEject) EnableAllColliders(t, true);
+
+        // Preparar físico para teletransporte limpio
+        rb.isKinematic = true;
+        rb.useGravity = false;
+        rb.velocity = Vector3.zero;
+        rb.angularVelocity = Vector3.zero;
+
+        // Mover a 'pos' (posición y rotación)
+        t.position = pos.position;
+        t.rotation = pos.rotation;
+
+        // (Opcional) restaurar escala a 1 suavemente si venía reducido
+        if (scaleUpSeconds > 0.01f)
+            yield return ScaleTo(t, Vector3.one, scaleUpSeconds);
+        else
+            t.localScale = Vector3.one;
+
+        // Reactivar física
+        rb.isKinematic = false;
+        rb.useGravity = true;
+        rb.WakeUp();
+
+        if (ejectTorque > 0f)
+        {
+            Vector3 rand = Random.onUnitSphere * ejectTorque;
+            rb.AddTorque(rand, ForceMode.VelocityChange);
+        }
+
+        onHedronRemoved?.Invoke();
+
+        if (_box.transform.parent == transform)
+            _box.transform.SetParent(null, true);
+
+        _isEjecting = false;
+        ClearState();
     }
 
     IEnumerator EjectAfterDelay(float delay)
@@ -231,9 +297,9 @@ public class HedronContainerIn : MonoBehaviour
         if (t == null || rb == null) { _isEjecting = false; yield break; }
 
         t.SetParent(null, true);
-
         if (reenableColliderOnEject) EnableAllColliders(t, true);
 
+        // Pequeño empuje fuera del anchor si no hay 'pos'
         Vector3 dir = (anchor != null ? anchor.forward : transform.forward).normalized;
         NudgeOutFromAnchor(t, dir, Mathf.Max(0f, ejectNudgeDistance));
 

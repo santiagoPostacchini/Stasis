@@ -9,7 +9,6 @@ public class StasisElevatorSingle : MonoBehaviour,IStasis
     private Renderer _rend;
     private float _saveVelocity;
     private ElevatorPlatform _elevatorPlatform;
-    [SerializeField] private StasisPartElevator _stasisPartElevator;
     public StasisEffect StasisEffect { get; set; }
 
     private void Awake()
@@ -37,7 +36,6 @@ public class StasisElevatorSingle : MonoBehaviour,IStasis
             _elevatorPlatform.elevatorSpeed = 0;
             
             _isFreezed = true;
-            _stasisPartElevator._isFreezed = true;
             //splineAnimate.Pause();
             StasisEffect.StasisEffectStart();
         }
@@ -47,7 +45,6 @@ public class StasisElevatorSingle : MonoBehaviour,IStasis
     {
         if (!_isFreezed) return;
         _isFreezed = false;
-        _stasisPartElevator._isFreezed = false;
         _elevatorPlatform.elevatorSpeed = _saveVelocity;
         //splineAnimate.Play();
         StasisEffect.StasisEffectStop();

@@ -22,9 +22,14 @@ public class StasisTrain : MonoBehaviour, IStasis
 
         if (rends.Count == 0)
         {
-            rends.AddRange(GetComponentsInChildren<Renderer>());
+            Renderer rend = GetComponent<Renderer>();
+            rends.Add(rend);
+            foreach (var r in GetComponentsInChildren<Renderer>())
+            {
+                if (r.GetComponent<StasisPartTrain>() != null)
+                    rends.Add(r);
+            }
         }
-        
         StasisEffect = new StasisEffect(null, rends.ToArray());
     }
 
