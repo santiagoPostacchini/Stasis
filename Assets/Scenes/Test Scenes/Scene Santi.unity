@@ -2015,12 +2015,6 @@ Mesh:
     offset: 0
     size: 0
     path: 
---- !u!4 &272302461 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 317548175133530100, guid: 6fb0e2e9ee217874c86400acb6232deb,
-    type: 3}
-  m_PrefabInstance: {fileID: 8234902083878469372}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1 &312390094
 GameObject:
   m_ObjectHideFlags: 0
@@ -2521,385 +2515,6 @@ Transform:
     type: 3}
   m_PrefabInstance: {fileID: 7487808646232163445}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &1224738055
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8234902083878469377}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4a1fa2c2dd870054c8f09f5d33d3315b, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  targetScripts:
-  - {fileID: 8234902083878469380}
-  - {fileID: 8234902083878469383}
-  defaultMixerGroup: {fileID: 8034880708378878856, guid: 1f041e422113c5442a038e9bf47c1459,
-    type: 2}
-  sourceTemplate: {fileID: 0}
-  globalEmitterOverride: {fileID: 8234902083878469386}
-  events:
-  - guid: ebe18f66-024c-4a05-bc52-3fcab42b1aaa
-    eventKey: 30794::30864::OnJump
-    displayName: OnJump
-    eventName: OnJump
-    enabled: 1
-    isStopEvent: 0
-    randomOne: 0
-    clips: []
-    emitterOverride: {fileID: 0}
-    usePitchRandom: 1
-    pitchMin: 1
-    pitchMax: 1
-    stopMode: 0
-    stopTargetEventKey: 
-    fadeOutOnStop: 1
-    fadeOutTime: 0.1
-    maxSimultaneous: 1
-    coalesceWindow: 0.05
-    blockSameFrameDuplicates: 1
-  - guid: d3dc8051-ba94-4e28-8a02-4c2db08221db
-    eventKey: 30794::30864::OnShoot
-    displayName: OnShoot
-    eventName: OnShoot
-    enabled: 1
-    isStopEvent: 0
-    randomOne: 0
-    clips: []
-    emitterOverride: {fileID: 0}
-    usePitchRandom: 1
-    pitchMin: 1
-    pitchMax: 1
-    stopMode: 0
-    stopTargetEventKey: 
-    fadeOutOnStop: 1
-    fadeOutTime: 0.1
-    maxSimultaneous: 1
-    coalesceWindow: 0.05
-    blockSameFrameDuplicates: 1
-  - guid: c6c9555f-c743-406b-856b-bb097eb1815d
-    eventKey: 30794::30864::OnCrouchStart
-    displayName: OnCrouchStart
-    eventName: OnCrouchStart
-    enabled: 1
-    isStopEvent: 0
-    randomOne: 0
-    clips: []
-    emitterOverride: {fileID: 0}
-    usePitchRandom: 1
-    pitchMin: 1
-    pitchMax: 1
-    stopMode: 0
-    stopTargetEventKey: 
-    fadeOutOnStop: 1
-    fadeOutTime: 0.1
-    maxSimultaneous: 1
-    coalesceWindow: 0.05
-    blockSameFrameDuplicates: 1
-  - guid: b050e776-8be2-4b35-aed2-257159db02b9
-    eventKey: 30794::30864::OnCrouchEnd
-    displayName: OnCrouchEnd
-    eventName: OnCrouchEnd
-    enabled: 1
-    isStopEvent: 0
-    randomOne: 0
-    clips: []
-    emitterOverride: {fileID: 0}
-    usePitchRandom: 1
-    pitchMin: 1
-    pitchMax: 1
-    stopMode: 0
-    stopTargetEventKey: 
-    fadeOutOnStop: 1
-    fadeOutTime: 0.1
-    maxSimultaneous: 1
-    coalesceWindow: 0.05
-    blockSameFrameDuplicates: 1
-  - guid: 90c02bc0-6778-4e4f-8311-a7b496363965
-    eventKey: 30794::30864::OnVaultStart
-    displayName: OnVaultStart
-    eventName: OnVaultStart
-    enabled: 1
-    isStopEvent: 0
-    randomOne: 0
-    clips: []
-    emitterOverride: {fileID: 0}
-    usePitchRandom: 1
-    pitchMin: 1
-    pitchMax: 1
-    stopMode: 0
-    stopTargetEventKey: 
-    fadeOutOnStop: 1
-    fadeOutTime: 0.1
-    maxSimultaneous: 1
-    coalesceWindow: 0.05
-    blockSameFrameDuplicates: 1
-  - guid: d74e12e0-4e69-4409-90df-93f76897058f
-    eventKey: 30794::30864::OnVaultEnd
-    displayName: OnVaultEnd
-    eventName: OnVaultEnd
-    enabled: 1
-    isStopEvent: 0
-    randomOne: 0
-    clips: []
-    emitterOverride: {fileID: 0}
-    usePitchRandom: 1
-    pitchMin: 1
-    pitchMax: 1
-    stopMode: 0
-    stopTargetEventKey: 
-    fadeOutOnStop: 1
-    fadeOutTime: 0.1
-    maxSimultaneous: 1
-    coalesceWindow: 0.05
-    blockSameFrameDuplicates: 1
-  - guid: ee51c013-6962-4a4e-872d-2041c91502e6
-    eventKey: 30794::30864::OnClimbStart
-    displayName: OnClimbStart
-    eventName: OnClimbStart
-    enabled: 1
-    isStopEvent: 0
-    randomOne: 0
-    clips: []
-    emitterOverride: {fileID: 0}
-    usePitchRandom: 1
-    pitchMin: 1
-    pitchMax: 1
-    stopMode: 0
-    stopTargetEventKey: 
-    fadeOutOnStop: 1
-    fadeOutTime: 0.1
-    maxSimultaneous: 1
-    coalesceWindow: 0.05
-    blockSameFrameDuplicates: 1
-  - guid: ffa62952-1d47-4fe8-ad94-41647e12d4a7
-    eventKey: 30794::30864::OnClimbEnd
-    displayName: OnClimbEnd
-    eventName: OnClimbEnd
-    enabled: 1
-    isStopEvent: 0
-    randomOne: 0
-    clips: []
-    emitterOverride: {fileID: 0}
-    usePitchRandom: 1
-    pitchMin: 1
-    pitchMax: 1
-    stopMode: 0
-    stopTargetEventKey: 
-    fadeOutOnStop: 1
-    fadeOutTime: 0.1
-    maxSimultaneous: 1
-    coalesceWindow: 0.05
-    blockSameFrameDuplicates: 1
-  - guid: 05676b5e-e4ec-40b5-b346-283059509e91
-    eventKey: 30794::30864::OnSlideStart
-    displayName: OnSlideStart
-    eventName: OnSlideStart
-    enabled: 1
-    isStopEvent: 0
-    randomOne: 0
-    clips: []
-    emitterOverride: {fileID: 0}
-    usePitchRandom: 1
-    pitchMin: 1
-    pitchMax: 1
-    stopMode: 0
-    stopTargetEventKey: 
-    fadeOutOnStop: 1
-    fadeOutTime: 0.1
-    maxSimultaneous: 1
-    coalesceWindow: 0.05
-    blockSameFrameDuplicates: 1
-  - guid: 337552cd-32e3-40e8-8bb2-4d63292ec66a
-    eventKey: 30794::30864::OnSlideEnd
-    displayName: OnSlideEnd
-    eventName: OnSlideEnd
-    enabled: 1
-    isStopEvent: 0
-    randomOne: 0
-    clips: []
-    emitterOverride: {fileID: 0}
-    usePitchRandom: 1
-    pitchMin: 1
-    pitchMax: 1
-    stopMode: 0
-    stopTargetEventKey: 
-    fadeOutOnStop: 1
-    fadeOutTime: 0.1
-    maxSimultaneous: 1
-    coalesceWindow: 0.05
-    blockSameFrameDuplicates: 1
-  - guid: 5b507e54-b46a-4756-8663-5716671bef77
-    eventKey: 30794::30864::OnWallrunEnd
-    displayName: OnWallrunEnd
-    eventName: OnWallrunEnd
-    enabled: 1
-    isStopEvent: 0
-    randomOne: 0
-    clips: []
-    emitterOverride: {fileID: 0}
-    usePitchRandom: 1
-    pitchMin: 1
-    pitchMax: 1
-    stopMode: 0
-    stopTargetEventKey: 
-    fadeOutOnStop: 1
-    fadeOutTime: 0.1
-    maxSimultaneous: 1
-    coalesceWindow: 0.05
-    blockSameFrameDuplicates: 1
-  - guid: 7c321f5d-ee4b-4f54-8eb9-5e8aaabe726e
-    eventKey: 30794::30864::OnGetDamage
-    displayName: OnGetDamage
-    eventName: OnGetDamage
-    enabled: 1
-    isStopEvent: 0
-    randomOne: 0
-    clips: []
-    emitterOverride: {fileID: 0}
-    usePitchRandom: 1
-    pitchMin: 1
-    pitchMax: 1
-    stopMode: 0
-    stopTargetEventKey: 
-    fadeOutOnStop: 1
-    fadeOutTime: 0.1
-    maxSimultaneous: 1
-    coalesceWindow: 0.05
-    blockSameFrameDuplicates: 1
-  - guid: 7e05702c-0c5e-4279-840e-e239467fdb01
-    eventKey: 30794::30864::OnDeath
-    displayName: OnDeath
-    eventName: OnDeath
-    enabled: 1
-    isStopEvent: 0
-    randomOne: 0
-    clips: []
-    emitterOverride: {fileID: 0}
-    usePitchRandom: 1
-    pitchMin: 1
-    pitchMax: 1
-    stopMode: 0
-    stopTargetEventKey: 
-    fadeOutOnStop: 1
-    fadeOutTime: 0.1
-    maxSimultaneous: 1
-    coalesceWindow: 0.05
-    blockSameFrameDuplicates: 1
-  - guid: 782194cd-0bdf-425d-b5a4-03b299d4a2f9
-    eventKey: 30794::30864::OnInteractFocusEnter
-    displayName: OnInteractFocusEnter
-    eventName: OnInteractFocusEnter
-    enabled: 1
-    isStopEvent: 0
-    randomOne: 0
-    clips: []
-    emitterOverride: {fileID: 0}
-    usePitchRandom: 1
-    pitchMin: 1
-    pitchMax: 1
-    stopMode: 0
-    stopTargetEventKey: 
-    fadeOutOnStop: 1
-    fadeOutTime: 0.1
-    maxSimultaneous: 1
-    coalesceWindow: 0.05
-    blockSameFrameDuplicates: 1
-  - guid: 5b49bcee-508c-433b-a8b4-9c352b71ab3a
-    eventKey: 30794::30864::OnInteractFocusExit
-    displayName: OnInteractFocusExit
-    eventName: OnInteractFocusExit
-    enabled: 1
-    isStopEvent: 0
-    randomOne: 0
-    clips: []
-    emitterOverride: {fileID: 0}
-    usePitchRandom: 1
-    pitchMin: 1
-    pitchMax: 1
-    stopMode: 0
-    stopTargetEventKey: 
-    fadeOutOnStop: 1
-    fadeOutTime: 0.1
-    maxSimultaneous: 1
-    coalesceWindow: 0.05
-    blockSameFrameDuplicates: 1
-  - guid: 522a8430-d32c-4d5e-a2d8-9c0c509c46bf
-    eventKey: 30794::30864::OnInteract
-    displayName: OnInteract
-    eventName: OnInteract
-    enabled: 1
-    isStopEvent: 0
-    randomOne: 0
-    clips: []
-    emitterOverride: {fileID: 0}
-    usePitchRandom: 1
-    pitchMin: 1
-    pitchMax: 1
-    stopMode: 0
-    stopTargetEventKey: 
-    fadeOutOnStop: 1
-    fadeOutTime: 0.1
-    maxSimultaneous: 1
-    coalesceWindow: 0.05
-    blockSameFrameDuplicates: 1
-  - guid: 6fd7ed29-c874-4db9-8fd5-da9da9d1d159
-    eventKey: 30794::30868::OnStepLeft
-    displayName: OnStepLeft
-    eventName: OnStepLeft
-    enabled: 1
-    isStopEvent: 0
-    randomOne: 1
-    clips:
-    - clip: {fileID: 8300000, guid: f27183989ad70814f8947b1a872705e8, type: 3}
-      volume: 0.3
-      delay: 0
-      loop: 0
-    - clip: {fileID: 8300000, guid: 4874c6c234f61934fb52292d4fb0f9fb, type: 3}
-      volume: 0.3
-      delay: 0
-      loop: 0
-    emitterOverride: {fileID: 1588481045}
-    usePitchRandom: 1
-    pitchMin: 1
-    pitchMax: 1
-    stopMode: 0
-    stopTargetEventKey: 
-    fadeOutOnStop: 1
-    fadeOutTime: 0.1
-    maxSimultaneous: 1
-    coalesceWindow: 0.05
-    blockSameFrameDuplicates: 1
-  - guid: 0564353b-86cc-4894-bcb0-cbb9450ee925
-    eventKey: 30794::30868::OnStepRight
-    displayName: OnStepRight
-    eventName: OnStepRight
-    enabled: 1
-    isStopEvent: 0
-    randomOne: 1
-    clips:
-    - clip: {fileID: 8300000, guid: e82563e302b25134ea86e3638f5212c2, type: 3}
-      volume: 0.3
-      delay: 0
-      loop: 0
-    - clip: {fileID: 8300000, guid: 60e0bbc9b61f6264292a8e96dd39f695, type: 3}
-      volume: 0.3
-      delay: 0
-      loop: 0
-    emitterOverride: {fileID: 272302461}
-    usePitchRandom: 1
-    pitchMin: 1
-    pitchMax: 2
-    stopMode: 0
-    stopTargetEventKey: 
-    fadeOutOnStop: 1
-    fadeOutTime: 0.1
-    maxSimultaneous: 1
-    coalesceWindow: 0.05
-    blockSameFrameDuplicates: 1
-  debugScan: 0
 --- !u!1 &1552721261
 GameObject:
   m_ObjectHideFlags: 0
@@ -3005,12 +2620,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!4 &1588481045 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 8739219535742365209, guid: 6fb0e2e9ee217874c86400acb6232deb,
-    type: 3}
-  m_PrefabInstance: {fileID: 8234902083878469372}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1768396071
 GameObject:
   m_ObjectHideFlags: 0
@@ -8086,6 +7695,74 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
+--- !u!1001 &3021042485664930396
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 7511541719265762720, guid: c1dc9d25ab9e7ad4b94fb39f47e19e8b,
+        type: 3}
+      propertyPath: m_Name
+      value: TrailStasisVFX
+      objectReference: {fileID: 0}
+    - target: {fileID: 8605527138207810488, guid: c1dc9d25ab9e7ad4b94fb39f47e19e8b,
+        type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -17.402
+      objectReference: {fileID: 0}
+    - target: {fileID: 8605527138207810488, guid: c1dc9d25ab9e7ad4b94fb39f47e19e8b,
+        type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 25.91
+      objectReference: {fileID: 0}
+    - target: {fileID: 8605527138207810488, guid: c1dc9d25ab9e7ad4b94fb39f47e19e8b,
+        type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 22.297
+      objectReference: {fileID: 0}
+    - target: {fileID: 8605527138207810488, guid: c1dc9d25ab9e7ad4b94fb39f47e19e8b,
+        type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8605527138207810488, guid: c1dc9d25ab9e7ad4b94fb39f47e19e8b,
+        type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8605527138207810488, guid: c1dc9d25ab9e7ad4b94fb39f47e19e8b,
+        type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8605527138207810488, guid: c1dc9d25ab9e7ad4b94fb39f47e19e8b,
+        type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8605527138207810488, guid: c1dc9d25ab9e7ad4b94fb39f47e19e8b,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8605527138207810488, guid: c1dc9d25ab9e7ad4b94fb39f47e19e8b,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8605527138207810488, guid: c1dc9d25ab9e7ad4b94fb39f47e19e8b,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: c1dc9d25ab9e7ad4b94fb39f47e19e8b, type: 3}
 --- !u!23 &3485732345808202635
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -9278,6 +8955,11 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 1.1699502
       objectReference: {fileID: 0}
+    - target: {fileID: 6069650319260762857, guid: 6fb0e2e9ee217874c86400acb6232deb,
+        type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -2.08
+      objectReference: {fileID: 0}
     - target: {fileID: 6146342051119288552, guid: 6fb0e2e9ee217874c86400acb6232deb,
         type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
@@ -9631,58 +9313,8 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents:
-    - targetCorrespondingSourceObject: {fileID: 4060328655803849230, guid: 6fb0e2e9ee217874c86400acb6232deb,
-        type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 1224738055}
-    - targetCorrespondingSourceObject: {fileID: 7908636689431032631, guid: 6fb0e2e9ee217874c86400acb6232deb,
-        type: 3}
-      insertIndex: 2
-      addedObject: {fileID: 8234902083878469383}
+    m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 6fb0e2e9ee217874c86400acb6232deb, type: 3}
---- !u!1 &8234902083878469377 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 4060328655803849230, guid: 6fb0e2e9ee217874c86400acb6232deb,
-    type: 3}
-  m_PrefabInstance: {fileID: 8234902083878469372}
-  m_PrefabAsset: {fileID: 0}
---- !u!1 &8234902083878469379 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 7908636689431032631, guid: 6fb0e2e9ee217874c86400acb6232deb,
-    type: 3}
-  m_PrefabInstance: {fileID: 8234902083878469372}
-  m_PrefabAsset: {fileID: 0}
---- !u!114 &8234902083878469380 stripped
-MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 5160738271748347311, guid: 6fb0e2e9ee217874c86400acb6232deb,
-    type: 3}
-  m_PrefabInstance: {fileID: 8234902083878469372}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8234902083878469377}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0b003dcbf3cd17943bc8b3a4cb7ab408, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
---- !u!114 &8234902083878469383
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8234902083878469379}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 81f45eff1598cf042969f2eafab1ac75, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
---- !u!4 &8234902083878469386 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: 5486382791535036532, guid: 6fb0e2e9ee217874c86400acb6232deb,
-    type: 3}
-  m_PrefabInstance: {fileID: 8234902083878469372}
-  m_PrefabAsset: {fileID: 0}
 --- !u!114 &8486753648440543668
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -9695,7 +9327,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9eae99397ea850e45bcd64967b6feda0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  matStasis: {fileID: 2100000, guid: ede74eb79b9d0e94694f3cb677c03bb2, type: 2}
   _renderer: {fileID: 3485732345808202635}
   mainCollider: {fileID: 5092617522781030594}
   rb: {fileID: 6453794668339790383}
@@ -9815,3 +9446,4 @@ SceneRoots:
   - {fileID: 4086223699618253292}
   - {fileID: 772572929033632419}
   - {fileID: 5793556221265133545}
+  - {fileID: 3021042485664930396}

@@ -1,103 +1,103 @@
 /*
-Trail ÄÄÆ÷³ÍÆ®°¡ Tiling À¸·Î ¼³Á¤µÇ¾î¾ßÇÔ. (±×·¡¾ß ½ºÅ©·ÑÀ» À§ÇÑ UV°¡ Trail ¼¼±×¸ÕÆ® Å©±â¿Í »ó°ü ¾øÀÌ ÀÏÁ¤ÇÏ°Ô ³ª¿È)
+Trail ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ®ï¿½ï¿½ Tiling ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ç¾ï¿½ï¿½ï¿½ï¿½. (ï¿½×·ï¿½ï¿½ï¿½ ï¿½ï¿½Å©ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ UVï¿½ï¿½ Trail ï¿½ï¿½ï¿½×¸ï¿½Æ® Å©ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï°ï¿½ ï¿½ï¿½ï¿½ï¿½)
 */
 
 Shader "MoveToTrailUV/MoveToTrailUV_Add"
 {
-	Properties
-	{
-		_MainTex("Main Texture (RGB)", 2D) = "white" {}
-		_MainTexVFade("MainTex V Fade", Range(0, 1)) = 0
-		_MainTexVFadePow("MainTex V Fade Pow", Float) = 1
-		_MainTexPow("Main Texture Gamma", Float) = 1
-		_MainTexMultiplier("Main Texture Multiplier", Float) = 1
-		_TintTex("Tint Texture (RGB)", 2D) = "white" {}
-		_Multiplier("Multiplier", Float) = 1
-		_MainScrollSpeedU("Main Scroll U Speed", Float) = 10
-		_MainScrollSpeedV("Main Scroll V Speed", Float) = 0
-	}
-		SubShader
-		{
-			Tags { "RenderType" = "Transparent" "RenderPipeline" = "UniversalPipeline" "Queue" = "Transparent"}
-			Blend One One // Additive
-			ZWrite Off
+    Properties
+    {
+        _MainTex("Main Texture (RGB)", 2D) = "white" {}
+        _MainTexVFade("MainTex V Fade", Range(0, 1)) = 0
+        _MainTexVFadePow("MainTex V Fade Pow", Float) = 1
+        _MainTexPow("Main Texture Gamma", Float) = 1
+        _MainTexMultiplier("Main Texture Multiplier", Float) = 1
+        _TintTex("Tint Texture (RGB)", 2D) = "white" {}
+        _Multiplier("Multiplier", Float) = 1
+        _MainScrollSpeedU("Main Scroll U Speed", Float) = 10
+        _MainScrollSpeedV("Main Scroll V Speed", Float) = 0
+        _ViewFade("View Fade", Range(0,1)) = 1
+    }
+    SubShader
+    {
+        Tags
+        {
+            "RenderType" = "Transparent" "RenderPipeline" = "UniversalPipeline" "Queue" = "Transparent"
+        }
+        Blend One One // Additive
+        ZWrite Off
 
-			Pass
-			{
-				HLSLPROGRAM
-				#pragma vertex vert
-				#pragma fragment frag
-				#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+        Pass
+        {
+            HLSLPROGRAM
+            #pragma vertex vert
+            #pragma fragment frag
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 
-				struct Attributes
-				{
-					float4 positionOS : POSITION;
-					float2 uv : TEXCOORD0;
-					half4 color : COLOR;
-				};
+            struct Attributes
+            {
+                float4 positionOS : POSITION;
+                float2 uv : TEXCOORD0;
+                half4 color : COLOR;
+            };
 
-				struct Varyings
-				{
-					float2 uv : TEXCOORD0;
-					float2 uvOrigin : TEXCOORD1; // ¿ø·¡ UV
-					float4 positionHCS : SV_POSITION;
-					half4 color : COLOR;
-				};
+            struct Varyings
+            {
+                float2 uv : TEXCOORD0;
+                float2 uvOrigin : TEXCOORD1; // ï¿½ï¿½ï¿½ï¿½ UV
+                float4 positionHCS : SV_POSITION;
+                half4 color : COLOR;
+            };
 
-				sampler2D _MainTex;
-				sampler2D _TintTex;
+            sampler2D _MainTex;
+            sampler2D _TintTex;
 
-				CBUFFER_START(UnityPerMaterial)
-					half4 _MainTex_ST;
-					half _MainTexVFade;
-					half _MainTexVFadePow;
-					half _MainTexPow;
-					half _MainTexMultiplier;
-					half _Multiplier;
-					half _MainScrollSpeedU;
-					half _MainScrollSpeedV;
-					
-					// MoveToMaterialUV ½ºÅ©¸³Æ®¿¡¼­ Àü´Þ¹Þ´Â UV ½ºÅ©·Ñ °ª.
-					// ÇÁ·ÎÆÛÆ¼¿¡´Â ÀÏºÎ·¯ ³ÖÁö ¾ÊÀ½. ÇÁ·ÎÆÛÆ¼¿¡ ³ÖÀ» °æ¿ì ¿¡µðÅÍ¿¡¼­ ¹Ì¸®º¸±â·Î Àü´ÞµÇ´Â °ªµéÀÌ °è¼Ó ÀçÁú ¹öÀü º¯°æÀ¸·Î ÀÎ½ÄµÇ¾î¼­ ÇÁ·ÎÆÛÆ¼ ¾øÀÌ ÀÛµ¿ÇÏ´Â ¹æ½ÄÀ¸·Î Á¦ÀÛ
-					half _MoveToMaterialUV;
-				CBUFFER_END
+            CBUFFER_START(UnityPerMaterial)
+                half4 _MainTex_ST;
+                half _MainTexVFade;
+                half _MainTexVFadePow;
+                half _MainTexPow;
+                half _MainTexMultiplier;
+                half _Multiplier;
+                half _MainScrollSpeedU;
+                half _MainScrollSpeedV;
+                half _ViewFade;
+                half _MoveToMaterialUV;
+            
+            CBUFFER_END
 
-				Varyings vert(Attributes IN)
-				{
-					Varyings o;
-					o.positionHCS = TransformObjectToHClip(IN.positionOS.xyz);
-					o.uv = TRANSFORM_TEX(IN.uv, _MainTex);
-					o.uv.x -= frac(_Time.x * _MainScrollSpeedU) + _MoveToMaterialUV;
-					o.uv.y -= frac(_Time.x * _MainScrollSpeedV);
-					o.uvOrigin = IN.uv;
-					o.color = IN.color;
-					return o;
-				}
+            Varyings vert(Attributes IN)
+            {
+                Varyings o;
+                o.positionHCS = TransformObjectToHClip(IN.positionOS.xyz);
+                o.uv = TRANSFORM_TEX(IN.uv, _MainTex);
+                o.uv.x -= frac(_Time.x * _MainScrollSpeedU) + _MoveToMaterialUV;
+                o.uv.y -= frac(_Time.x * _MainScrollSpeedV);
+                o.uvOrigin = IN.uv;
+                o.color = IN.color;
+                
+                return o;
+            }
 
-				half4 frag(Varyings IN) : SV_Target
-				{
-					half4 mainTex = tex2D(_MainTex, IN.uv);
+            half4 frag(Varyings IN) : SV_Target
+            {
+                half3 main = tex2D(_MainTex, IN.uv).rgb;
 
-					// ¸ÞÀÎ ÅØ½ºÃÄ °¡°ø
-					half vFade = 1 - abs(IN.uvOrigin.y - 0.5) * 2; // ¼¼·Î uv ±âÁØÀ¸·Î A ±×·¡ÇÁ »ý¼º
-					vFade = pow(abs(vFade), _MainTexVFadePow); // A °¡¿îµ¥¸¦ Á»´õ »ÏÁ·ÇÏ°Ô È¤Àº µÕ±Û°Ô
-					vFade = lerp(1, vFade, _MainTexVFade);
-					mainTex.rgb *= vFade; // ÀÏ´Ü ÅØ½ºÃÄ¿¡ ¼¼·Î ÆäÀÌµå¾Æ¿ôºÎÅÍ Àû¿ë
-					mainTex.rgb = pow(abs(mainTex.rgb), _MainTexPow) * _MainTexMultiplier; // ¸ÞÀÎ ÅØ½ºÃÄ 1Â÷ °¡°ø
-					
-					// ¹öÅÃ½º ¾ËÆÄ¿Í _Multiplier·Î ÀÌ¿øÈ­µÈ °ªÀ» ÇÏ³ª·Î ÅëÀÏ
-					half intensity = _Multiplier * IN.color.a;
+                half vMask = 1 - abs(IN.uvOrigin.y * 2 - 1);
+                vMask = pow(saturate(vMask), _MainTexVFadePow);
+                vMask = lerp(1, vMask, _MainTexVFade);
 
-					// Tint
-					half avr = mainTex.r * 0.3333 + mainTex.g * 0.3334 + mainTex.b * 0.3333;
-					avr = saturate(avr * intensity); // intensity 1ÀÌ ³Ñ´Â ¿µ¿ªÀº ÀÏ´Ü 1·Î »ùÇÃ¸µ
-					half4 col = tex2D(_TintTex, half2(avr, 0.5));
+                half lum = (main.r + main.g + main.b) * (1.0h / 3.0h);
+                lum = pow(saturate(lum), _MainTexPow) * _MainTexMultiplier;
 
-					half intensityHigh = max(1, intensity); // 1º¸´Ù ÀÛÀ¸¸é 1·Î µÇ°í 1º¸´Ù Å©¸é intensity °ªÀ» »ç¿ë (1º¸´Ù Å« °ªÀº HDR·Î »½Æ¢±â)
-					col.rgb *= intensityHigh * IN.color.rgb;
-					return col;
-				}
-				ENDHLSL
-			}
-		}
+                half4 ramp = tex2D(_TintTex, half2(lum, 0.5h));
+
+                half opacity = saturate(IN.color.a * _Multiplier) * vMask;
+
+                half3 rgb = ramp.rgb * IN.color.rgb * opacity;
+
+                return half4(rgb * _ViewFade, opacity);
+            }
+            ENDHLSL
+        }
+    }
 }

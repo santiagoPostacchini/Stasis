@@ -7,8 +7,8 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: Add
-  m_Shader: {fileID: 4800000, guid: 914a917e8fa387540a3c3bbfb4d1e50a, type: 3}
+  m_Name: WispMat
+  m_Shader: {fileID: 4800000, guid: 863bb5e716ea80448a1dc12ff9188b94, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []
@@ -23,12 +23,22 @@ Material:
   m_SavedProperties:
     serializedVersion: 3
     m_TexEnvs:
-    - _BaseMap:
-        m_Texture: {fileID: 2800000, guid: 03fc0fca3082a9f4ca8fb1e2a74f62af, type: 3}
+    - _MainTex:
+        m_Texture: {fileID: 2800000, guid: 2b22ea034ca55174fb20786e82df48f0, type: 3}
+        m_Scale: {x: 0.1, y: 0.5}
+        m_Offset: {x: 0, y: 0}
+    - _TintTex:
+        m_Texture: {fileID: 2800000, guid: eb5e5832e0fb5924fb27b229acd95a90, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _Multiplier: 0
+    - _MainScrollSpeedU: 1.3
+    - _MainScrollSpeedV: 0.2
+    - _MainTexMultiplier: 5
+    - _MainTexPow: 0.55
+    - _MainTexVFade: 1
+    - _MainTexVFadePow: 5
+    - _Multiplier: 1
     m_Colors: []
   m_BuildTextureStacks: []
