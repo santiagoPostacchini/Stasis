@@ -81,7 +81,10 @@ public class VirtualSecurityCam : MonoBehaviour
         _recording = startRecordingOnAwake;
         CCTVPlaneAtlas.RegisterSource(this); // <-- ahora el atlas maneja el registro
     }
-
+    private void Start()
+    {
+        detectionTarget = GameManager.Instance.player;
+    }
     void OnDestroy()
     {
         CCTVPlaneAtlas.UnregisterSource(this);
