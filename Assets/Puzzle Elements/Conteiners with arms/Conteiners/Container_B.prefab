@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 8895483478231954721}
   - component: {fileID: 2739897156920585660}
   - component: {fileID: 4407716103015730423}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: mod_gabenette.002
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -62,7 +62,7 @@ MeshRenderer:
   m_RendererPriority: 0
   m_Materials:
   - {fileID: 2100000, guid: dffbe668759f68a4f86ed2305ad791f4, type: 2}
-  - {fileID: 1520459924033278345, guid: 63ce4c616daeecd4480d5c00cff2f149, type: 3}
+  - {fileID: 2100000, guid: e632956b06ac64d42b36828c4fc221d9, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -95,7 +95,7 @@ GameObject:
   - component: {fileID: 966737810970539814}
   - component: {fileID: 2942322725810658257}
   - component: {fileID: 1920358483061685576}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: Arm_Container_Support.002
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -178,7 +178,8 @@ GameObject:
   - component: {fileID: 2696464879389645394}
   - component: {fileID: 4290652643161545396}
   - component: {fileID: 7649972169699942315}
-  m_Layer: 0
+  - component: {fileID: 6770519010333143131}
+  m_Layer: 7
   m_Name: Container_B
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -195,8 +196,8 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: -10.329999}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
+  m_LocalScale: {x: 4, y: 4, z: 4}
+  m_ConstrainProportionsScale: 1
   m_Children:
   - {fileID: 1785932596772245750}
   - {fileID: 2645506755923583298}
@@ -255,6 +256,27 @@ MeshRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!65 &6770519010333143131
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1628230191744220368}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 3.0799992, y: 2.099893, z: 1.8999997}
+  m_Center: {x: 0, y: 1.0499465, z: -0.000000059604645}
 --- !u!1 &3242937469590026821
 GameObject:
   m_ObjectHideFlags: 0
@@ -266,7 +288,7 @@ GameObject:
   - component: {fileID: 5157755154762046597}
   - component: {fileID: 293713969461431173}
   - component: {fileID: 8161478219374384591}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: Arm_Container_Support.004
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -349,7 +371,7 @@ GameObject:
   - component: {fileID: 4615741458403907870}
   - component: {fileID: 6387923204853782491}
   - component: {fileID: 2619104807586714794}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: Arm_Container_Support.005
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -432,7 +454,7 @@ GameObject:
   - component: {fileID: 2645506755923583298}
   - component: {fileID: 8769920212031220690}
   - component: {fileID: 129520733672064314}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: Container_Back_MAT01_0.001
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -513,7 +535,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 8983574190431036373}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: Container_Detail
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -548,7 +570,7 @@ GameObject:
   - component: {fileID: 2752084225170733657}
   - component: {fileID: 7114980908381445352}
   - component: {fileID: 2002353782759941726}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: Arm_Container_Support.006
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -631,7 +653,7 @@ GameObject:
   - component: {fileID: 1785932596772245750}
   - component: {fileID: 1351453206411401789}
   - component: {fileID: 8426170254484309156}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: Arm_Container_Support.001
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -717,7 +739,7 @@ GameObject:
   - component: {fileID: 2576402389711581161}
   - component: {fileID: 3514855013749601480}
   - component: {fileID: 4792953157546440899}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: Container_Back_MAT01_0.002
   m_TagString: Untagged
   m_Icon: {fileID: 0}
