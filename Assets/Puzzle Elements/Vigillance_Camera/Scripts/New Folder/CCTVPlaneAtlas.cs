@@ -1,5 +1,3 @@
-// CCTVPlaneAtlas.cs — misma lógica; agrega controles artísticos que no rompen nada.
-
 using UnityEngine;
 using UnityEngine.Rendering.Universal;
 using System.Collections.Generic;
@@ -7,19 +5,34 @@ using System.Collections.Generic;
 [DisallowMultipleComponent]
 public class CCTVPlaneAtlas : MonoBehaviour
 {
+    // ======= Roles de instancia =======
+    public enum InstanceMode { Master, Follower }
+
+    [Header("Instance Mode")]
+    [Tooltip("Master hace todo el render/record/playback. Follower solo muestra el atlas de un Master.")]
+    public InstanceMode mode = InstanceMode.Master;
+
+    [Tooltip("Solo para Follower: referencia al Master cuyo atlas vas a mostrar.")]
+    public CCTVPlaneAtlas masterForFollower;
+
+    // ======= Fuentes (solo Master) =======
     static readonly List<VirtualSecurityCam> s_sources = new List<VirtualSecurityCam>();
     public static void RegisterSource(VirtualSecurityCam v) { if (!s_sources.Contains(v)) s_sources.Add(v); }
     public static void UnregisterSource(VirtualSecurityCam v) { s_sources.Remove(v); }
 
-    [Header("Sources (grid order)")]
+    [Header("Sources (grid order) - Master")]
+    [Tooltip("Dejar vacio = usa todas las VirtualSecurityCam registradas.")]
     public VirtualSecurityCam[] cameras;
 
+    // ======= Target (ambos: Master/Follower) =======
     [Header("Target (Plane)")]
     public Renderer targetRenderer;
-    [Tooltip("Texture property to bind the atlas. Empty = auto resolve")]
+
+    [Tooltip("Texture property para bindear el atlas. Vacio = auto.")]
     public string texturePropertyName = "";
 
-    [Header("Atlas Grid")]
+    // ======= Atlas (solo Master) =======
+    [Header("Atlas Grid - Master")]
     public int columns = 3;
     public int tileWidth = 512;
     public int tileHeight = 288;
@@ -27,71 +40,94 @@ public class CCTVPlaneAtlas : MonoBehaviour
     public int paddingY = 8;
     public Color clearColor = Color.black;
 
-    [Header("Render")]
-    public bool allowHDR = false;
-    public bool allowMSAA = false;
-    public bool debugMagenta = false;
+    // ======= Render cam compartida (solo Master crea/usa) =======
+    [Header("Render Camera (Shared)")]
+    [Tooltip("Nombre del GameObject de la camara compartida (unica para toda la escena).")]
+    public string sharedCameraGOName = "CCTV_RenderCam_SHARED";
 
-    [Header("URP")]
+    [Tooltip("Renderer de URP a usar (-1 = default pipeline).")]
     public int urpRendererIndex = -1;
 
-    [Header("Overlay Top Layer")]
+    [Tooltip("HDR/ MSAA del render interno")]
+    public bool allowHDR = false;
+    public bool allowMSAA = false;
+
+    [Header("Overlay Top Layer - Master")]
     public LayerMask overlayTopLayer = 0;
     public bool overlayClearDepth = true;
 
-    [Header("Recording")]
+    // ======= Record / Playback (solo Master) =======
+    [Header("Recording - Master")]
     public int recordFPS = 10;
     public float recordMaxSeconds = 6f;
     public RenderTextureFormat recordFormat = RenderTextureFormat.ARGB32;
 
-    [Header("Playback")]
+    [Header("Playback - Master")]
     public Transform playbackTriggerTarget;
     public float playbackTriggerDistance = 6f;
     public float playbackBlackoutSeconds = 1.0f;
 
-    // --------- ART SAFE CONTROLS (no shaders externos) ----------
-    public enum ForceProperty
-    {
-        Auto,
-        BaseMap,     // _BaseMap (URP Unlit/Lit)
-        MainTex,     // _MainTex (legacy/Unlit Texture)
-        Custom       // usa texturePropertyName
-    }
+    // ======= Art Safe Controls (ambos) =======
+    public enum ForceProperty { Auto, BaseMap, MainTex, Custom }
 
-    [Header("Art - Safe Controls (no custom shaders)")]
-    [Tooltip("Force the material on the plane to URP/Unlit so lighting does not darken the atlas")]
+    [Header("Art - Safe Controls (sin shaders custom)")]
+    [Tooltip("Fuerza URP/Unlit para que la luz no oscurezca el atlas.")]
     public bool forceURPUnlit = false;
 
-    [Tooltip("When forcing URP/Unlit, also force Base Color to white and disable shadows")]
+    [Tooltip("Si esta activo, deja BaseColor=white y desactiva sombras en el plane.")]
     public bool forceUnlitSetup = true;
 
-    [Tooltip("Choose which texture property to bind to avoid white/blank screens")]
+    [Tooltip("Propiedad de textura a la que se bindea el atlas.")]
     public ForceProperty forceTextureProperty = ForceProperty.Auto;
 
-    [Tooltip("Only used if ForceProperty=Custom")]
+    [Tooltip("Usada si forceTextureProperty=Custom.")]
     public string customTextureProperty = "_BaseMap";
 
-    [Tooltip("Extra tint applied via MPB to the plane material (acts like a simple multiplier)")]
+    [Tooltip("Tint simple via MPB.")]
     public Color planeTint = Color.white;
 
-    [Tooltip("Emission boost sent to _EmissionColor if the material supports it (acts as brightness)")]
+    [Tooltip("Boost de emision si el shader lo soporta (_EmissionColor).")]
     [Min(0f)] public float planeEmissionBoost = 0f;
 
-    [Header("Debug")]
-    [Tooltip("If true, fills the atlas with a test pattern to verify binding/material routing")]
+    [Header("Debug (opcional)")]
+    [Tooltip("Rellena el atlas con un patron de test (Master) o chequea binding (Follower).")]
     public bool artForceTestPattern = false;
 
-    [Header("Art - RenderTextures")]
+    [Header("Art - RenderTextures (Master)")]
     public RenderTextureFormat atlasFormat = RenderTextureFormat.ARGB32;
     public FilterMode atlasFilterMode = FilterMode.Bilinear;
     [Range(0, 16)] public int atlasAniso = 0;
 
-    Camera _renderCam;
-    RenderTexture _atlas;
+    // ======= Performance (solo Master) =======
+    [Header("Performance - Master")]
+    [Tooltip("Cadencia de trabajo sobre el atlas (Hz). Menor = menos costo.")]
+    public float atlasUpdateFPS = 20f;
+
+    [Tooltip("Renderizar solo si el player esta cerca del plane.")]
+    public bool renderOnlyWhenVisible = true;
+
+    [Tooltip("Maximo de camaras scene->tileRT por frame.")]
+    public int maxCamRendersPerFrame = 2;
+
+    [Tooltip("Maximo de tiles copiados al atlas por frame.")]
+    public int maxBlitsPerFrame = 3;
+
+    [Tooltip("No limpiar el atlas cada frame; solo cuando haga falta.")]
+    public bool lazyClearAtlas = true;
+
+    // ======= Internals compartidos =======
+    Camera _renderCam;            // Solo la usa el Master
+    static Camera s_sharedCam;    // Singleton de camara real
+
+    RenderTexture _atlas; // Master: lo crea y escribe. Follower: lee del master.
     int _rows;
     string _resolvedProp = null;
     MaterialPropertyBlock _mpb;
 
+    float _atlasUpdateTimer = 0f;
+    bool _atlasEverCleared = false;
+
+    // ======= Estado por camara virtual (solo Master) =======
     class CamRuntime
     {
         public RenderTexture tileRT;
@@ -99,10 +135,12 @@ public class CCTVPlaneAtlas : MonoBehaviour
         public bool lastRotValid;
         public float noTargetTimer;
 
-        public List<RenderTexture> frames;
-        public float frameTimer;
-        public float frameInterval;
+        public RenderTexture[] frames; // ring buffer
+        public int frameWrite;
+        public int frameCount;
         public int maxFrames;
+        public float frameInterval;
+        public float frameTimer;
         public bool isRecording;
 
         public bool playing;
@@ -111,97 +149,110 @@ public class CCTVPlaneAtlas : MonoBehaviour
         public int playIndex;
         public float playTimer;
         public float playFrameInterval;
+
+        public bool tileDirty;
+        public int lastShownIndex;
     }
 
     Dictionary<VirtualSecurityCam, CamRuntime> _rt = new Dictionary<VirtualSecurityCam, CamRuntime>();
 
+    // ======= API publica para Followers =======
+    public RenderTexture GetCurrentAtlas() { return _atlas; }
+
+    // ========================= LIFECYCLE =========================
+
     void Awake()
     {
-        SetupRenderCamera();
-        RecreateAtlas();
-        SafeSetupPlaneMaterial();   // NUEVO: fuerza URP/Unlit opcional + shadows off
-        BindAtlasToPlane();         // NUEVO: respeta ForceProperty
+        if (mode == InstanceMode.Master)
+        {
+            SetupSharedRenderCamera();
+            RecreateAtlas();
+        }
+
+        SafeSetupPlaneMaterial();
+        BindAtlasToPlane();
         if (_mpb == null) _mpb = new MaterialPropertyBlock();
 
-        if (cameras == null || cameras.Length == 0) cameras = s_sources.ToArray();
-        InitPerCamState();
+        if (mode == InstanceMode.Master)
+        {
+            if (cameras == null || cameras.Length == 0) cameras = s_sources.ToArray();
+            InitPerCamState();
+            _atlasUpdateTimer = 0f;
+        }
+
         ApplyPlaneStyling();
     }
 
     void OnDestroy()
     {
-        if (_atlas != null)
+        if (mode == InstanceMode.Master)
         {
-            try { if (_atlas.IsCreated()) _atlas.Release(); } catch { }
-            Destroy(_atlas);
-            _atlas = null;
-        }
-        foreach (var kv in _rt)
-        {
-            var cr = kv.Value;
-            if (cr.tileRT != null) { try { if (cr.tileRT.IsCreated()) cr.tileRT.Release(); } catch { } Destroy(cr.tileRT); }
-            if (cr.frames != null)
+            // Atlas y buffers
+            if (_atlas != null)
             {
-                for (int i = 0; i < cr.frames.Count; i++)
+                try { if (_atlas.IsCreated()) _atlas.Release(); } catch { }
+                Destroy(_atlas);
+                _atlas = null;
+            }
+
+            foreach (var kv in _rt)
+            {
+                var cr = kv.Value;
+                if (cr.tileRT != null) { try { if (cr.tileRT.IsCreated()) cr.tileRT.Release(); } catch { } Destroy(cr.tileRT); }
+                if (cr.frames != null)
                 {
-                    var f = cr.frames[i];
-                    if (f != null) { try { if (f.IsCreated()) f.Release(); } catch { } Destroy(f); }
+                    for (int i = 0; i < cr.frames.Length; i++)
+                    {
+                        var f = cr.frames[i];
+                        if (f != null) { try { if (f.IsCreated()) f.Release(); } catch { } Destroy(f); }
+                    }
                 }
             }
+            _rt.Clear();
+            // OJO: la camara compartida NO se destruye (queda viva para otros masters futuros)
         }
-        _rt.Clear();
     }
 
-    void InitPerCamState()
+    // ========================= SETUP =========================
+
+    void SetupSharedRenderCamera()
     {
-        _rt.Clear();
-        int n = cameras != null ? cameras.Length : 0;
-        for (int i = 0; i < n; i++)
+        // Reusar o crear una unica camara compartida (estatica)
+        if (s_sharedCam != null)
         {
-            var v = cameras[i];
-            if (v == null) continue;
-
-            CamRuntime cr = new CamRuntime();
-            cr.tileRT = CreateRT(tileWidth, tileHeight, 24, recordFormat);
-            cr.frames = new List<RenderTexture>();
-            cr.frameInterval = 1f / Mathf.Max(1, recordFPS);
-            cr.maxFrames = Mathf.Max(1, Mathf.FloorToInt(recordMaxSeconds * Mathf.Max(1, recordFPS)));
-            cr.playFrameInterval = cr.frameInterval;
-            cr.isRecording = v.IsRecording;
-            cr.playing = false;
-            _rt[v] = cr;
+            _renderCam = s_sharedCam;
+            ConfigureRenderCamera(_renderCam);
+            return;
         }
+
+        var existing = GameObject.Find(sharedCameraGOName);
+        if (existing != null && existing.TryGetComponent<Camera>(out var foundCam))
+        {
+            s_sharedCam = foundCam;
+            _renderCam = s_sharedCam;
+            ConfigureRenderCamera(_renderCam);
+            return;
+        }
+
+        var go = new GameObject(sharedCameraGOName, typeof(Camera));
+        s_sharedCam = go.GetComponent<Camera>();
+        _renderCam = s_sharedCam;
+        DontDestroyOnLoad(go); // persiste entre escenas si lo necesitas
+        ConfigureRenderCamera(_renderCam);
     }
 
-    RenderTexture CreateRT(int w, int h, int depth, RenderTextureFormat fmt)
+    void ConfigureRenderCamera(Camera cam)
     {
-        var rt = new RenderTexture(w, h, depth, fmt, RenderTextureReadWrite.Default);
-        rt.name = "CCTV_TileRT_" + w + "x" + h + "_" + fmt;
-        rt.filterMode = atlasFilterMode;
-        rt.anisoLevel = atlasAniso;
-        rt.wrapMode = TextureWrapMode.Clamp;
-        rt.useMipMap = false;
-        rt.autoGenerateMips = false;
-        rt.antiAliasing = 1;
-        rt.Create();
-        return rt;
-    }
+        cam.enabled = false;
+        cam.backgroundColor = clearColor;
+        cam.clearFlags = CameraClearFlags.SolidColor;
+        cam.allowHDR = allowHDR;
+        cam.allowMSAA = allowMSAA;
+        cam.stereoTargetEye = StereoTargetEyeMask.None;
+        cam.depth = -100;
 
-    void SetupRenderCamera()
-    {
-        var go = new GameObject("CCTV_RenderCam", typeof(Camera));
-        go.transform.SetParent(transform, false);
-        _renderCam = go.GetComponent<Camera>();
-        _renderCam.enabled = false;
-        _renderCam.backgroundColor = clearColor;
-        _renderCam.clearFlags = CameraClearFlags.Nothing;
-        _renderCam.allowHDR = allowHDR;
-        _renderCam.allowMSAA = allowMSAA;
-        _renderCam.stereoTargetEye = StereoTargetEyeMask.None;
-        _renderCam.depth = -100;
-
-        var urp = go.GetComponent<UniversalAdditionalCameraData>();
-        if (!urp) urp = go.AddComponent<UniversalAdditionalCameraData>();
+        var urp = cam.GetComponent<UniversalAdditionalCameraData>();
+        if (!urp) urp = cam.gameObject.AddComponent<UniversalAdditionalCameraData>();
         urp.renderType = CameraRenderType.Base;
         if (urpRendererIndex >= 0) urp.SetRenderer(urpRendererIndex);
         urp.antialiasing = AntialiasingMode.None;
@@ -228,7 +279,7 @@ public class CCTVPlaneAtlas : MonoBehaviour
             Destroy(_atlas);
         }
 
-        _atlas = new RenderTexture(w, h, 24, atlasFormat, RenderTextureReadWrite.Default);
+        _atlas = new RenderTexture(w, h, 0, atlasFormat, RenderTextureReadWrite.Default);
         _atlas.name = "CCTV_ATLAS_" + w + "x" + h;
         _atlas.filterMode = atlasFilterMode;
         _atlas.anisoLevel = atlasAniso;
@@ -237,16 +288,15 @@ public class CCTVPlaneAtlas : MonoBehaviour
         _atlas.autoGenerateMips = false;
         _atlas.antiAliasing = 1;
         _atlas.Create();
+        _atlasEverCleared = false;
     }
 
-    // ---- NUEVO: fuerza material seguro para que no se oscurezca ni quede blanco ----
     void SafeSetupPlaneMaterial()
     {
         if (!targetRenderer) return;
 
         if (forceURPUnlit)
         {
-            // usa shader URP Unlit oficial (no dependemos de shaders custom)
             var sh = Shader.Find("Universal Render Pipeline/Unlit");
             if (sh != null)
             {
@@ -256,7 +306,6 @@ public class CCTVPlaneAtlas : MonoBehaviour
 
                 if (forceUnlitSetup)
                 {
-                    // sombras y color base seguros
                     targetRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                     targetRenderer.receiveShadows = false;
 
@@ -271,10 +320,16 @@ public class CCTVPlaneAtlas : MonoBehaviour
         }
     }
 
-    // ---- NUEVO: binding robusto con selector de propiedad ----
     void BindAtlasToPlane()
     {
-        if (!targetRenderer || _atlas == null) return;
+        if (!targetRenderer) return;
+
+        // Master: linkea su propio atlas; Follower: linkea atlas del master
+        var sourceAtlas = (mode == InstanceMode.Master) ? _atlas
+            : (masterForFollower != null ? masterForFollower.GetCurrentAtlas() : null);
+
+        if (sourceAtlas == null) return;
+
         var mat = targetRenderer.material;
         if (mat == null) return;
 
@@ -290,17 +345,16 @@ public class CCTVPlaneAtlas : MonoBehaviour
         if (!string.IsNullOrEmpty(prop) && mat.HasProperty(prop))
         {
             _resolvedProp = prop;
-            mat.SetTexture(_resolvedProp, _atlas);
+            if (mat.GetTexture(_resolvedProp) != sourceAtlas)
+                mat.SetTexture(_resolvedProp, sourceAtlas);
         }
         else
         {
-            // ultima chance: intenta auto
             _resolvedProp = ResolveTextureProperty(mat, texturePropertyName);
-            if (!string.IsNullOrEmpty(_resolvedProp))
-                mat.SetTexture(_resolvedProp, _atlas);
+            if (!string.IsNullOrEmpty(_resolvedProp) && mat.GetTexture(_resolvedProp) != sourceAtlas)
+                mat.SetTexture(_resolvedProp, sourceAtlas);
         }
 
-        // asegura color base a blanco
         if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", Color.white);
         if (mat.HasProperty("_Color")) mat.SetColor("_Color", Color.white);
     }
@@ -312,20 +366,19 @@ public class CCTVPlaneAtlas : MonoBehaviour
 
         targetRenderer.GetPropertyBlock(_mpb);
 
-        // asegura que el atlas esté seteado aun usando MPB (evita materials duplicados)
-        if (!string.IsNullOrEmpty(_resolvedProp) && _atlas != null)
-            _mpb.SetTexture(_resolvedProp, _atlas);
+        // reafirma la textura via MPB (por si el material cambia en runtime)
+        var srcAtlas = (mode == InstanceMode.Master) ? _atlas
+            : (masterForFollower != null ? masterForFollower.GetCurrentAtlas() : null);
+        if (!string.IsNullOrEmpty(_resolvedProp) && srcAtlas != null)
+            _mpb.SetTexture(_resolvedProp, srcAtlas);
 
-        // tint simple
         if (planeTint != Color.white)
         {
-            if (targetRenderer.sharedMaterial != null && targetRenderer.sharedMaterial.HasProperty("_BaseColor"))
-                _mpb.SetColor("_BaseColor", planeTint);
-            if (targetRenderer.sharedMaterial != null && targetRenderer.sharedMaterial.HasProperty("_Color"))
-                _mpb.SetColor("_Color", planeTint);
+            var sm = targetRenderer.sharedMaterial;
+            if (sm != null && sm.HasProperty("_BaseColor")) _mpb.SetColor("_BaseColor", planeTint);
+            if (sm != null && sm.HasProperty("_Color")) _mpb.SetColor("_Color", planeTint);
         }
 
-        // emission como “brillo” si el shader lo soporta
         if (planeEmissionBoost > 0f)
         {
             Color e = planeTint * Mathf.LinearToGammaSpace(planeEmissionBoost);
@@ -358,30 +411,6 @@ public class CCTVPlaneAtlas : MonoBehaviour
         return new Rect(nx, ny, nw, nh);
     }
 
-    void BlitTileToAtlas(RenderTexture src, int tileIndex)
-    {
-        if (src == null || !src.IsCreated()) return;
-        Rect vp = TileViewport01(tileIndex);
-        int px = Mathf.RoundToInt(vp.x * _atlas.width);
-        int py = Mathf.RoundToInt(vp.y * _atlas.height);
-        int pw = Mathf.RoundToInt(vp.width * _atlas.width);
-        int ph = Mathf.RoundToInt(vp.height * _atlas.height);
-
-        // copia pura (sin shaders custom)
-        if (src.width == pw && src.height == ph)
-        {
-            Graphics.CopyTexture(src, 0, 0, 0, 0, src.width, src.height, _atlas, 0, 0, px, py);
-        }
-        else
-        {
-            var prev = RenderTexture.active;
-            RenderTexture.active = _atlas;
-            GL.Viewport(new Rect(px, py, pw, ph));
-            Graphics.Blit(src, (RenderTexture)null);
-            RenderTexture.active = prev;
-        }
-    }
-
     void ClearAtlasAll()
     {
         var prev = RenderTexture.active;
@@ -389,6 +418,7 @@ public class CCTVPlaneAtlas : MonoBehaviour
         GL.Viewport(new Rect(0, 0, _atlas.width, _atlas.height));
         GL.Clear(true, true, clearColor);
         RenderTexture.active = prev;
+        _atlasEverCleared = true;
     }
 
     void ClearTileColor(int tileIndex, Color col)
@@ -404,6 +434,29 @@ public class CCTVPlaneAtlas : MonoBehaviour
         GL.Viewport(new Rect(px, py, pw, ph));
         GL.Clear(true, true, col);
         RenderTexture.active = prev;
+    }
+
+    void BlitTileToAtlas(RenderTexture src, int tileIndex)
+    {
+        if (src == null || !src.IsCreated()) return;
+        Rect vp = TileViewport01(tileIndex);
+        int px = Mathf.RoundToInt(vp.x * _atlas.width);
+        int py = Mathf.RoundToInt(vp.y * _atlas.height);
+        int pw = Mathf.RoundToInt(vp.width * _atlas.width);
+        int ph = Mathf.RoundToInt(vp.height * _atlas.height);
+
+        if (src.width == pw && src.height == ph)
+        {
+            Graphics.CopyTexture(src, 0, 0, 0, 0, src.width, src.height, _atlas, 0, 0, px, py);
+        }
+        else
+        {
+            var prev = RenderTexture.active;
+            RenderTexture.active = _atlas;
+            GL.Viewport(new Rect(px, py, pw, ph));
+            Graphics.Blit(src, (RenderTexture)null);
+            RenderTexture.active = prev;
+        }
     }
 
     static bool IsTargetVisible(VirtualSecurityCam v, Vector3 camPos, Vector3 camFwd)
@@ -432,80 +485,85 @@ public class CCTVPlaneAtlas : MonoBehaviour
 
     void EnsureCamerasArray()
     {
-        if (cameras == null || cameras.Length == 0) cameras = s_sources.ToArray();
+        if (mode == InstanceMode.Master)
+        {
+            if (cameras == null || cameras.Length == 0) cameras = s_sources.ToArray();
+        }
     }
 
+    // ========================= UPDATE =========================
     void LateUpdate()
     {
-        EnsureCamerasArray();
-        if (_renderCam == null || cameras == null) return;
-
-        RecreateAtlas();
-        if (cameras.Length != _rt.Count) InitPerCamState();
-
-        // DEBUG: patrón de prueba para aislar problemas de material/binding
-        if (artForceTestPattern)
+        // Followers: solo binding + estilo; NADA de render/grab/playback
+        if (mode == InstanceMode.Follower)
         {
-            var prev = RenderTexture.active;
-            RenderTexture.active = _atlas;
-            GL.Viewport(new Rect(0, 0, _atlas.width, _atlas.height));
-            GL.Clear(true, true, Color.black);
+            BindAtlasToPlane();
+            ApplyPlaneStyling();
 
-            Texture2D tmp = new Texture2D(2, 2, TextureFormat.RGBA32, false, false);
-            tmp.SetPixels(new Color[] { Color.red, Color.green, Color.blue, Color.yellow });
-            tmp.Apply();
-            Graphics.Blit(tmp, _atlas);
-            RenderTexture.active = prev;
-            Destroy(tmp);
-
-            BindAtlasToPlane();   // asegura binding
-            ApplyPlaneStyling();  // aplica tint/emission
+            if (artForceTestPattern && targetRenderer != null)
+            {
+                // Solo verifica que el binding cambie de textura en runtime
+                // No escribe nada, porque el Follower no tiene atlas propio.
+            }
             return;
         }
 
-        ClearAtlasAll();
+        // Master
+        EnsureCamerasArray();
+        if (_renderCam == null || cameras == null) return;
 
-        float dt = Time.deltaTime;
-        bool viewingPlane = false;
-        if (playbackTriggerTarget != null && targetRenderer != null)
+        RecreateAtlas(); // barato, early-out si no cambia
+
+        // Throttle de trabajo del atlas
+        float updateInterval = 1f / Mathf.Max(1f, atlasUpdateFPS);
+        _atlasUpdateTimer += Time.deltaTime;
+        bool doAtlasWork = _atlasUpdateTimer >= updateInterval;
+        if (doAtlasWork) _atlasUpdateTimer -= updateInterval;
+
+        // Visibilidad (para no renderizar innecesario)
+        bool viewingPlane = true;
+        if (renderOnlyWhenVisible && playbackTriggerTarget != null && targetRenderer != null)
         {
             Vector3 planePos = targetRenderer.bounds.center;
             float d = Vector3.Distance(planePos, playbackTriggerTarget.position);
             viewingPlane = (d <= playbackTriggerDistance);
         }
 
-        for (int i = 0; i < cameras.Length; i++)
+        // Clear inicial/lazy
+        if (!lazyClearAtlas || !_atlasEverCleared)
+            ClearAtlasAll();
+
+        // Presupuestos
+        int rendersLeft = maxCamRendersPerFrame;
+        int blitsLeft = maxBlitsPerFrame;
+
+        float dt = Time.deltaTime;
+        if (cameras.Length != _rt.Count) InitPerCamState();
+
+        // 1) UPDATE/RENDER de fuentes (solo si hace falta)
+        for (int i = 0; i < cameras.Length && rendersLeft > 0; i++)
         {
             var v = cameras[i];
             if (v == null) continue;
+            if (!_rt.TryGetValue(v, out var cr)) continue;
 
-            CamRuntime cr;
-            if (!_rt.TryGetValue(v, out cr))
-            {
-                cr = new CamRuntime();
-                cr.tileRT = CreateRT(tileWidth, tileHeight, 24, recordFormat);
-                cr.frames = new List<RenderTexture>();
-                cr.frameInterval = 1f / Mathf.Max(1, recordFPS);
-                cr.maxFrames = Mathf.Max(1, Mathf.FloorToInt(recordMaxSeconds * Mathf.Max(1, recordFPS)));
-                cr.playFrameInterval = cr.frameInterval;
-                _rt[v] = cr;
-            }
+            // Si no grabamos y tampoco vamos a reproducir ahora, saltear render
+            if (!cr.isRecording && !(viewingPlane && doAtlasWork)) continue;
 
+            // ROT/SEE
             Transform p = v.Pivot;
             Vector3 desiredFwd = v.GetDesiredForward();
             if (desiredFwd.sqrMagnitude < 1e-6f) desiredFwd = p.forward;
 
-            Quaternion rot = v.lockHorizon
-                ? Quaternion.LookRotation(desiredFwd, Vector3.up)
-                : (p.rotation * Quaternion.Euler(v.rotationOffsetEuler));
+            Quaternion rot = v.lockHorizon ? Quaternion.LookRotation(desiredFwd, Vector3.up)
+                                           : (p.rotation * Quaternion.Euler(v.rotationOffsetEuler));
 
             Vector3 camPos = p.position;
             Vector3 camFwd = (rot * Vector3.forward);
 
             float angSpeed = 0f;
             if (cr.lastRotValid) angSpeed = AngularSpeedDegPerSec(cr.lastRot, rot, Mathf.Max(0.0001f, dt));
-            cr.lastRot = rot;
-            cr.lastRotValid = true;
+            cr.lastRot = rot; cr.lastRotValid = true;
 
             bool targetVisible = IsTargetVisible(v, camPos, camFwd);
             if (!targetVisible) cr.noTargetTimer += dt; else cr.noTargetTimer = 0f;
@@ -516,6 +574,10 @@ public class CCTVPlaneAtlas : MonoBehaviour
             if (!cr.isRecording && (startByMove || startBySee)) cr.isRecording = true;
             if (cr.isRecording && !targetVisible && cr.noTargetTimer >= Mathf.Max(0.05f, v.stopAfterNoTargetSeconds)) cr.isRecording = false;
 
+            // Si no grabamos y no vamos a reproducir, saltear render
+            if (!cr.isRecording && !(viewingPlane && doAtlasWork)) continue;
+
+            // Render a tileRT (una sola pasada base + overlay opcional)
             int maskBase = v.cullingMask.value;
             if (overlayTopLayer != 0) maskBase = maskBase & ~overlayTopLayer.value;
             if (maskBase == 0) maskBase = ~0;
@@ -527,13 +589,6 @@ public class CCTVPlaneAtlas : MonoBehaviour
 
             _renderCam.cullingMask = maskBase;
             _renderCam.targetTexture = cr.tileRT;
-
-            var oldFlags = _renderCam.clearFlags;
-            _renderCam.clearFlags = CameraClearFlags.SolidColor;
-            _renderCam.backgroundColor = clearColor;
-            _renderCam.Render();
-
-            _renderCam.clearFlags = CameraClearFlags.Nothing;
             _renderCam.Render();
 
             if (overlayTopLayer != 0)
@@ -544,91 +599,164 @@ public class CCTVPlaneAtlas : MonoBehaviour
                     _renderCam.cullingMask = overlayMask;
                     _renderCam.clearFlags = overlayClearDepth ? CameraClearFlags.Depth : CameraClearFlags.Nothing;
                     _renderCam.Render();
-                    _renderCam.clearFlags = CameraClearFlags.Nothing;
-                    _renderCam.Render();
+                    _renderCam.clearFlags = CameraClearFlags.SolidColor;
                 }
             }
-
-            _renderCam.clearFlags = oldFlags;
             _renderCam.targetTexture = null;
+            rendersLeft--;
 
-            // grab
+            // GRAB ring-buffer
             if (cr.isRecording)
             {
                 cr.frameTimer += dt;
                 if (cr.frameTimer >= cr.frameInterval)
                 {
                     cr.frameTimer -= cr.frameInterval;
-                    RenderTexture frame = CreateRT(tileWidth, tileHeight, 0, recordFormat);
-                    Graphics.Blit(cr.tileRT, frame);
-                    if (cr.frames == null) cr.frames = new List<RenderTexture>();
-                    cr.frames.Add(frame);
-                    if (cr.frames.Count > Mathf.Max(1, Mathf.FloorToInt(recordMaxSeconds * Mathf.Max(1, recordFPS))))
-                    {
-                        var old = cr.frames[0];
-                        cr.frames.RemoveAt(0);
-                        if (old != null) { try { if (old.IsCreated()) old.Release(); } catch { } Destroy(old); }
-                    }
+                    var dst = cr.frames[cr.frameWrite];
+                    Graphics.Blit(cr.tileRT, dst);
+                    cr.frameWrite = (cr.frameWrite + 1) % cr.maxFrames;
+                    cr.frameCount = Mathf.Min(cr.frameCount + 1, cr.maxFrames);
+                    cr.tileDirty = true;
                 }
-            }
-
-            // salida: solo playback cuando el player ve el plane
-            if (!viewingPlane)
-            {
-                ClearTileColor(i, Color.black);
-                continue;
-            }
-
-            bool hasClip = (cr.frames != null && cr.frames.Count > 0);
-            if (!hasClip)
-            {
-                ClearTileColor(i, Color.black);
-                continue;
-            }
-
-            if (!cr.playing && !cr.inBlackout)
-            {
-                cr.playing = true;
-                cr.playIndex = 0;
-                cr.playTimer = 0f;
-            }
-
-            if (cr.inBlackout)
-            {
-                cr.blackoutTimer += dt;
-                ClearTileColor(i, Color.black);
-                if (cr.blackoutTimer >= Mathf.Max(0.01f, playbackBlackoutSeconds))
-                {
-                    cr.blackoutTimer = 0f;
-                    cr.inBlackout = false;
-                    cr.playing = true;
-                    cr.playIndex = 0;
-                    cr.playTimer = 0f;
-                }
-            }
-            else
-            {
-                cr.playTimer += dt;
-                if (cr.playTimer >= cr.playFrameInterval)
-                {
-                    cr.playTimer -= cr.playFrameInterval;
-                    cr.playIndex++;
-                    if (cr.playIndex >= cr.frames.Count)
-                    {
-                        cr.playing = false;
-                        cr.inBlackout = true;
-                        cr.blackoutTimer = 0f;
-                        cr.playIndex = 0;
-                    }
-                }
-
-                int idx = Mathf.Clamp(cr.playIndex, 0, cr.frames.Count - 1);
-                BlitTileToAtlas(cr.frames[idx], i);
             }
         }
 
-        // bind y estilizado cada frame (por si cambiás opciones en Play)
+        // 2) PLAYBACK -> ATLAS (solo si el plane esta visible y a la cadencia)
+        if (viewingPlane && doAtlasWork)
+        {
+            for (int i = 0; i < cameras.Length && blitsLeft > 0; i++)
+            {
+                var v = cameras[i];
+                if (v == null) continue;
+                if (!_rt.TryGetValue(v, out var cr)) continue;
+
+                bool hasClip = cr.frameCount > 0;
+                if (!hasClip)
+                {
+                    continue; // lazy clear ya cubre el fondo
+                }
+
+                if (!cr.playing && !cr.inBlackout)
+                {
+                    cr.playing = true;
+                    cr.playIndex = Mathf.Clamp(cr.frameWrite - cr.frameCount, 0, cr.maxFrames - 1);
+                    cr.playTimer = 0f;
+                    cr.lastShownIndex = -1;
+                    cr.tileDirty = true;
+                }
+
+                if (cr.inBlackout)
+                {
+                    cr.blackoutTimer += (1f / Mathf.Max(1f, atlasUpdateFPS));
+                    if (cr.blackoutTimer >= Mathf.Max(0.01f, playbackBlackoutSeconds))
+                    {
+                        cr.blackoutTimer = 0f;
+                        cr.inBlackout = false;
+                        cr.playing = true;
+                        cr.playIndex = Mathf.Clamp(cr.frameWrite - cr.frameCount, 0, cr.maxFrames - 1);
+                        cr.playTimer = 0f;
+                        cr.lastShownIndex = -1;
+                        cr.tileDirty = true;
+                    }
+                }
+                else
+                {
+                    cr.playTimer += (1f / Mathf.Max(1f, atlasUpdateFPS));
+                    if (cr.playTimer >= cr.playFrameInterval)
+                    {
+                        cr.playTimer -= cr.playFrameInterval;
+                        cr.playIndex++;
+                        if (cr.playIndex >= cr.frameWrite)
+                        {
+                            cr.playing = false;
+                            cr.inBlackout = true;
+                            cr.blackoutTimer = 0f;
+                            cr.playIndex = Mathf.Clamp(cr.frameWrite - cr.frameCount, 0, cr.maxFrames - 1);
+                            cr.tileDirty = true;
+                        }
+                        else cr.tileDirty = true;
+                    }
+
+                    int ringIdx = ((cr.playIndex % cr.maxFrames) + cr.maxFrames) % cr.maxFrames;
+                    if (cr.tileDirty && ringIdx != cr.lastShownIndex)
+                    {
+                        BlitTileToAtlas(cr.frames[ringIdx], i);
+                        cr.lastShownIndex = ringIdx;
+                        cr.tileDirty = false;
+                        blitsLeft--;
+                    }
+                }
+            }
+        }
+
+        // Binding/estilo liviano
         BindAtlasToPlane();
         ApplyPlaneStyling();
+
+        if (!_atlasEverCleared && lazyClearAtlas)
+            ClearAtlasAll();
+
+        // Patron de test (solo Master)
+        if (artForceTestPattern)
+        {
+            var prev = RenderTexture.active;
+            RenderTexture.active = _atlas;
+            GL.Viewport(new Rect(0, 0, _atlas.width, _atlas.height));
+            GL.Clear(true, true, Color.black);
+            Texture2D tmp = new Texture2D(2, 2, TextureFormat.RGBA32, false, false);
+            tmp.SetPixels(new Color[] { Color.red, Color.green, Color.blue, Color.yellow });
+            tmp.Apply();
+            Graphics.Blit(tmp, _atlas);
+            RenderTexture.active = prev;
+            Destroy(tmp);
+        }
+    }
+
+    // ========================= INIT POR CAM =========================
+    void InitPerCamState()
+    {
+        _rt.Clear();
+        int n = cameras != null ? cameras.Length : 0;
+        int pooled = Mathf.Max(1, Mathf.FloorToInt(recordMaxSeconds * Mathf.Max(1, recordFPS)));
+
+        for (int i = 0; i < n; i++)
+        {
+            var v = cameras[i];
+            if (v == null) continue;
+
+            var cr = new CamRuntime();
+            cr.tileRT = CreateRT(tileWidth, tileHeight, 16, recordFormat);
+            cr.frameInterval = 1f / Mathf.Max(1, recordFPS);
+            cr.playFrameInterval = cr.frameInterval;
+            cr.maxFrames = pooled;
+
+            cr.frames = new RenderTexture[pooled];
+            for (int k = 0; k < pooled; k++)
+                cr.frames[k] = CreateRT(tileWidth, tileHeight, 0, recordFormat);
+
+            cr.frameWrite = 0;
+            cr.frameCount = 0;
+            cr.isRecording = v.IsRecording;
+            cr.playing = false;
+            cr.inBlackout = false;
+            cr.lastShownIndex = -1;
+            cr.tileDirty = true;
+
+            _rt[v] = cr;
+        }
+    }
+
+    RenderTexture CreateRT(int w, int h, int depth, RenderTextureFormat fmt)
+    {
+        var rt = new RenderTexture(w, h, depth, fmt, RenderTextureReadWrite.Default);
+        rt.name = "CCTV_RT_" + w + "x" + h + "_" + fmt;
+        rt.filterMode = atlasFilterMode;
+        rt.anisoLevel = atlasAniso;
+        rt.wrapMode = TextureWrapMode.Clamp;
+        rt.useMipMap = false;
+        rt.autoGenerateMips = false;
+        rt.antiAliasing = 1;
+        rt.Create();
+        return rt;
     }
 }
