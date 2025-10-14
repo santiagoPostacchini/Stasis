@@ -53,8 +53,8 @@ namespace Player.Scripts
                 var c = controllers[i];
 
                 c.Input.LegacyGain = c.Input.LegacyGain > 0
-                    ? 100 * sensitivity
-                    : -100 * sensitivity;
+                    ? 20 * sensitivity
+                    : -20 * sensitivity;
                 
                 controllers[i] = c;
             }
