@@ -60,6 +60,10 @@ namespace Player.Scripts.MovementFSM
         public LayerMask groundMask;
         public LayerMask climbMask;
 
+        [Header("Parkour Tags")] public string tagVault = "Vault";
+        public string tagClimb = "Climb";
+        public string tagWallrun = "Wallrun";
+
         [Header("General")] [Tooltip("Distancia máx. al obstáculo para iniciar (m).")]
         public float forwardCheckDistance = 1.2f;
 
@@ -112,9 +116,9 @@ namespace Player.Scripts.MovementFSM
 
         float Radius => capsule ? Mathf.Max(0.05f, capsule.radius) : 0.3f;
         float Height => capsule ? capsule.height : 1.8f;
-        
+
         public RaycastHit CurrentGroundHit => GroundHit;
-        
+
         public float CurrentGroundSlopeDeg => GroundSlopeDeg;
 
         void Reset()
@@ -327,6 +331,7 @@ namespace Player.Scripts.MovementFSM
         bool TryDetectVault(out ParkourProbe result)
         {
             result = ParkourProbe.None;
+
             var m = GetComponent<Model>();
             bool runHeld = m && m.runningKeyPressed;
             if (!runHeld)
@@ -337,68 +342,63 @@ namespace Player.Scripts.MovementFSM
 
             if (m && Time.time < m.blockVaultUntil)
             {
-                if (verboseLogs)
-                    Debug.Log($"[VaultProbe] BLOCKED by cooldown ({Time.time:F2} < {m.blockVaultUntil:F2})");
+                if (verboseLogs) Debug.Log("[VaultProbe] BLOCKED by cooldown");
                 return false;
             }
 
             float r = Radius;
             float h = Height;
-
-            Vector3 start = rb ? rb.position : transform.position;
             Vector3 pos = transform.position;
             Vector3 fwd = GetPlanarForward();
-            float chest = Mathf.Clamp(h * 0.55f, 0.8f, 1.1f);
-            Vector3 chestOrigin = pos + Vector3.up * chest;
+
+            float chestY = Mathf.Clamp(h * 0.55f, 0.8f, 1.1f);
+            Vector3 chestOrigin = pos + Vector3.up * chestY;
 
             if (!Physics.Raycast(chestOrigin, fwd, out var hitFront, forwardCheckDistance, environmentMask,
                     QueryTriggerInteraction.Ignore))
                 return false;
 
+            // <<< NUEVO: exige Tag "Vault" en el frente >>>
+            if (!hitFront.collider || !hitFront.collider.CompareTag(tagVault))
+            {
+                if (verboseLogs) Debug.Log($"[VaultProbe] Collider sin tag '{tagVault}'.");
+                return false;
+            }
+
             if (!TopFromHit(hitFront, out float topY))
             {
-                if (verboseLogs)
-                    Debug.Log($"[VaultProbe] No top from hit. hit={hitFront.point:F3} normal={hitFront.normal:F3}");
+                if (verboseLogs) Debug.Log("[VaultProbe] No top from hit.");
                 return false;
             }
 
             float feetY = (pos + Vector3.up * r).y;
             float obsHeight = topY - feetY;
-            if (verboseLogs)
-                Debug.Log($"[VaultProbe] ObsHeight={obsHeight:F2} (min={vaultMinHeight:F2} max={vaultMaxHeight:F2})");
             if (obsHeight < vaultMinHeight || obsHeight > vaultMaxHeight) return false;
 
             Vector3 topProbeStart = new Vector3(hitFront.point.x, topY + 0.02f, hitFront.point.z);
-            if (!Physics.Raycast(topProbeStart, Vector3.down, out var topHit, 1f, environmentMask,
+            if (!Physics.Raycast(topProbeStart, Vector3.down, out var topHit, 1f, environmentMask | groundMask,
                     QueryTriggerInteraction.Ignore))
-            {
-                if (verboseLogs) Debug.Log($"[VaultProbe] No topHit from above.");
                 return false;
-            }
 
             Vector3 topPoint = topHit.point + Vector3.up * clearanceSkin;
 
             Vector3 midXZ = new Vector3(topPoint.x, topPoint.y, topPoint.z) + fwd * Mathf.Max(r * 0.6f, 0.2f);
             midXZ.y = topPoint.y;
 
-            // (seguimos pidiendo clearance sobre la tapa, pero esto se ignora en el fallback)
+            // Clearance sobre tapa (geométrico; sin tags)
             if (!HasClearanceCapsule(topPoint + Vector3.up * (vaultTopClearance * 0.5f), vaultTopClearance))
             {
-                if (verboseLogs) Debug.Log($"[VaultProbe] No clearance above top. top={topPoint:F3}");
-                // no retornamos aquí: un obstáculo grueso puede forzar step-up
+                if (verboseLogs) Debug.Log("[VaultProbe] No clearance above top.");
             }
 
             float minF = Mathf.Max(vaultMinForward, r * 1.2f);
             float maxF = Mathf.Max(minF + 0.3f, vaultMaxForward);
-            LayerMask groundOrEnv = groundMask.value != 0 ? groundMask : environmentMask;
             LayerMask maskTop = environmentMask | groundMask;
 
             Vector3 land = Vector3.zero;
-            bool foundLand = false;
-            bool foundSameTop = false;
-            Vector3 landOnSameTop = Vector3.zero;
+            bool foundLand = false, foundSameTop = false, thickTopLikely = false;
 
-            // --- MISMA TAPA ---
+            // MISMA TAPA
             for (float f = 0.05f; f <= maxF + 0.0001f; f += 0.1f)
             {
                 Vector3 over = topPoint + fwd * f + Vector3.up * 0.05f;
@@ -410,76 +410,50 @@ namespace Player.Scripts.MovementFSM
                         Vector3 stand = downHit.point + Vector3.up * (r + clearanceSkin);
                         if (HasClearanceCapsule(stand, h - r * 2f))
                         {
-                            landOnSameTop = stand;
-                            foundSameTop = true;
-                            if (verboseLogs) Debug.Log($"[VaultProbe] SameTop at f={f:F2} stand={stand:F3}");
+                            land = stand;
+                            foundLand = foundSameTop = true;
                             break;
                         }
-                        else if (verboseLogs) Debug.Log($"[VaultProbe] SameTop blocked clearance at f={f:F2}");
                     }
                 }
             }
 
-            // --- OTRO LADO ---
-            Vector3 landFallback = Vector3.zero;
-            bool foundFallback = false;
-            if (!foundSameTop)
+            // OTRO LADO
+            if (!foundLand)
             {
                 for (float f = minF; f <= maxF + 0.0001f; f += 0.1f)
                 {
                     Vector3 over = topPoint + fwd * f + Vector3.up * 0.05f;
-                    if (Physics.Raycast(over, Vector3.down, out var downHit, vaultDownCast, groundOrEnv,
+                    if (Physics.Raycast(over, Vector3.down, out var downHit, vaultDownCast, maskTop,
                             QueryTriggerInteraction.Ignore))
                     {
                         Vector3 stand = downHit.point + Vector3.up * (r + clearanceSkin);
                         if (HasClearanceCapsule(stand, h - r * 2f))
                         {
-                            landFallback = stand;
-                            foundFallback = true;
-                            if (verboseLogs) Debug.Log($"[VaultProbe] FarSide at f={f:F2} stand={stand:F3}");
+                            land = stand;
+                            foundLand = true;
                             break;
                         }
-                        else if (verboseLogs) Debug.Log($"[VaultProbe] FarSide clearance blocked at f={f:F2}");
                     }
                 }
             }
 
-            // --- ¿obstáculo más grueso que maxF? (chequeo para habilitar fallback sin clearance) ---
-            bool thickTopLikely = false;
+            // ¿tapa gruesa?
             {
                 Vector3 overMax = topPoint + fwd * (maxF + 0.05f) + Vector3.up * 0.2f;
                 if (Physics.Raycast(overMax, Vector3.down, out var dTopMax, vaultDownCast, environmentMask,
                         QueryTriggerInteraction.Ignore))
                     thickTopLikely = (dTopMax.collider == hitFront.collider);
             }
-
-            // --- FALLBACK FUERZA STEP-UP (ignora clearance) ---
-            if (!foundSameTop && !foundFallback && thickTopLikely)
+            if (!foundLand && thickTopLikely)
             {
-                landOnSameTop = topPoint + Vector3.up * (r + clearanceSkin);
-                foundSameTop = true;
-                if (verboseLogs)
-                    Debug.Log($"[VaultProbe] FORCE STEP-UP (thickTop) -> land={landOnSameTop:F3} (ignoring clearance)");
+                land = topPoint + Vector3.up * (r + clearanceSkin);
+                foundLand = foundSameTop = true;
             }
 
-            if (foundSameTop)
-            {
-                land = landOnSameTop;
-                foundLand = true;
-            }
-            else if (foundFallback)
-            {
-                land = landFallback;
-                foundLand = true;
-            }
+            if (!foundLand) return false;
 
-            if (!foundLand)
-            {
-                if (verboseLogs) Debug.Log($"[VaultProbe] No land found.");
-                return false;
-            }
-
-            // forward final y corrección de signo
+            Vector3 start = rb ? rb.position : transform.position;
             Vector3 vaultFwd = GetPlanarForward();
             if (vaultFwd.sqrMagnitude > 0f) vaultFwd.Normalize();
 
@@ -494,7 +468,7 @@ namespace Player.Scripts.MovementFSM
                     vaultFwd = -vaultFwd;
             }
 
-            var res = new ParkourProbe
+            result = new ParkourProbe
             {
                 action = ParkourAction.Vault,
                 hitPoint = hitFront.point,
@@ -512,12 +486,6 @@ namespace Player.Scripts.MovementFSM
                 vaultForward = vaultFwd,
                 vaultLandOnSameCollider = foundSameTop
             };
-
-            if (verboseLogs)
-                Debug.Log(
-                    $"[VaultProbe] OK action=Vault | h={res.obstacleHeight:F2} dist={res.vaultDistance:F2} sameTop={res.vaultLandOnSameCollider} land={res.vaultLandPoint:F3} thickTopLikely={thickTopLikely}");
-
-            result = res;
             return true;
         }
 
@@ -527,33 +495,36 @@ namespace Player.Scripts.MovementFSM
 
         bool TryDetectClimb(out ParkourProbe result)
         {
+            result = ParkourProbe.None;
+
             var m = GetComponent<Model>();
             if (m && Time.time < m.blockClimbUntil)
             {
-                if (verboseLogs) Debug.Log($"[ClimbProbe] BLOCKED by cooldown.");
-                result = ParkourProbe.None;
+                if (verboseLogs) Debug.Log("[ClimbProbe] BLOCKED by cooldown");
                 return false;
             }
 
-            result = ParkourProbe.None;
-
             Vector3 forward = GetPlanarForward();
-            LayerMask maskClimb = (climbMask.value != 0) ? climbMask : environmentMask;
-            LayerMask maskTopAndClearance = maskClimb | environmentMask | groundMask;
 
             float chest = Mathf.Clamp(Height * 0.55f, 0.8f, 1.1f);
             Vector3 chestOrigin = transform.position + Vector3.up * chest;
 
             if (!Physics.Raycast(chestOrigin, forward, out RaycastHit wallHit,
-                    forwardCheckDistance, maskClimb, QueryTriggerInteraction.Ignore))
+                    forwardCheckDistance, environmentMask, QueryTriggerInteraction.Ignore))
+                return false;
+
+            // <<< NUEVO: exige Tag "Climb" en el frente >>>
+            if (!wallHit.collider || !wallHit.collider.CompareTag(tagClimb))
             {
-                //if (verboseLogs) Debug.Log($"[ClimbProbe] No wall hit.");
+                if (verboseLogs) Debug.Log($"[ClimbProbe] Collider sin tag '{tagClimb}'.");
                 return false;
             }
 
             float minY = transform.position.y + Radius + climbMinHeight;
             float probeUpMax = Mathf.Max(climbMaxHeight, 2.5f);
             float maxY = transform.position.y + Radius + probeUpMax;
+
+            LayerMask maskTopAndClearance = environmentMask | groundMask;
 
             const int steps = 8;
             for (int i = 0; i <= steps; i++)
@@ -566,26 +537,14 @@ namespace Player.Scripts.MovementFSM
                         probeUpMax + 1.0f, maskTopAndClearance, QueryTriggerInteraction.Ignore))
                 {
                     float climbH = down.point.y - (transform.position.y + Radius);
-                    if (climbH < climbMinHeight)
-                    {
-                        if (verboseLogs) Debug.Log($"[ClimbProbe] Ledge too low at y={y:F2} (h={climbH:F2})");
-                        continue;
-                    }
+                    if (climbH < climbMinHeight) continue;
 
                     Vector3 headSpace = down.point + Vector3.up * (Radius + climbTopClearance);
-                    if (!HasClearanceCapsule(headSpace, Height - Radius * 2f, maskTopAndClearance))
-                    {
-                        if (verboseLogs) Debug.Log($"[ClimbProbe] No head clearance at y={y:F2}");
-                        continue;
-                    }
+                    if (!HasClearanceCapsule(headSpace, Height - Radius * 2f, maskTopAndClearance)) continue;
 
                     Vector3 stand = down.point + forward * Mathf.Max(0.05f, climbStandForward)
                                                + Vector3.up * (Radius + clearanceSkin);
-                    if (!HasClearanceCapsule(stand, Height - Radius * 2f, maskTopAndClearance))
-                    {
-                        if (verboseLogs) Debug.Log($"[ClimbProbe] No stand clearance at y={y:F2}");
-                        continue;
-                    }
+                    if (!HasClearanceCapsule(stand, Height - Radius * 2f, maskTopAndClearance)) continue;
 
                     result = new ParkourProbe
                     {
@@ -597,12 +556,10 @@ namespace Player.Scripts.MovementFSM
                         climbStandPoint = stand,
                         climbHeight = climbH
                     };
-                    if (verboseLogs) Debug.Log($"[ClimbProbe] OK height={climbH:F2} ledge={down.point:F3}");
                     return true;
                 }
             }
 
-            if (verboseLogs) Debug.Log($"[ClimbProbe] No climb found.");
             return false;
         }
 
@@ -630,15 +587,11 @@ namespace Player.Scripts.MovementFSM
             var m = GetComponent<Model>();
             if (m && Time.time < m.blockWallrunUntil)
             {
-                if (verboseLogs) Debug.Log($"[WallrunProbe] BLOCKED by cooldown.");
+                if (verboseLogs) Debug.Log("[WallrunProbe] BLOCKED by cooldown");
                 return false;
             }
 
-            if (requireAirForWallrun && Grounded)
-            {
-                //if (verboseLogs) Debug.Log($"[WallrunProbe] Requires air, but grounded.");
-                return false;
-            }
+            if (requireAirForWallrun && Grounded) return false;
 
             Vector3 fwd = GetPlanarForward();
             Vector3 sideDir = (side < 0 ? -transform.right : transform.right);
@@ -650,57 +603,36 @@ namespace Player.Scripts.MovementFSM
 
             if (!Physics.Raycast(origin, sideDir, out RaycastHit hit, wallCheckDistance, environmentMask,
                     QueryTriggerInteraction.Ignore))
+                return false;
+
+            // <<< NUEVO: exige Tag "Wallrun" en la pared lateral (¡puede ser layer Ground!) >>>
+            if (!hit.collider || !hit.collider.CompareTag(tagWallrun))
             {
-                if (verboseLogs) Debug.Log($"[WallrunProbe] No wall on side {side}.");
+                if (verboseLogs) Debug.Log($"[WallrunProbe] Collider sin tag '{tagWallrun}'.");
                 return false;
             }
 
             float upDot = Vector3.Dot(hit.normal, Vector3.up);
-            if (Mathf.Abs(upDot) > Mathf.Sin(wallMaxSlopeDeg * Mathf.Deg2Rad))
-            {
-                if (verboseLogs) Debug.Log($"[WallrunProbe] Wall too sloped.");
-                return false;
-            }
+            if (Mathf.Abs(upDot) > Mathf.Sin(wallMaxSlopeDeg * Mathf.Deg2Rad)) return false;
 
             Vector3 wallForward = Vector3.Cross(hit.normal, Vector3.up);
-            if (Vector3.Dot(fwd, wallForward) < Vector3.Dot(fwd, -wallForward))
-                wallForward = -wallForward;
+            if (Vector3.Dot(fwd, wallForward) < Vector3.Dot(fwd, -wallForward)) wallForward = -wallForward;
 
             float ang = Vector3.Angle(fwd, wallForward);
-            if (ang > wallToForwardMaxAngle)
-            {
-                if (verboseLogs) Debug.Log($"[WallrunProbe] Angle too wide ({ang:F1} > {wallToForwardMaxAngle:F1}).");
-                return false;
-            }
+            if (ang > wallToForwardMaxAngle) return false;
 
             Vector3 horizVel = rb ? new Vector3(rb.velocity.x, 0, rb.velocity.z) : Vector3.zero;
-            if (horizVel.magnitude < wallMinSpeed)
-            {
-                if (verboseLogs)
-                    Debug.Log($"[WallrunProbe] Speed too low ({horizVel.magnitude:F2} < {wallMinSpeed:F2}).");
-                return false;
-            }
+            if (horizVel.magnitude < wallMinSpeed) return false;
 
             Vector3 head = origin + Vector3.up * wallMinHeight;
-            if (!HasClearanceCapsule(head, Radius * 2f))
-            {
-                if (verboseLogs) Debug.Log($"[WallrunProbe] No head clearance.");
-                return false;
-            }
+            if (!HasClearanceCapsule(head, Radius * 2f)) return false;
 
-            Vector3 fwdPlanar = GetPlanarForward();
             Vector3 nPlanar = hit.normal;
             nPlanar.y = 0f;
-            if (nPlanar.sqrMagnitude < 1e-6f)
-            {
-                if (verboseLogs) Debug.Log($"[WallrunProbe] nPlanar ~0.");
-                return false;
-            }
-
+            if (nPlanar.sqrMagnitude < 1e-6f) return false;
             nPlanar.Normalize();
 
             float rightDot = Vector3.Dot(nPlanar, transform.right);
-
             int resolvedSide = -Mathf.Sign(rightDot) >= 0 ? +1 : -1;
 
             result = new ParkourProbe
@@ -710,12 +642,11 @@ namespace Player.Scripts.MovementFSM
                 wallRunNormal = hit.normal,
                 wallSide = resolvedSide
             };
-
-            if (verboseLogs)
-                Debug.Log($"[WallrunProbe] OK side={(resolvedSide > 0 ? "Right" : "Left")} at {hit.point:F3}");
             return true;
         }
 
+        
+        
         #endregion
 
         #region Helpers

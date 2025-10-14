@@ -54,6 +54,11 @@ namespace Player.Scripts.MovementFSM.MVC
 
         [Header("Layers")] public LayerMask groundMask;
         public LayerMask wallMask;
+        
+        [Header("Parkour Tags (usar en colliders)")]
+        public string tagVault   = "Vault";
+        public string tagClimb   = "Climb";
+        public string tagWallrun = "Wallrun";
 
         [Header("<color=green>Movement Settings</color>")]
         public float walkingSpeed = 4f;
@@ -90,16 +95,11 @@ namespace Player.Scripts.MovementFSM.MVC
         [HideInInspector] public float lastFallSpeed;
         [HideInInspector] public float lastLandingTime = -999f;
 
-        [Header("Air Anim / Deep Fall")] [Tooltip("Retraso antes de activar la animación de 'caída al vacío'.")]
-        public float deepFallAnimDelay = 0.45f;
-
-
         [Header("Vault")] public float vaultRegrabCooldown = 0.25f;
         [HideInInspector] public float blockVaultUntil = -999f;
 
         [Header("Climb")] public float climbRegrabCooldown = 0.25f;
         [HideInInspector] public float blockClimbUntil = -999f;
-        public LayerMask climbMask;
 
         [Header("Wallrun")] public float wallRunMaxSpeed = 8.0f;
         public float wallRunAccel = 30.0f;
@@ -198,6 +198,12 @@ namespace Player.Scripts.MovementFSM.MVC
                 probe = Scanner.Probe;
 
                 Scanner.OnGroundedChanged += HandleGroundedChanged;
+                
+                Scanner.groundMask      = groundMask;
+                Scanner.environmentMask = groundMask | wallMask;
+                Scanner.tagVault        = tagVault;
+                Scanner.tagClimb        = tagClimb;
+                Scanner.tagWallrun      = tagWallrun;
             }
 
             if (_stair)
