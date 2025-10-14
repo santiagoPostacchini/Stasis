@@ -3,9 +3,10 @@ using Puzzle_Elements.Hedron.Scripts;
 using System.Collections;
 using UnityEngine;
 using UnityEngine.Events;
-
-[RequireComponent(typeof(Collider))]
-public class HedronContainerIn : MonoBehaviour
+using Player.Scripts.Interactor;
+using TMPro;
+    [RequireComponent(typeof(Collider))]
+public class HedronContainerIn : MonoBehaviour,IInteractable
 {
     [SerializeField] private Button _button;
 
@@ -54,6 +55,11 @@ public class HedronContainerIn : MonoBehaviour
 
     public bool HasOccupant => _current != null;
 
+
+    public GameObject panel;
+    public TextMeshProUGUI E;
+    public TextMeshProUGUI message;
+
     void Awake()
     {
         var col = GetComponent<Collider>();
@@ -76,6 +82,7 @@ public class HedronContainerIn : MonoBehaviour
     void Start()
     {
         if (_button != null) _button.SetText(_button.E, "");
+        if (panel != null) panel.gameObject.SetActive(false);
     }
 
     void Update()
@@ -129,6 +136,11 @@ public class HedronContainerIn : MonoBehaviour
 
                     if (_rightMat != null && _leftMat != null)
                         StartCoroutine(GlowPulseOnce());
+                    if(panel != null)
+                    {
+                        ActivatePanel();
+                    }
+                   
                 }
             }
         }
@@ -397,5 +409,35 @@ public class HedronContainerIn : MonoBehaviour
             _leftMat.SetColor("_EmissionColor", _baseEmissionLeft);
             _leftMat.DisableKeyword("_EMISSION");
         }
+    }
+
+    private void ActivatePanel()
+    {
+        StartCoroutine(waitShowPanel());
+
+    }
+    IEnumerator waitShowPanel()
+    {
+        yield return new WaitForSeconds(2f);
+        panel.SetActive(true);
+        E.gameObject.SetActive(true);
+        E.text = "¿Deseas extraer el hedro?";
+    }
+    public void Interact()
+    {
+        if (panel.gameObject.activeSelf)
+        {
+            E.gameObject.SetActive(false);
+            message.gameObject.SetActive(true);
+            OpenAndEject();
+            StartCoroutine(waitClosePanel());
+        }
+
+    }
+    IEnumerator waitClosePanel()
+    {
+        yield return new WaitForSeconds(1f);
+        message.gameObject.SetActive(false);
+        panel.gameObject.SetActive(false);
     }
 }

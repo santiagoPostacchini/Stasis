@@ -34,9 +34,14 @@ namespace Puzzle_Elements.Button.Scripts
         }
         public void Interact()
         {
+            Debug.Log("TrayApplyInteract");
             if (!canCallEvent) return;
             canCallEvent = false;
-            animator.SetBool(animatorParam,true);
+            if(animator != null)
+            {
+                animator.SetBool(animatorParam, true);
+            }
+           
             StartCoroutine(ActivateEvent());
             //ChangeMaterial();
             EventManager.TriggerEvent("Click", gameObject);
