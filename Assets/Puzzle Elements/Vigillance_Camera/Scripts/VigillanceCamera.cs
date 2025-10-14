@@ -1,27 +1,36 @@
-using System.Linq;
 using UnityEngine;
 
 [ExecuteAlways]
 public class VigillanceCamera : MonoBehaviour
 {
     public Transform target;
-    [HideInInspector]public Transform targetRootOverride;
+    [HideInInspector] public Transform targetRootOverride;
 
+    [Header("Ejes locales")]
     public Vector3 localLookAxis = Vector3.right;
     public Vector3 localUpAxis = Vector3.up;
 
+    [Header("Clamps (°)")]
     public Vector2 yawMinMax = new Vector2(-90f, 90f);
     public Vector2 pitchMinMax = new Vector2(-20f, 20f);
     public bool invertPitch = false;
 
+    [Header("Rotación")]
     public float turnSpeed = 8f;
     public bool lockRollX = true;
 
+    [Header("Oclusión")]
     public float occlusionRadius = 0.08f;
     public float minOccluderSize = 0.3f;
 
+    [Tooltip("Sólo capas que pueden ocluir. Dejalo en sólidos/escenario; excluí partículas, triggers finos, etc.")]
+    public LayerMask occluderMask = ~0;
+
     Transform _parent;
     Quaternion _lastValidRotation;
+
+    // Buffer estático para evitar allocs en runtime
+    static readonly RaycastHit[] _hitsBuf = new RaycastHit[32];
 
     void Awake()
     {
@@ -47,15 +56,16 @@ public class VigillanceCamera : MonoBehaviour
         Quaternion desiredLocal = FromToRotationLocal(localLookAxis, toLocal, localUpAxis);
         Vector3 eDesired = NormalizeEuler(desiredLocal.eulerAngles);
 
+        // Yaw
         float yaw = eDesired.y;
         if (yaw < yawMinMax.x || yaw > yawMinMax.y)
         {
             ApplyRotation(_lastValidRotation);
             return;
         }
-
         eDesired.y = Mathf.Clamp(eDesired.y, yawMinMax.x, yawMinMax.y);
 
+        // Pitch (en Z según convención de este rig)
         float p = eDesired.z;
         if (invertPitch) p = -p;
         p = Mathf.Clamp(p, pitchMinMax.x, pitchMinMax.y);
@@ -72,30 +82,55 @@ public class VigillanceCamera : MonoBehaviour
     bool IsOccluded(Vector3 toWorld, float dist)
     {
         Vector3 dir = toWorld / dist;
-        var hits = Physics.SphereCastAll(transform.position, occlusionRadius, dir, dist, ~0, QueryTriggerInteraction.Ignore);
-        if (hits == null || hits.Length == 0) return false;
 
-        var sorted = hits.OrderBy(h => h.distance);
+        // NonAlloc: sin GC ni LINQ
+        int n = Physics.SphereCastNonAlloc(
+            transform.position,
+            occlusionRadius,
+            dir,
+            _hitsBuf,
+            dist,
+            occluderMask,
+            QueryTriggerInteraction.Ignore
+        );
+
+        if (n <= 0) return false;
+
         Transform targetRoot = targetRootOverride ? targetRootOverride : target;
 
-        foreach (var h in sorted)
-        {
-            if (!h.collider || !h.collider.transform) continue;
-            Transform t = h.collider.transform;
-            bool isTarget = t == target || t.IsChildOf(targetRoot);
-            if (isTarget) return false;
+        float bestDist = float.MaxValue;
+        Collider bestCol = null;
 
-            Vector3 s = h.collider.bounds.size;
-            float maxSize = Mathf.Max(s.x, Mathf.Max(s.y, s.z));
-            if (maxSize >= minOccluderSize) return true;
+        for (int i = 0; i < n; i++)
+        {
+            var col = _hitsBuf[i].collider;
+            if (!col) continue;
+
+            Transform t = col.transform;
+
+            // Si golpea el target (o un hijo), no hay oclusión
+            if (t == target || (targetRoot && t.IsChildOf(targetRoot)))
+                return false;
+
+            float d = _hitsBuf[i].distance;
+            if (d < bestDist)
+            {
+                bestDist = d;
+                bestCol = col;
+            }
         }
-        return false;
+
+        if (!bestCol) return false;
+
+        // Tamaño del más cercano: único chequeo
+        Vector3 s = bestCol.bounds.size;
+        float maxSize = (s.x > s.y ? (s.x > s.z ? s.x : s.z) : (s.y > s.z ? s.y : s.z));
+        return maxSize >= minOccluderSize;
     }
 
     void ApplyRotation(Quaternion targetRot)
     {
-        if (turnSpeed <= 0f)
-            transform.localRotation = targetRot;
+        if (turnSpeed <= 0f) transform.localRotation = targetRot;
         else
         {
             float a = 1f - Mathf.Exp(-turnSpeed * Time.deltaTime);
