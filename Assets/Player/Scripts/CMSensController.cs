@@ -1,4 +1,3 @@
-using System;
 using Unity.Cinemachine;
 using UnityEngine;
 
@@ -10,14 +9,16 @@ namespace Player.Scripts
         public CinemachineInputAxisController axisController;
 
         [Header("Sensitivity")]
-        [Min(0f)] public float sensitivity = 3f;
-
-        [Tooltip("Si está activo, aplica la sensibilidad a todos los ejes detectados (yaw/pitch, etc.).")]
-        public bool applyToAllAxes = true;
+        [Min(1f)] public float sensitivity = 3f;
 
         private void Awake()
         {
             Cursor.lockState = CursorLockMode.Locked;
+        }
+
+        private void Start()
+        {
+            Apply();
         }
 
         void Reset()
@@ -51,7 +52,9 @@ namespace Player.Scripts
             {
                 var c = controllers[i];
 
-                c.Input.LegacyGain = sensitivity * 100;
+                c.Input.LegacyGain = c.Input.LegacyGain > 0
+                    ? 100 * sensitivity
+                    : -100 * sensitivity;
                 
                 controllers[i] = c;
             }
