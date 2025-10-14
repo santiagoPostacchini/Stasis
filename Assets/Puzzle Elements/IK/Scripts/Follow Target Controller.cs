@@ -10,6 +10,10 @@ public class FollowTargetController : MonoBehaviour
     public Transform player;
     public Rig rig;
     public Transform brother;
+    [SerializeField]private bool isTagModifiable = false;
+    [SerializeField]private LayerMask _layerTipController;
+    [SerializeField]private LayerMask _layerBrother;
+    [SerializeField]private GameObject _platformModifyTag;
     public Transform mid1;
     public Transform mid2;
 
@@ -211,12 +215,43 @@ public class FollowTargetController : MonoBehaviour
         if (brother == null) return;
 
         Transform to = atStart ? brother : startAnchor;
+        
         currentTip = to;
-
+        if(currentTip == brother)
+        {
+            if(_platformModifyTag != null)
+            {
+                SetLayerRecursively(_platformModifyTag, _layerBrother);
+            }
+        }
+        else if(currentTip == startAnchor)
+        {
+            if (_platformModifyTag)
+            {
+                SetLayerRecursively(_platformModifyTag, _layerTipController);
+            }
+        }
         if (moveRoutine != null) StopCoroutine(moveRoutine);
         moveRoutine = StartCoroutine(MoveRB_Pausable(to, moveDuration));
     }
+    void SetLayerRecursively(GameObject parent, LayerMask layerMask)
+    {
+        // El valor del LayerMask es un bitmask, necesitamos el índice (el número de bit activo)
+        int newLayer = Mathf.RoundToInt(Mathf.Log(layerMask.value, 2));
 
+        if (newLayer < 0 || newLayer > 31)
+        {
+            Debug.LogError("LayerMask inválido. Asegurate de pasar solo una layer, no múltiples.");
+            return;
+        }
+
+        parent.layer = newLayer;
+
+        foreach (Transform child in parent.transform)
+        {
+            SetLayerRecursively(child.gameObject, layerMask);
+        }
+    }
     private IEnumerator MoveRB_Pausable(Transform to, float totalDuration)
     {
         totalDuration = Mathf.Max(0.0001f, totalDuration);
