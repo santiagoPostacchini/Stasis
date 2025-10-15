@@ -905,7 +905,8 @@ public class HedronContainerIn : MonoBehaviour, IInteractable
             E.gameObject.SetActive(false);
             message.gameObject.SetActive(true);
             OpenAndEject();
-            StartCoroutine(WaitClosePanel());
+            StartCoroutine(WaitClosePanel()); 
+            
         }
     }
 
