@@ -110,7 +110,7 @@ public class TrainSystem : MonoBehaviour
 
     public void DisableSystem()
     {
-        // Pedimos frenar en departure, pero completando la vuelta con el único TP válido (último -> 0)
+        // Pedimos frenar en departure, pero completando la vuelta con el ï¿½nico TP vï¿½lido (ï¿½ltimo -> 0)
         RequestTrainHaltAtDeparture();
 
         // Forzamos que la barricada baje y permanezca abajo
@@ -138,9 +138,27 @@ public class TrainSystem : MonoBehaviour
 
         if (!systemEnabled)
         {
-            if (elevatorRb) { elevatorRb.velocity = Vector3.zero; elevatorRb.angularVelocity = Vector3.zero; }
-            if (barricadeRb) { barricadeRb.velocity = Vector3.zero; barricadeRb.angularVelocity = Vector3.zero; }
-            if (trainRb) { trainRb.velocity = Vector3.zero; trainRb.angularVelocity = Vector3.zero; }
+
+            if (elevatorRb)
+            {
+                elevatorRb.isKinematic = false;
+                elevatorRb.velocity = Vector3.zero; 
+                elevatorRb.angularVelocity = Vector3.zero;
+            }
+
+            if (barricadeRb)
+            {
+                barricadeRb.isKinematic = false;
+                barricadeRb.velocity = Vector3.zero; 
+                barricadeRb.angularVelocity = Vector3.zero;
+            }
+
+            if (trainRb)
+            {
+                trainRb.isKinematic = false;
+                trainRb.velocity = Vector3.zero; 
+                trainRb.angularVelocity = Vector3.zero;
+            }
             return;
         }
 
@@ -329,7 +347,7 @@ public class TrainSystem : MonoBehaviour
     {
         if (!barrConfigured) return;
 
-        // Prioridad: si está forzada abajo, mantenerla abajo
+        // Prioridad: si estï¿½ forzada abajo, mantenerla abajo
         if (barricadeForceDown && barrState != BarricadeState.HoldDown)
         {
             barrState = BarricadeState.ToDown;
@@ -415,7 +433,7 @@ public class TrainSystem : MonoBehaviour
                     }
 
                     Vector3 target = trainWaypoints[trainCurrentIdx].position;
-                    bool reached = MoveBodyLinear(trainRb, target, trainSpeed, trainArriveThreshold); // SIN ROTACIÓN
+                    bool reached = MoveBodyLinear(trainRb, target, trainSpeed, trainArriveThreshold); // SIN ROTACIï¿½N
                     if (reached)
                     {
                         if (trainCurrentIdx == trainDepIdx) trainPassedDepartureThisLap = true;
@@ -458,7 +476,7 @@ public class TrainSystem : MonoBehaviour
                     }
 
                     Vector3 target = trainWaypoints[trainCurrentIdx].position;
-                    bool reached = MoveBodyLinear(trainRb, target, trainSpeed, trainArriveThreshold); // SIN ROTACIÓN
+                    bool reached = MoveBodyLinear(trainRb, target, trainSpeed, trainArriveThreshold); // SIN ROTACIï¿½N
 
                     if (reached)
                     {

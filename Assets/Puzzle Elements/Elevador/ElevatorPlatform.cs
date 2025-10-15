@@ -26,7 +26,7 @@ public class ElevatorPlatform : MonoBehaviour
     private Transform elevatorLow;
     private Transform elevatorHigh;
 
-    // Estado (idéntico al del TrainSystem)
+    // Estado (idï¿½ntico al del TrainSystem)
     private enum ElevatorState { Idle, ToA, WaitAtA, ToB, WaitAtB }
     private ElevatorState elevState = ElevatorState.Idle;
     private Vector3 elevTarget;
@@ -79,7 +79,10 @@ public class ElevatorPlatform : MonoBehaviour
         {
             if (elevatorRb)
             {
-                elevatorRb.velocity = Vector3.zero;
+
+                elevatorRb.isKinematic = false;
+
+            elevatorRb.velocity = Vector3.zero;
                 elevatorRb.angularVelocity = Vector3.zero;
             }
             return;
@@ -131,7 +134,7 @@ public class ElevatorPlatform : MonoBehaviour
             if (snapIfNeeded)
             {
                 // no teleporta salvo que quieras alinear al arranque
-                // acá dejamos la posición actual
+                // acï¿½ dejamos la posiciï¿½n actual
             }
         }
         else
@@ -140,7 +143,7 @@ public class ElevatorPlatform : MonoBehaviour
         }
     }
 
-    // --------- Lógica (idéntica a TrainSystem) ---------
+    // --------- Lï¿½gica (idï¿½ntica a TrainSystem) ---------
     private void TickElevator()
     {
         if (!elevConfigured) return;
