@@ -4,69 +4,74 @@ using UnityEngine;
 [RequireComponent(typeof(Rigidbody), typeof(CapsuleCollider))]
 public class StairStepper : MonoBehaviour
 {
-    [Header("Mask & Refs")]
-    public LayerMask walkableMask;
+    [Header("Mask & Refs")] public LayerMask walkableMask;
     public Rigidbody rb;
     public CapsuleCollider capsule;
 
-    [Header("Step geometry")]
-    [Tooltip("Altura máxima escalón (m).")]
+    [Header("Step geometry")] [Tooltip("Altura máxima escalón (m).")]
     public float maxStepUp = 0.35f;
-    [Tooltip("Caída suave máxima (m).")]
-    public float maxStepDown = 0.55f;
+
+    [Tooltip("Caída suave máxima (m).")] public float maxStepDown = 0.55f;
+
     [Tooltip("Alcance base hacia adelante (m).")]
     public float checkForward = 0.45f;
 
     [Tooltip("Altura ankle del probe (m).")]
     public float ankleHeight = 0.12f;
+
     [Tooltip("Altura knee del probe (m).")]
     public float kneeHeight = 0.60f;
+
     [Tooltip("Radio de los probes (Sphere/Capsule).")]
     public float probeRadius = 0.06f;
 
-    [Header("Riser gating / ángulos")]
-    [Tooltip("dot(move,-normal) mínimo (encarar el escalón).")]
-    [Range(0f,1f)] public float approachDotMin = 0.35f;
-    [Tooltip("Descarta pendientes poco verticales (riser). Máx normal.y aceptada.")]
-    [Range(0f,0.6f)] public float maxRiserNormalY = 0.27f;
+    [Header("Riser gating / ángulos")] [Tooltip("dot(move,-normal) mínimo (encarar el escalón).")] [Range(0f, 1f)]
+    public float approachDotMin = 0.35f;
 
-    [Header("Detección robusta")]
-    public bool enableVerticalRiserSweep = true;    // CapsuleCast entre ankle y knee
+    [Tooltip("Descarta pendientes poco verticales (riser). Máx normal.y aceptada.")] [Range(0f, 0.6f)]
+    public float maxRiserNormalY = 0.27f;
+
+    [Header("Detección robusta")] public bool enableVerticalRiserSweep = true; // CapsuleCast entre ankle y knee
+
     [Tooltip("Cuánto el alcance se incrementa con la velocidad.")]
-    public float speedCompForward = 6f;             // m/s * dt * factor
-    [Tooltip("Usar transform.forward si la velocidad es menor a…")]
-    public float probeUseVelMin = 0.15f;            // m/s
-    [Tooltip("Radio relativo del upper-clearance (knee).")]
-    [Range(0.4f,1f)] public float kneeClearanceRadiusScale = 0.6f;
+    public float speedCompForward = 6f; // m/s * dt * factor
 
-    [Header("Ledge suspendido")]
-    public bool enableLedgeProbe = true;
+    [Tooltip("Usar transform.forward si la velocidad es menor a…")]
+    public float probeUseVelMin = 0.15f; // m/s
+
+    [Tooltip("Radio relativo del upper-clearance (knee).")] [Range(0.4f, 1f)]
+    public float kneeClearanceRadiusScale = 0.6f;
+
+    [Header("Ledge suspendido")] public bool enableLedgeProbe = true;
+
     [Tooltip("Offset adelante base (m) para muestrear la tapa.")]
     public float ledgeAhead = 0.28f;
+
     [Tooltip("Cuánto más arriba casteamos el ray down.")]
     public float ledgeDownFromUp = 0.25f;
-    [Range(0f,1f)] public float topMinNormalY = 0.25f;
 
-    [Header("Ascent (tiempo constante)")]
-    [Tooltip("Duración fija de subida (s), independiente de la altura.")]
+    [Range(0f, 1f)] public float topMinNormalY = 0.25f;
+
+    [Header("Ascent (tiempo constante)")] [Tooltip("Duración fija de subida (s), independiente de la altura.")]
     public float stepTime = 0.12f;
+
     [Tooltip("Pequeña ayuda XZ durante el step (m/s^2).")]
     public float assistAccelXZ = 1.0f;
+
     [Tooltip("Velocidad vertical máxima mientras sube (m/s).")]
     public float clampUpVel = 2.2f;
 
-    [Header("Snap-down suave")]
-    public float snapTime = 0.06f;
+    [Header("Snap-down suave")] public float snapTime = 0.06f;
     public float snapSpring = 45f;
     public float snapDamp = 10f;
 
     [Header("Ascent servo (suaviza los altos)")]
     public float climbKp = 80f;
+
     public float climbKv = 26f;
     public float maxClimbAccel = 55f;
 
-    [Header("Debug")]
-    public bool debugDraw;
+    [Header("Debug")] public bool debugDraw;
 
     // ---- runtime ----
     const float Skin = 0.02f;
@@ -94,20 +99,36 @@ public class StairStepper : MonoBehaviour
 
     void FixedUpdate()
     {
-        if (_stepping) { ContinueStep(); return; }
+        if (_stepping)
+        {
+            ContinueStep();
+            return;
+        }
+
         if (_snapActive) DoSnapDownSmooth();
 
         // Dirección de sondeo robusta: mezcla forward con la velocidad si ya te movés.
-        Vector3 hv = rb.velocity; hv.y = 0f;
+        Vector3 hv = rb.velocity;
+        hv.y = 0f;
         float speed = hv.magnitude;
         Vector3 basisDir = Vector3.ProjectOnPlane(transform.forward, Vector3.up).normalized;
         Vector3 moveDir = speed > probeUseVelMin ? (hv / Mathf.Max(speed, 1e-5f)) : basisDir;
 
         // 1) riser (cara vertical) en frente/±45°
-        if (TryRiserBlock(moveDir, speed, out var topY, out var riserN)) { BeginStep(moveDir, riserN, topY); return; }
+        if (TryRiserBlock(moveDir, speed, out var topY, out var riserN))
+        {
+            BeginStep(moveDir, riserN, topY);
+            return;
+        }
+        
+        if (TryRampCrestAsStep(moveDir, out topY, out riserN)) { BeginStep(moveDir, riserN, topY); return; }
 
         // 2) ledge suspendido (tapa flotante)
-        if (enableLedgeProbe && TryLedgeBlock(moveDir, speed, out topY, out riserN)) { BeginStep(moveDir, riserN, topY); return; }
+        if (enableLedgeProbe && TryLedgeBlock(moveDir, speed, out topY, out riserN))
+        {
+            BeginStep(moveDir, riserN, topY);
+            return;
+        }
 
         // 3) snap-down suave si hay bajada por delante
         TrySnapDown(moveDir, speed);
@@ -116,7 +137,8 @@ public class StairStepper : MonoBehaviour
     // ---------- Detección RISER en 3 direcciones ----------
     bool TryRiserBlock(Vector3 moveDir, float speed, out float topY, out Vector3 riserNormal)
     {
-        topY = 0f; riserNormal = default;
+        topY = 0f;
+        riserNormal = default;
 
         if (CheckRiserOneDir(moveDir, speed, out topY, out riserNormal)) return true;
 
@@ -131,11 +153,12 @@ public class StairStepper : MonoBehaviour
 
     bool CheckRiserOneDir(Vector3 dir, float speed, out float topY, out Vector3 riserNormal)
     {
-        topY = 0f; riserNormal = default;
+        topY = 0f;
+        riserNormal = default;
 
         Vector3 foot = BottomSphereCenter();
         Vector3 ankle = new Vector3(foot.x, foot.y + ankleHeight + Skin, foot.z);
-        Vector3 knee  = new Vector3(foot.x, foot.y + kneeHeight  + Skin, foot.z);
+        Vector3 knee = new Vector3(foot.x, foot.y + kneeHeight + Skin, foot.z);
 
         float fwd = checkForward + Mathf.Min(0.5f, speed * Time.fixedDeltaTime * speedCompForward);
 
@@ -144,11 +167,14 @@ public class StairStepper : MonoBehaviour
         // --- 1) detectar la cara (riser) robustamente ---
         bool gotRiser;
         // barre verticalmente entre ankle y knee
-        gotRiser = enableVerticalRiserSweep ? Physics.CapsuleCast(ankle, knee, probeRadius, dir, out hit, fwd, walkableMask, QueryTriggerInteraction.Ignore) : Physics.SphereCast(ankle, probeRadius, dir, out hit, fwd, walkableMask, QueryTriggerInteraction.Ignore);
+        gotRiser = enableVerticalRiserSweep
+            ? Physics.CapsuleCast(ankle, knee, probeRadius, dir, out hit, fwd, walkableMask,
+                QueryTriggerInteraction.Ignore)
+            : Physics.SphereCast(ankle, probeRadius, dir, out hit, fwd, walkableMask, QueryTriggerInteraction.Ignore);
         if (!gotRiser) return false;
 
-        if (hit.normal.y > maxRiserNormalY) return false;                         // cara muy “tumbada”
-        if (Vector3.Dot(dir, -hit.normal) < approachDotMin) return false;         // no encarado
+        if (hit.normal.y > maxRiserNormalY) return false; // cara muy “tumbada”
+        if (Vector3.Dot(dir, -hit.normal) < approachDotMin) return false; // no encarado
 
         // --- 2) clearance superior (knee) más indulgente ---
         float kneeR = probeRadius * kneeClearanceRadiusScale;
@@ -157,10 +183,12 @@ public class StairStepper : MonoBehaviour
 
         // --- 3) tapa: ray down desde un poco arriba y un poco adelante del borde ---
         // offset “over” escalado por altura buscada (más alto => un poco más adelante)
-        float overAhead = Mathf.Lerp(0.12f, 0.22f, Mathf.Clamp01(maxStepUp <= 0f ? 0f : (hit.point.y + maxStepUp - rb.position.y) / maxStepUp));
+        float overAhead = Mathf.Lerp(0.12f, 0.22f,
+            Mathf.Clamp01(maxStepUp <= 0f ? 0f : (hit.point.y + maxStepUp - rb.position.y) / maxStepUp));
         Vector3 over = hit.point + dir * overAhead + Vector3.up * (maxStepUp + Skin);
 
-        if (!Physics.Raycast(over, Vector3.down, out var top, maxStepUp + 2f * Skin, walkableMask, QueryTriggerInteraction.Ignore))
+        if (!Physics.Raycast(over, Vector3.down, out var top, maxStepUp + 2f * Skin, walkableMask,
+                QueryTriggerInteraction.Ignore))
             return false;
 
         float candidateTopY = top.point.y + Skin;
@@ -185,14 +213,17 @@ public class StairStepper : MonoBehaviour
     // ---------- Detección LEDGE suspendido ----------
     bool TryLedgeBlock(Vector3 moveDir, float speed, out float topY, out Vector3 fakeRiserNormal)
     {
-        topY = 0f; fakeRiserNormal = default;
+        topY = 0f;
+        fakeRiserNormal = default;
 
         Vector3 foot = BottomSphereCenter();
-        float ahead = Mathf.Clamp(ledgeAhead + Mathf.Min(0.4f, speed * Time.fixedDeltaTime * speedCompForward), 0.08f, checkForward + 0.5f);
+        float ahead = Mathf.Clamp(ledgeAhead + Mathf.Min(0.4f, speed * Time.fixedDeltaTime * speedCompForward), 0.08f,
+            checkForward + 0.5f);
         Vector3 aheadXZ = foot + moveDir * ahead;
 
         Vector3 downFrom = new Vector3(aheadXZ.x, foot.y + maxStepUp + ledgeDownFromUp, aheadXZ.z);
-        if (!Physics.Raycast(downFrom, Vector3.down, out var top, maxStepUp + ledgeDownFromUp + 0.1f, walkableMask, QueryTriggerInteraction.Ignore))
+        if (!Physics.Raycast(downFrom, Vector3.down, out var top, maxStepUp + ledgeDownFromUp + 0.1f, walkableMask,
+                QueryTriggerInteraction.Ignore))
             return false;
 
         float candidateTopY = top.point.y + Skin;
@@ -215,6 +246,7 @@ public class StairStepper : MonoBehaviour
             Debug.DrawLine(downFrom, downFrom + Vector3.down * (maxStepUp + ledgeDownFromUp), Color.yellow, 0.05f);
             Debug.DrawRay(top.point, Vector3.up * 0.1f, Color.green, 0.1f);
         }
+
         return true;
     }
 
@@ -242,12 +274,12 @@ public class StairStepper : MonoBehaviour
         tN = Mathf.Clamp01(tN);
 
         // Perfil suave s(t) = t^2 * (3 - 2t)
-        float s  = tN * tN * (3f - 2f * tN);
+        float s = tN * tN * (3f - 2f * tN);
         float ds = (6f * tN * (1f - tN)) / T;
 
         float dy = _y1 - _y0;
 
-        float yTarget  = _y0 + dy * s;
+        float yTarget = _y0 + dy * s;
         float vyTarget = dy * ds;
 
         float yNow = rb.position.y;
@@ -264,7 +296,11 @@ public class StairStepper : MonoBehaviour
         rb.AddForce(_moveDirAtStart * (assistAccelXZ * assistScale), ForceMode.Acceleration);
 
         var v = rb.velocity;
-        if (v.y > clampUpVel) { v.y = clampUpVel; rb.velocity = v; }
+        if (v.y > clampUpVel)
+        {
+            v.y = clampUpVel;
+            rb.velocity = v;
+        }
 
         if (Time.time >= _t1 - 1e-4f)
         {
@@ -282,7 +318,8 @@ public class StairStepper : MonoBehaviour
         float fwd = checkForward * 0.6f + Mathf.Min(0.35f, speed * Time.fixedDeltaTime * speedCompForward * 0.6f);
         Vector3 ahead = foot + moveDir * fwd + Vector3.up * (maxStepDown + Skin);
 
-        if (Physics.Raycast(ahead, Vector3.down, out var hit, maxStepDown + 2f * Skin, walkableMask, QueryTriggerInteraction.Ignore))
+        if (Physics.Raycast(ahead, Vector3.down, out var hit, maxStepDown + 2f * Skin, walkableMask,
+                QueryTriggerInteraction.Ignore))
         {
             float targetY = hit.point.y + Skin;
             float dy = targetY - rb.position.y;
@@ -293,6 +330,69 @@ public class StairStepper : MonoBehaviour
                 _snapEndTime = Time.time + snapTime;
             }
         }
+    }
+
+    bool TryRampCrestAsStep(Vector3 moveDir, out float topY, out Vector3 fakeRiserNormal)
+    {
+        topY = 0f;
+        fakeRiserNormal = default;
+
+        Vector3 foot = BottomSphereCenter();
+
+        // 1) muestreamos un poco ADELANTE pero no tanto como un ledge “flotante”
+        float ahead = Mathf.Clamp(ledgeAhead * 0.75f, 0.12f, checkForward);
+        Vector3 aheadXZ = foot + moveDir * ahead;
+
+        // 2) ray hacia ABAJO desde más arriba que la rampa
+        float up = Mathf.Max(ledgeDownFromUp, maxStepUp * 0.8f);
+        Vector3 downFrom = new Vector3(aheadXZ.x, foot.y + maxStepUp + up, aheadXZ.z);
+
+        if (!Physics.Raycast(downFrom, Vector3.down, out var topHit,
+                maxStepUp + up + 0.1f, walkableMask, QueryTriggerInteraction.Ignore))
+            return false;
+
+        float candidateTopY = topHit.point.y + Skin;
+        float dy = candidateTopY - rb.position.y;
+
+        // 3) altura de step válida
+        if (dy <= 0.02f || dy > maxStepUp + 0.001f) return false;
+
+        // 4) la “tapa” es caminable aunque sea algo inclinada
+        if (topHit.normal.y < Mathf.Min(topMinNormalY, 0.2f)) return false;
+
+        // 5) clearance a rodilla hasta esa cresta
+        Vector3 knee = new Vector3(foot.x, foot.y + kneeHeight + Skin, foot.z);
+        if (Physics.SphereCast(knee, probeRadius * 0.85f, moveDir, out _, ahead, walkableMask,
+                QueryTriggerInteraction.Ignore))
+            return false;
+
+        // 6) y además confirmamos que ENTRE foot y aheadXZ hay una rampa (no un hueco)
+        //    → ray horiz al ras de ankle: normal.y > maxRiserNormalY (o sea, no pared)
+        Vector3 ankle = new Vector3(foot.x, foot.y + ankleHeight + Skin, foot.z);
+        if (!Physics.SphereCast(ankle, probeRadius * 0.75f, moveDir, out var mid, ahead, walkableMask,
+                QueryTriggerInteraction.Ignore))
+            return false;
+
+        // si esto fuera pared, normal.y sería baja; queremos una rampa (más “plana” que la riser)
+        if (mid.normal.y <= maxRiserNormalY) return false;
+
+        // 7) head clearance al nivel objetivo
+        if (!HasHeadClearance(candidateTopY)) return false;
+
+        // 8) “riser” sintético: tangente opuesta a la marcha (igual que en tu low-ramp)
+        fakeRiserNormal = Vector3.ProjectOnPlane(-moveDir, Vector3.up).normalized;
+        if (fakeRiserNormal.sqrMagnitude < 1e-4f) fakeRiserNormal = Vector3.forward;
+
+        topY = candidateTopY;
+
+        if (debugDraw)
+        {
+            Debug.DrawLine(downFrom, topHit.point, Color.yellow, 0.08f);
+            Debug.DrawRay(topHit.point, Vector3.up * 0.08f, Color.green, 0.08f);
+            Debug.DrawRay(mid.point, mid.normal * 0.25f, Color.cyan, 0.1f);
+        }
+
+        return true;
     }
 
     void DoSnapDownSmooth()
@@ -330,7 +430,8 @@ public class StairStepper : MonoBehaviour
         float upDist = (futureY - headFrom.y) + 0.06f;
         if (upDist <= 0f) return true;
 
-        return !Physics.SphereCast(headFrom, r * 0.95f, Vector3.up, out _, upDist, walkableMask, QueryTriggerInteraction.Ignore);
+        return !Physics.SphereCast(headFrom, r * 0.95f, Vector3.up, out _, upDist, walkableMask,
+            QueryTriggerInteraction.Ignore);
     }
 
     void OnValidate()
@@ -339,7 +440,7 @@ public class StairStepper : MonoBehaviour
         maxStepDown = Mathf.Max(maxStepDown, maxStepUp + 0.05f);
         checkForward = Mathf.Max(0.1f, checkForward);
         ankleHeight = Mathf.Clamp(ankleHeight, -0.3f, 1f);
-        kneeHeight  = Mathf.Max(ankleHeight + 0.2f, kneeHeight);
+        kneeHeight = Mathf.Max(ankleHeight + 0.2f, kneeHeight);
         stepTime = Mathf.Max(0.04f, stepTime);
         probeRadius = Mathf.Max(0.02f, probeRadius);
         ledgeAhead = Mathf.Max(0.05f, ledgeAhead);

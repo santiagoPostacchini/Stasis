@@ -8,56 +8,62 @@ namespace Player.Scripts
         [Header("Refs")]
         public CinemachineInputAxisController axisController;
 
+        // Rango permitido
+        public const float MIN_SENS = 2f;
+        public const float MAX_SENS = 7f;
+
         [Header("Sensitivity")]
-        [Min(1f)] public float sensitivity = 3f;
+        [Range(MIN_SENS, MAX_SENS)] public float sensitivity = 3f;
+
+        const string PREF_KEY = "MouseSensitivity";
 
         private void Awake()
         {
             Cursor.lockState = CursorLockMode.Locked;
+            Cursor.visible = false;
         }
 
         private void Start()
         {
+            if (PlayerPrefs.HasKey(PREF_KEY))
+                sensitivity = Mathf.Clamp(PlayerPrefs.GetFloat(PREF_KEY, sensitivity), MIN_SENS, MAX_SENS);
+
             Apply();
         }
 
         void Reset()
         {
-            // Auto-resolver si el componente está en el mismo GO
             if (!axisController) axisController = GetComponent<CinemachineInputAxisController>();
         }
 
-        /// <summary>
-        /// Llamalo desde un slider UI (OnValueChanged) o desde opciones.
-        /// </summary>
+        /// <summary> Llamalo desde el Slider. </summary>
         public void SetSensitivity(float newValue)
         {
-            sensitivity = Mathf.Max(0f, newValue);
+            sensitivity = Mathf.Clamp(newValue, MIN_SENS, MAX_SENS);
+            PlayerPrefs.SetFloat(PREF_KEY, sensitivity);
+            PlayerPrefs.Save();
             Apply();
         }
 
-        /// <summary>
-        /// Aplica 'sensitivity' a los ejes controlados por el CinemachineInputAxisController.
-        /// </summary>
         [ContextMenu("Apply Now")]
         public void Apply()
         {
             if (!axisController) return;
 
-            // Controllers es la lista de ejes que el componente detectó dinámicamente.
-            // Cada uno tiene Gain (Input System) y LegacyGain (Legacy Input).
             var controllers = axisController.Controllers;
-            
             for (int i = 0; i < controllers.Count; i++)
             {
                 var c = controllers[i];
-
-                c.Input.LegacyGain = c.Input.LegacyGain > 0
-                    ? 20 * sensitivity
-                    : -20 * sensitivity;
-                
-                controllers[i] = c;
+                c.Input.LegacyGain = (c.Input.LegacyGain >= 0f ? 20f : -20f) * sensitivity;
+                controllers[i] = c; // struct, reasignar
             }
         }
+
+#if UNITY_EDITOR
+        private void OnValidate()
+        {
+            sensitivity = Mathf.Clamp(sensitivity, MIN_SENS, MAX_SENS);
+        }
+#endif
     }
 }
