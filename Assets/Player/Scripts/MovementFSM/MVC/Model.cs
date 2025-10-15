@@ -206,11 +206,6 @@ namespace Player.Scripts.MovementFSM.MVC
                 Scanner.tagWallrun      = tagWallrun;
             }
 
-            if (_stair)
-            {
-                _stair.SyncFromModel(this);
-            }
-
             _fsm = new FSM();
             _fsm.CreateState(FSM.States.Grounded, new S_Grounded(_fsm, this, cameraHolderTransform));
             _fsm.CreateState(FSM.States.Climb, new S_Climb(_fsm, this));

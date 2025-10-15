@@ -262,10 +262,7 @@ namespace Player.Scripts.MovementFSM
             bool grounded = _model.IsGroundedNow();
             bool ignoreSnapWindow = (Time.time < _model.groundedIgnoreUntil);
 
-            // Si el StairStepper está activo (step/snap reciente), no tocamos vel.Y ni gravedad
-            bool stepperBusy = HasRecentStepperActivity(out var stepper);
-
-            if (!grounded || ignoreSnapWindow || stepperBusy)
+            if (!grounded || ignoreSnapWindow)
             {
                 if (_model.rb.useGravity == false) _model.rb.useGravity = true;
                 return;
@@ -320,16 +317,6 @@ namespace Player.Scripts.MovementFSM
 
             // MovePosition (correcto para Rigidbody en FixedUpdate)
             _model.rb.MovePosition(_model.rb.position + Vector3.down * down);
-        }
-        
-        private bool HasRecentStepperActivity(out StairStepper stepper)
-        {
-            stepper = _model ? _model.GetComponent<StairStepper>() : null;
-            if (!stepper) return false;
-
-            // Consideramos actividad si está en step o si hizo snap hace nada
-            const float grace = 0.06f;
-            return stepper.IsStepping || stepper.RecentlySnapped(grace);
         }
 
     }

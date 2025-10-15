@@ -9,7 +9,7 @@ namespace Player.Scripts
     {
         [Header("<color=red>Dependencies</color>")]
         [SerializeField] private GroundCheck playerGroundCheck;
-
+        private CharacterController c;
         [Header("<color=yellow>Jump Settings</color>")]
         [SerializeField] private KeyCode jumpingKey = KeyCode.Space;
         [Tooltip("Altura objetivo en metros")]
