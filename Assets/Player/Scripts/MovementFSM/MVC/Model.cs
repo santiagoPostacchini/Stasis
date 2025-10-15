@@ -23,7 +23,7 @@ namespace Player.Scripts.MovementFSM.MVC
         public event Action OnClimbEnd = delegate { };
         public event Action OnSlideStart = delegate { };
         public event Action OnSlideEnd = delegate { };
-        public event Action<float> OnWallrunStart = delegate { };
+        public event Action<int> OnWallrunStart = delegate { };
         public event Action OnWallrunEnd = delegate { };
         public event Action OnGetDamage = delegate { };
         public event Action OnDeath = delegate { };
@@ -116,6 +116,9 @@ namespace Player.Scripts.MovementFSM.MVC
         public float wallEnterBlendTime = 0.18f;
         public float wallIntoDamp = 8f;
         public float wallAlignLerp = 12f;
+        public Collider lastWallCollider;
+        public Vector3  lastWallNormal;
+        public float    lastWallDetachTime;
 
         [HideInInspector] public float blockWallrunUntil = -999f;
 
@@ -258,7 +261,7 @@ namespace Player.Scripts.MovementFSM.MVC
             => OnGroundedChanged?.Invoke(grounded, airTime);
 
         // ReSharper disable Unity.PerformanceAnalysis
-        public void WallrunStartEvent(float dir) => OnWallrunStart?.Invoke(dir);
+        public void WallrunStartEvent(int dir) => OnWallrunStart?.Invoke(dir);
         public void WallrunEndEvent() => OnWallrunEnd?.Invoke();
 
         // ReSharper disable Unity.PerformanceAnalysis

@@ -137,7 +137,7 @@ namespace Player.Scripts.Interactor
             if (_model) _model.OnWallrunStart -= HandleWallrunStart;
         }
 
-        private void HandleWallrunStart(float dir)
+        private void HandleWallrunStart(int dir)
         {
             if (!_objectGrabbable) return;
 

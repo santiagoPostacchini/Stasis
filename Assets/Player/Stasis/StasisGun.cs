@@ -280,7 +280,7 @@ namespace Player.Stasis
         }
 
         // Eventos del Model
-        private void HandleWallrunStart(float dir)
+        private void HandleWallrunStart(int dir)
         {
             _isWallrunning = true;
             _wallOnSide = (dir < 0f) ? Hand.Left : Hand.Right;

@@ -46,6 +46,7 @@ namespace Player.Scripts.MovementFSM
         public Vector3 wallRunWallPoint;
         public Vector3 wallRunNormal;
         public int wallSide;
+        public Collider wallRunCollider;
 
         public static ParkourProbe None => new ParkourProbe { action = ParkourAction.None };
     }
@@ -98,6 +99,24 @@ namespace Player.Scripts.MovementFSM
         [Range(0f, 60f)] public float wallMaxSlopeDeg = 15f;
         [Range(0f, 70f)] public float wallToForwardMaxAngle = 55f;
         public float wallMinSpeed = 3.5f;
+
+        [Tooltip("Tiempo para permitir reenganchar OTRA pared aún en cooldown.")]
+        public float wallCrossRegrabGrace = 0.15f;
+
+        [Tooltip("Factor para relajar velocidad mínima durante la gracia.")]
+        public float wallGraceMinSpeedMul = 0.6f;
+
+        [Tooltip("Bonus angular durante la gracia (grados).")]
+        public float wallGraceAngleBonus = 10f;
+
+        [Tooltip("Fallback frontal para entrar cuando saltas directo a la pared.")]
+        public float wallFrontAcquireDistance = 1.1f;
+
+        [Tooltip("Radio del SphereCast lateral (en múltiplos del Radius).")]
+        public float wallSideSphereRadiusMul = 0.8f;
+
+        [Tooltip("Empuje extra fuera de la pared para el check de cabeza.")]
+        public float wallHeadClearPush = 0.12f;
 
         [Header("Ground")] public bool requireAirForWallrun = true;
 
@@ -585,71 +604,112 @@ namespace Player.Scripts.MovementFSM
             result = ParkourProbe.None;
 
             var m = GetComponent<Model>();
-            if (m && Time.time < m.blockWallrunUntil)
+
+            // --- Ground gating con "gracia" de aire/pared ---
+            bool groundedBlocks = (requireAirForWallrun && Grounded);
+            if (groundedBlocks)
             {
-                if (verboseLogs) Debug.Log("[WallrunProbe] BLOCKED by cooldown");
-                return false;
+                bool recentWallOff = m && (Time.time - m.lastWallDetachTime) <= wallCrossRegrabGrace;
             }
 
-            if (requireAirForWallrun && Grounded) return false;
+            // --- Base de casting: perpendicular al heading real ---
+            Vector3 heading = GetHeadingPlanar();
+            if (heading.sqrMagnitude < 1e-6f) return false;
 
-            Vector3 fwd = GetPlanarForward();
-            Vector3 sideDir = (side < 0 ? -transform.right : transform.right);
-            sideDir.y = 0f;
-            sideDir.Normalize();
+            Vector3 rightHeading = Vector3.Cross(Vector3.up, heading).normalized;
+            Vector3 sideDir = (side < 0 ? -rightHeading : rightHeading);
 
             float mid = Mathf.Clamp(Height * 0.5f, 0.8f, 1.0f);
             Vector3 origin = transform.position + Vector3.up * mid;
 
-            if (!Physics.Raycast(origin, sideDir, out RaycastHit hit, wallCheckDistance, environmentMask,
-                    QueryTriggerInteraction.Ignore))
-                return false;
+            // --- Lateral indulgente (SphereCast) ---
+            float radius = Mathf.Max(0.08f, Radius * wallSideSphereRadiusMul);
+            RaycastHit hit;
+            bool got = Physics.SphereCast(origin, radius, sideDir, out hit, wallCheckDistance,
+                environmentMask, QueryTriggerInteraction.Ignore);
 
-            // <<< NUEVO: exige Tag "Wallrun" en la pared lateral (¡puede ser layer Ground!) >>>
-            if (!hit.collider || !hit.collider.CompareTag(tagWallrun))
-            {
-                if (verboseLogs) Debug.Log($"[WallrunProbe] Collider sin tag '{tagWallrun}'.");
-                return false;
-            }
+            // --- Front-acquire (si saltás "de frente" a la otra pared) ---
+            if (!got)
+                got = Physics.Raycast(origin, heading, out hit, wallFrontAcquireDistance,
+                    environmentMask, QueryTriggerInteraction.Ignore);
+            if (!got) return false;
 
+            // --- Refinar normal real de superficie (SphereCast puede mentir) ---
+            Vector3 dirToWall = (hit.point - origin).sqrMagnitude > 1e-6f ? (hit.point - origin).normalized : heading;
+            if (Physics.Raycast(origin, dirToWall, out RaycastHit refine, hit.distance + 0.05f,
+                    environmentMask, QueryTriggerInteraction.Ignore))
+                hit = refine; // ahora hit.normal es la de la pared real
+
+            if (!hit.collider || !hit.collider.CompareTag(tagWallrun)) return false;
+
+            // Pared casi vertical
             float upDot = Vector3.Dot(hit.normal, Vector3.up);
             if (Mathf.Abs(upDot) > Mathf.Sin(wallMaxSlopeDeg * Mathf.Deg2Rad)) return false;
 
-            Vector3 wallForward = Vector3.Cross(hit.normal, Vector3.up);
-            if (Vector3.Dot(fwd, wallForward) < Vector3.Dot(fwd, -wallForward)) wallForward = -wallForward;
+            // --- Cooldown "smart": bloquear misma pared/plano, permitir otra ---
+            bool cooldownActive = (m && Time.time < m.blockWallrunUntil);
+            if (cooldownActive && m)
+            {
+                bool sameCol = m.lastWallCollider && hit.collider == m.lastWallCollider;
+                bool samePlane = (m.lastWallNormal != Vector3.zero &&
+                                  Vector3.Dot(hit.normal.normalized, m.lastWallNormal.normalized) > 0.84f);
+                if (sameCol || samePlane) return false;
+                // si es otra pared, permitimos cross-regrab
+            }
 
-            float ang = Vector3.Angle(fwd, wallForward);
-            if (ang > wallToForwardMaxAngle) return false;
+            // Tangente de la pared
+            Vector3 wallForward = Vector3.Cross(hit.normal, Vector3.up).normalized;
+            if (Vector3.Dot(heading, wallForward) < 0f) wallForward = -wallForward;
 
-            Vector3 horizVel = rb ? new Vector3(rb.velocity.x, 0, rb.velocity.z) : Vector3.zero;
-            if (horizVel.magnitude < wallMinSpeed) return false;
+            // Tolerancias con "gracia"
+            bool inGrace = (m && ((Time.time - m.lastWallDetachTime) <= wallCrossRegrabGrace));
+            float angMax = wallToForwardMaxAngle + (inGrace ? wallGraceAngleBonus : 0f);
+            if (Vector3.Angle(heading, wallForward) > angMax) return false;
 
-            Vector3 head = origin + Vector3.up * wallMinHeight;
+            Vector3 horizVel = rb ? new Vector3(rb.velocity.x, 0f, rb.velocity.z) : Vector3.zero;
+            float tangentialSpeed = Mathf.Abs(Vector3.Dot(horizVel, wallForward));
+            float minSpeed = wallMinSpeed * (inGrace ? wallGraceMinSpeedMul : 1f);
+            if (tangentialSpeed < minSpeed) return false;
+
+            // Clearance de cabeza (empujado leve fuera de la pared)
+            Vector3 head = origin + Vector3.up * wallMinHeight +
+                           hit.normal * (Radius + clearanceSkin + wallHeadClearPush);
             if (!HasClearanceCapsule(head, Radius * 2f)) return false;
 
-            Vector3 nPlanar = hit.normal;
-            nPlanar.y = 0f;
-            if (nPlanar.sqrMagnitude < 1e-6f) return false;
-            nPlanar.Normalize();
+            // Resolver lado en el mismo marco del heading
+            int resolvedSide = (Vector3.Dot(hit.normal, rightHeading) < 0f) ? -1 : +1;
 
-            float rightDot = Vector3.Dot(nPlanar, transform.right);
-            int resolvedSide = -Mathf.Sign(rightDot) >= 0 ? +1 : -1;
-
-            result = new ParkourProbe
+            // Armamos el probe
+            var probe = new ParkourProbe
             {
                 action = resolvedSide > 0 ? ParkourAction.WallrunRight : ParkourAction.WallrunLeft,
                 wallRunWallPoint = hit.point,
                 wallRunNormal = hit.normal,
-                wallSide = resolvedSide
+                wallSide = resolvedSide,
+                wallRunCollider = hit.collider,
+                playerRadius = Radius,
+                playerHeight = Height
             };
+
+            result = probe;
             return true;
         }
 
-        
-        
         #endregion
 
         #region Helpers
+
+        Vector3 GetHeadingPlanar()
+        {
+            // Usa velocidad horizontal si existe; si no, forward de cámara proyectado al plano XZ
+            if (rb)
+            {
+                Vector3 hv = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
+                if (hv.sqrMagnitude > 0.04f) return hv.normalized;
+            }
+
+            return Vector3.ProjectOnPlane(cameraHolder.forward, Vector3.up).normalized; // doc: ProjectOnPlane
+        }
 
         Vector3 GetPlanarForward()
         {

@@ -106,6 +106,7 @@ namespace Player.Scripts.MovementFSM
 
         public void OnExit()
         {
+            _model.lastWallDetachTime = Time.time;
             _model.WallrunEndEvent();
         }
 
@@ -120,8 +121,11 @@ namespace Player.Scripts.MovementFSM
             {
                 _wallNormal = p.wallRunNormal;
                 _side = p.wallSide;
+                _model.lastWallCollider = p.wallRunCollider;
+                _model.lastWallNormal   = p.wallRunNormal;
             }
         }
+
         float EnterBlend01()
         {
             return Mathf.Clamp01((Time.time - _enterTime) / Mathf.Max(0.01f, _model.wallEnterBlendTime));
@@ -228,9 +232,9 @@ namespace Player.Scripts.MovementFSM
             _exiting = true;
             _exitTimer = _model.exitWallTime;
 
-            // bloquear reenganche por scanner por un ratito
             _model.blockWallrunUntil = Time.time + _model.wallRegrabCooldown;
-
+            _model.lastWallDetachTime = Time.time;
+            
             Vector3 impulse = Vector3.up * _model.wallJumpUpForce + _wallNormal * _model.wallJumpSideForce;
 
             // limpiar componente hacia la pared + reset y

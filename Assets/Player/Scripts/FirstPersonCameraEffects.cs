@@ -37,6 +37,11 @@ namespace Player.Scripts
         public float bobAmount = 0.03f;
         [Range(0f,1f)] public float idleBobWeight = 0.2f;
 
+        // --- Nuevo: usar Dutch de Cinemachine para tilt ---
+        [Header("Cinemachine")]
+        [Tooltip("Si está activo, el tilt se aplica como Lens.Dutch (roll real en eje Z de la vcam).")]
+        public bool useCinemachineDutch = true;
+
         // ----- internos -----
         float _rollTarget, _rollCurrent, _vaultTimer;
         float _fovCurrent;
@@ -76,15 +81,16 @@ namespace Player.Scripts
             _rollTarget = _rollCurrent = NormalizeAngle(effectsPivot.localEulerAngles.z);
             _extraFovRuntime = 0f;
             _shakeAmpRuntime = 0f;
-            // Forzamos una primera aplicación limpia
             RefreshActiveCamAndMaybeCacheBase();
             _fovCurrent = _baseFovLive;
             ApplyFovImmediate(_fovCurrent);
+
+            // Asegurar Dutch en 0 al habilitar
+            if (useCinemachineDutch) ApplyDutch(0f);
         }
 
         void Update()
         {
-            // cachea base cuando hay cambio de vcam (y no estás usando override)
             RefreshActiveCamAndMaybeCacheBase();
 
             if (vaultAsPulse && _vaultTimer > 0f)
@@ -100,11 +106,23 @@ namespace Player.Scripts
 
         void LateUpdate()
         {
-            // --- ROLL ---
+            // --- ROLL (animación del tilt) ---
             float rollSpeed = (Mathf.Abs(_rollTarget) > Mathf.Abs(_rollCurrent)) ? rollInSpeed : rollOutSpeed;
             _rollCurrent = Mathf.MoveTowardsAngle(_rollCurrent, _rollTarget, rollSpeed * Time.deltaTime);
-            var e = effectsPivot.localEulerAngles;
-            effectsPivot.localRotation = Quaternion.Euler(e.x, e.y, _rollCurrent);
+
+            if (useCinemachineDutch && HasActiveVcam())
+            {
+                // Tilt real en eje Z de la cámara (Dutch)
+                ApplyDutch(_rollCurrent);
+                // Dejá el pivot sin rotación: lo usamos sólo para bob/shake de posición
+                effectsPivot.localRotation = Quaternion.identity;
+            }
+            else
+            {
+                // Fallback: rotación local del pivot en Z (como tenías)
+                var e = effectsPivot.localEulerAngles;
+                effectsPivot.localRotation = Quaternion.Euler(e.x, e.y, _rollCurrent);
+            }
 
             // --- FOV (base cacheado + extras) ---
             if (enableFovKick)
@@ -115,7 +133,7 @@ namespace Player.Scripts
                 ApplyFovImmediate(_fovCurrent);
             }
 
-            // --- Bob / Shake ---
+            // --- Bob / Shake (sólo posición) ---
             Vector3 pos = _bobLocalOrigin;
             if (enableHeadbob && bobAmount > 0f)
             {
@@ -133,25 +151,55 @@ namespace Player.Scripts
             effectsPivot.localPosition = pos;
         }
 
-        public void WallrunStart(float side)
+        // ==== API externa ====
+        // Nota: si tu scanner pasa wallSide como -1 izquierda / +1 derecha, usá este mapeo:
+        public void WallrunStart(int wallSide)
         {
-            int s = Mathf.Sign(side) <= 0 ? +1 : -1;
-            _rollTarget = -s * wallrunTilt;
+            wallSide = Mathf.Clamp(wallSide, -1, +1);
+            // Convención: pared a la derecha ⇒ roll negativo (inclina a la derecha)
+            _rollTarget = (wallSide > 0 ? -1f : +1f) * wallrunTilt;
             AddFov(+Mathf.Abs(wallrunFovAdd));
         }
-        public void WallrunEnd()                  { _rollTarget = 0f;                        AddFov(-Mathf.Abs(wallrunFovAdd)); }
-        public void VaultStart(int sideSign = 0)  { sideSign = Mathf.Clamp(sideSign, -1, 1); _rollTarget = (sideSign==0?1:sideSign)*vaultTilt; if (vaultAsPulse) _vaultTimer = vaultHoldTime; AddFov(+Mathf.Abs(vaultFovAdd)); AddImpulseShake(1.4f); }
-        public void VaultEnd()                    { if (!vaultAsPulse) _rollTarget = 0f;     AddFov(-Mathf.Abs(vaultFovAdd)); }
-        public void OnRunStart()                  => AddFov(+Mathf.Abs(runFovAdd));
-        public void OnRunEnd()                    => AddFov(-Mathf.Abs(runFovAdd));
-        private void AddImpulseShake(float deg)    { if (!enableShake) return; _shakeAmpRuntime = Mathf.Max(_shakeAmpRuntime, Mathf.Abs(deg)); }
+        public void WallrunEnd()
+        {
+            _rollTarget = 0f;
+            if (useCinemachineDutch) ApplyDutch(0f);
+            AddFov(-Mathf.Abs(wallrunFovAdd));
+        }
+
+        public void VaultStart(int sideSign = 0)
+        {
+            sideSign = Mathf.Clamp(sideSign, -1, 1);
+            _rollTarget = (sideSign==0? 1: sideSign) * vaultTilt;
+            if (vaultAsPulse) _vaultTimer = vaultHoldTime;
+            AddFov(+Mathf.Abs(vaultFovAdd));
+            AddImpulseShake(1.4f);
+        }
+        public void VaultEnd()
+        {
+            if (!vaultAsPulse) _rollTarget = 0f;
+            if (useCinemachineDutch) ApplyDutch(0f);
+            AddFov(-Mathf.Abs(vaultFovAdd));
+        }
+
+        public void OnRunStart() => AddFov(+Mathf.Abs(runFovAdd));
+        public void OnRunEnd()   => AddFov(-Mathf.Abs(runFovAdd));
+
+        private void AddImpulseShake(float deg)
+        {
+            if (!enableShake) return;
+            _shakeAmpRuntime = Mathf.Max(_shakeAmpRuntime, Mathf.Abs(deg));
+        }
+
         public void ClearAll()
         {
             _rollTarget = 0f; _vaultTimer = 0f; _extraFovRuntime = 0f; _shakeAmpRuntime = 0f;
             effectsPivot.localPosition = _bobLocalOrigin;
+            effectsPivot.localRotation = Quaternion.identity;
             RefreshActiveCamAndMaybeCacheBase(force:true);
             _fovCurrent = _baseFovLive;
             ApplyFovImmediate(_fovCurrent);
+            if (useCinemachineDutch) ApplyDutch(0f);
         }
 
         // ===== helpers =====
@@ -160,17 +208,32 @@ namespace Player.Scripts
         void RefreshActiveCamAndMaybeCacheBase(bool force=false)
         {
             if (!_brain) return;
-            var active = _brain.ActiveVirtualCamera as CinemachineCamera; // CM3 main cam type
+            var active = _brain.ActiveVirtualCamera as CinemachineCamera; // CM3
             if (active != _activeCamCached || force)
             {
                 _activeCamCached = active;
                 if (!_haveBaseFov)
                 {
-                    // si hay override, no tocamos; si no, cacheamos de la vcam (o de Camera si aún no hay)
                     if (_activeCamCached) _baseFovLive = _activeCamCached.Lens.FieldOfView;
-                    else if (cam)                _baseFovLive = cam.fieldOfView;
+                    else if (cam)         _baseFovLive = cam.fieldOfView;
                 }
             }
+        }
+
+        bool HasActiveVcam()
+        {
+            if (!_brain) return false;
+            return (_brain.ActiveVirtualCamera as CinemachineCamera) != null;
+        }
+
+        void ApplyDutch(float deg)
+        {
+            if (!_brain) return;
+            var vcam = _brain.ActiveVirtualCamera as CinemachineCamera;
+            if (!vcam) return;
+            var lens = vcam.Lens;   // CM3 LensSettings
+            lens.Dutch = deg;       // roll sobre Z (tilt real)
+            vcam.Lens = lens;
         }
 
         void ApplyFovImmediate(float v)

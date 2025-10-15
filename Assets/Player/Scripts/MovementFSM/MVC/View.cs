@@ -161,7 +161,7 @@ namespace Player.Scripts.MovementFSM.MVC
             Debug.Log("Slide End Event");
         }
 
-        public void OnWallrunStartEvent(float dir)
+        public void OnWallrunStartEvent(int dir)
         {
             Debug.Log($"Wall Slide Event with dir: {dir}");
             animator.CrossFade(dir > 0 ? "Player_Leg_Wallrun_Left" : "Player_Leg_Wallrun_Right", 0);
@@ -193,14 +193,7 @@ namespace Player.Scripts.MovementFSM.MVC
 
         public void OnTurnYaw(int dir)
         {
-            if (dir < 0)
-            {
-                animator.CrossFade(TurnLeftHash, 0.1f);
-            }
-            else
-            {
-                animator.CrossFade(TurnRightHash, 0.1f);
-            }
+            animator.CrossFade(dir < 0 ? TurnLeftHash : TurnRightHash, 0.1f);
         }
 
         public void OnDropEvent()
