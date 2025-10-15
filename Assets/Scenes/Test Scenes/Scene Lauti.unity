@@ -72482,8 +72482,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   axisController: {fileID: 1654985839}
-  sensitivity: 500
-  applyToAllAxes: 1
+  sensitivity: 7
 --- !u!114 &1654985839
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -99780,7 +99779,7 @@ Transform:
   m_GameObject: {fileID: 1673076417580923726}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.0017035604, y: 15.019361, z: 0.9213209}
+  m_LocalPosition: {x: -0.0017035357, y: 0.01936078, z: -0.078679115}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -100238,6 +100237,9 @@ MonoBehaviour:
   climbMask:
     serializedVersion: 2
     m_Bits: 65536
+  tagVault: Vault
+  tagClimb: Climb
+  tagWallrun: Wallrun
   forwardCheckDistance: 1.2
   clearanceSkin: 0.06
   capsule: {fileID: 3166039194187741390}
@@ -100419,8 +100421,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   axisController: {fileID: 4023978670560631705}
-  sensitivity: 500
-  applyToAllAxes: 1
+  sensitivity: 7
 --- !u!224 &2936678910420631330
 RectTransform:
   m_ObjectHideFlags: 0
@@ -107234,6 +107235,9 @@ MonoBehaviour:
   wallMask:
     serializedVersion: 2
     m_Bits: 81920
+  tagVault: Vault
+  tagClimb: Climb
+  tagWallrun: Wallrun
   walkingSpeed: 4
   runningSpeed: 8
   acceleration: 20
@@ -107255,14 +107259,10 @@ MonoBehaviour:
   lastAirTime: 0
   lastFallSpeed: 0
   lastLandingTime: -999
-  deepFallAnimDelay: 0.45
   vaultRegrabCooldown: 0.4
   blockVaultUntil: -999
   climbRegrabCooldown: 0.25
   blockClimbUntil: -999
-  climbMask:
-    serializedVersion: 2
-    m_Bits: 65536
   wallRunMaxSpeed: 8
   wallRunAccel: 30
   wallRegrabCooldown: 1
@@ -115382,46 +115382,35 @@ MonoBehaviour:
   walkableMask:
     serializedVersion: 2
     m_Bits: 384
-  capsule: {fileID: 3166039194187741390}
   rb: {fileID: 6256693525526858005}
+  capsule: {fileID: 3166039194187741390}
   maxStepUp: 0.5
   maxStepDown: 0.55
   checkForward: 0.6
   ankleHeight: -0.25
   kneeHeight: 0.5
-  enableVerticalRiserSweep: 1
-  riserCapsuleRadius: 0.06
-  enableLowRampStep: 1
-  rampProbeAhead: 0.28
-  rampTopProbeUp: 0.25
-  topMinNormalY: 0.25
-  liftDeltaVy: 5
-  assistAccelXZ: 1.2
-  maxUpVel: 1.25
-  slideBlend: 0.7
+  probeRadius: 0.06
   approachDotMin: 0.721
   maxRiserNormalY: 0.27
-  snapCooldown: 0.02
-  model: {fileID: 5351476610492447723}
-  useRawAxes: 1
-  steerLerp: 10
-  speedForcesRef: 6
-  cameraBasis: {fileID: 371724638015647831}
-  inputToMps: 4
-  requireMoveInput: 1
-  minInputMps: 1
-  minActualMps: 1
-  intentGrace: 0
-  debugDraw: 1
-  heightInvariantRise: 1
-  riseTime: 0.12
-  disableGravityDuringRise: 1
-  snapTopEpsilon: 0.01
-  zeroVyAtTop: 1
-  smoothSnapDown: 1
-  snapBlendTime: 0.1
+  enableVerticalRiserSweep: 1
+  speedCompForward: 6
+  probeUseVelMin: 0.15
+  kneeClearanceRadiusScale: 0.6
+  enableLedgeProbe: 1
+  ledgeAhead: 0.28
+  ledgeDownFromUp: 0.25
+  topMinNormalY: 0.25
+  stepTime: 0.12
+  assistAccelXZ: 1.2
+  clampUpVel: 2.2
+  snapTime: 0.06
   snapSpring: 10
-  snapDamping: 0.8
+  snapDamp: 10
+  climbKp: 80
+  climbKv: 26
+  maxClimbAccel: 55
+  debugDraw: 1
+  assistEase: 0.6
 --- !u!1 &8094352465569486418
 GameObject:
   m_ObjectHideFlags: 0
@@ -118388,6 +118377,7 @@ SceneRoots:
   - {fileID: 598131665}
   - {fileID: 6069650319649177539}
   - {fileID: 1470765875}
+  - {fileID: 400532339}
   - {fileID: 928006973}
   - {fileID: 285728050}
   - {fileID: 1033413207}
@@ -118396,7 +118386,6 @@ SceneRoots:
   - {fileID: 286436334}
   - {fileID: 1306635402}
   - {fileID: 1635983660}
-  - {fileID: 400532339}
   - {fileID: 297904725}
   - {fileID: 9209088019985883692}
   - {fileID: 77157700}
