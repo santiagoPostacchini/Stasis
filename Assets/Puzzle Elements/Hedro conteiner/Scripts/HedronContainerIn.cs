@@ -16,7 +16,7 @@ public class HedronContainerIn : MonoBehaviour,IInteractable
     [SerializeField] private string openTrigger = "OPEN";
     [SerializeField] private string closeTrigger = "Close";
 
-    [SerializeField] private Transform pos;              // destino para la expulsión
+    [SerializeField] private Transform pos;              // destino para la expulsiï¿½n
     [SerializeField] private float posDelaySeconds = 1.5f; // espera exacta antes de mover a 'pos'
 
     private PhysicsBox _box = null;
@@ -132,7 +132,7 @@ public class HedronContainerIn : MonoBehaviour,IInteractable
                         _anim.SetTrigger(closeTrigger);
 
                     if (_button != null)
-                        _button.SetText(_button.E, "¿Deseas extraer el Hedron?");
+                        _button.SetText(_button.E, "ï¿½Deseas extraer el Hedron?");
 
                     if (_rightMat != null && _leftMat != null)
                         StartCoroutine(GlowPulseOnce());
@@ -230,7 +230,7 @@ public class HedronContainerIn : MonoBehaviour,IInteractable
         }
         else
         {
-            // si no hay 'pos', usar flujo clásico (sin nudge fuerte ni fuerzas)
+            // si no hay 'pos', usar flujo clï¿½sico (sin nudge fuerte ni fuerzas)
             StartCoroutine(EjectAfterDelay(openToEjectDelay));
         }
     }
@@ -243,7 +243,7 @@ public class HedronContainerIn : MonoBehaviour,IInteractable
         _lastEjectTime = Time.time;
 
         if (pos != null)
-            StartCoroutine(EjectToPosAfterDelay(0f)); // sin esperar anim si llamás EjectNow manual
+            StartCoroutine(EjectToPosAfterDelay(0f)); // sin esperar anim si llamï¿½s EjectNow manual
         else
             StartCoroutine(EjectAfterDelay(0f));
     }
@@ -262,23 +262,23 @@ public class HedronContainerIn : MonoBehaviour,IInteractable
         t.SetParent(null, true);
         if (reenableColliderOnEject) EnableAllColliders(t, true);
 
-        // Preparar físico para teletransporte limpio
+        // Preparar fï¿½sico para teletransporte limpio
         rb.isKinematic = true;
         rb.useGravity = false;
         rb.velocity = Vector3.zero;
         rb.angularVelocity = Vector3.zero;
 
-        // Mover a 'pos' (posición y rotación)
+        // Mover a 'pos' (posiciï¿½n y rotaciï¿½n)
         t.position = pos.position;
         t.rotation = pos.rotation;
 
-        // (Opcional) restaurar escala a 1 suavemente si venía reducido
+        // (Opcional) restaurar escala a 1 suavemente si venï¿½a reducido
         if (scaleUpSeconds > 0.01f)
             yield return ScaleTo(t, Vector3.one, scaleUpSeconds);
         else
             t.localScale = Vector3.one;
 
-        // Reactivar física
+        // Reactivar fï¿½sica
         rb.isKinematic = false;
         rb.useGravity = true;
         rb.WakeUp();
@@ -311,7 +311,7 @@ public class HedronContainerIn : MonoBehaviour,IInteractable
         t.SetParent(null, true);
         if (reenableColliderOnEject) EnableAllColliders(t, true);
 
-        // Pequeño empuje fuera del anchor si no hay 'pos'
+        // Pequeï¿½o empuje fuera del anchor si no hay 'pos'
         Vector3 dir = (anchor != null ? anchor.forward : transform.forward).normalized;
         NudgeOutFromAnchor(t, dir, Mathf.Max(0f, ejectNudgeDistance));
 
@@ -421,7 +421,7 @@ public class HedronContainerIn : MonoBehaviour,IInteractable
         yield return new WaitForSeconds(2f);
         panel.SetActive(true);
         E.gameObject.SetActive(true);
-        E.text = "¿Deseas extraer el hedro?";
+        E.text = "Â¿Deseas extraer el hedro?";
     }
     public void Interact()
     {
