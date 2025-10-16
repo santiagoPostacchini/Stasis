@@ -1,7 +1,8 @@
-// CCTVPlaneAtlas.cs - MASTER/FOLLOWER with burst recording
-// Renders and records ONLY while the cam sees the player, up to recordMaxSeconds.
-// Then plays back the clip without render cost, enters blackout, and waits for re-arm.
-// Compatible with VirtualSecurityCam and VigillanceCamera (NonAlloc occlusion).
+// CCTVPlaneAtlas.cs - MASTER/FOLLOWER with burst recording + LOOP playback
+// - Solo graba mientras ve al Player, hasta recordMaxSeconds.
+// - Luego deja de renderear y hace loop del clip: play -> blackout -> play (repite).
+// - Master graba y compone; Followers copian tiles del Master (su propia selección).
+// - Layout manual centrado por fila. Sin shaders custom obligatorios.
 
 using UnityEngine;
 using UnityEngine.Rendering.Universal;
@@ -13,29 +14,29 @@ public class CCTVPlaneAtlas : MonoBehaviour
     public enum InstanceMode { Master, Follower }
 
     [Header("Instance Mode")]
-    [Tooltip("Master does render/record/playback. Follower copies tiles from the Master.")]
+    [Tooltip("Master hace render/record/playback. Follower copia tiles desde el Master.")]
     public InstanceMode mode = InstanceMode.Master;
 
-    [Tooltip("Follower: reference to the Master to read atlas and tile mapping from.")]
+    [Tooltip("Follower: referencia al Master para leer atlas y mapeo de tiles.")]
     public CCTVPlaneAtlas masterForFollower;
 
-    // Static registry of sources
+    // ===== Registro estático =====
     static readonly List<VirtualSecurityCam> s_sources = new List<VirtualSecurityCam>();
     public static void RegisterSource(VirtualSecurityCam v) { if (v != null && !s_sources.Contains(v)) s_sources.Add(v); }
     public static void UnregisterSource(VirtualSecurityCam v) { if (v != null) s_sources.Remove(v); }
 
-    // Sources
+    // ===== Fuentes =====
     [Header("Sources (grid order)")]
-    [Tooltip("Master: empty => auto-fill from registry. Follower: uses EXACTLY these cams.")]
+    [Tooltip("Master: vacío => auto-fill desde registro. Follower: usa EXACTAMENTE estos cams.")]
     public VirtualSecurityCam[] cameras;
 
-    // Target
+    // ===== Target =====
     [Header("Target (Plane)")]
     public Renderer targetRenderer;
-    [Tooltip("Texture property name. Empty = auto resolve.")]
+    [Tooltip("Nombre de property de textura. Vacío = auto-resolver.")]
     public string texturePropertyName = "";
 
-    // Manual layout
+    // ===== Layout manual =====
     [Header("Atlas Grid - Manual")]
     public int columns = 3;
     public int tileWidth = 384;
@@ -44,7 +45,7 @@ public class CCTVPlaneAtlas : MonoBehaviour
     public int paddingY = 8;
     public Color clearColor = Color.black;
 
-    // Render (master)
+    // ===== Render (Master) =====
     [Header("Render - Master")]
     public bool allowHDR = false;
     public bool allowMSAA = false;
@@ -56,38 +57,41 @@ public class CCTVPlaneAtlas : MonoBehaviour
     public LayerMask overlayTopLayer = 0;
     public bool overlayClearDepth = true;
 
-    // Recording / playback
+    // ===== Recording / Playback =====
     [Header("Recording - Master")]
-    [Tooltip("FPS while writing to ring buffer during recording.")]
+    [Tooltip("FPS mientras se escribe al ring buffer.")]
     public int recordFPS = 8;
-    [Tooltip("Max seconds to record per burst.")]
+    [Tooltip("Máximo de segundos por burst (duración del clip).")]
     public float recordMaxSeconds = 4f;
     public RenderTextureFormat recordFormat = RenderTextureFormat.ARGB32;
 
     [Header("Playback - Master")]
     public Transform playbackTriggerTarget;
     public float playbackTriggerDistance = 6f;
-    [Tooltip("If true, only composes atlas when viewer is near the plane.")]
+    [Tooltip("Si true, solo compone atlas cuando el viewer está cerca del plane.")]
     public bool playbackRequiresView = true;
     public float playbackBlackoutSeconds = 1.0f;
 
-    // Performance
+    [Tooltip("Loop del clip de forma indefinida (play -> blackout -> play ...).")]
+    public bool loopPlayback = true;
+
+    // ===== Performance =====
     [Header("Performance - Master")]
-    [Tooltip("Frequency to update atlas (blits and playback/blackout advance).")]
+    [Tooltip("Frecuencia (Hz) para componer atlas (playback/blackout).")]
     public float atlasUpdateFPS = 12f;
-    [Tooltip("Max cams rendered per frame (during Recording).")]
+    [Tooltip("Máximo de cámaras rendereadas por frame (solo Recording).")]
     public int maxCamRendersPerFrame = 2;
-    [Tooltip("Max blits to atlas per frame.")]
+    [Tooltip("Máximo de blits tile->atlas por frame.")]
     public int maxBlitsPerFrame = 3;
     public bool lazyClearAtlas = true;
 
     [Header("Performance - Follower")]
     public int followerMaxCopiesPerFrame = 8;
 
-    // Art safe controls
+    // ===== Art safe controls =====
     public enum ForceProperty { Auto, BaseMap, MainTex, Custom }
 
-    [Header("Art - Safe Controls (no custom shaders)")]
+    [Header("Art - Safe Controls (sin shaders custom)")]
     public bool forceURPUnlit = true;
     public bool forceUnlitSetup = true;
     public ForceProperty forceTextureProperty = ForceProperty.Auto;
@@ -108,7 +112,7 @@ public class CCTVPlaneAtlas : MonoBehaviour
     public FilterMode atlasFilterMode = FilterMode.Bilinear;
     [Range(0, 16)] public int atlasAniso = 0;
 
-    // Internals
+    // ===== Internos =====
     static Camera s_sharedCam;
     Camera _renderCam;
     RenderTexture _atlas;
@@ -123,41 +127,41 @@ public class CCTVPlaneAtlas : MonoBehaviour
     {
         public enum State { Idle, Recording, Playing, Blackout, RearmWait }
 
+        // FSM
         public State state;
         public bool armed;
 
+        // Render
         public RenderTexture tileRT;
-        public Quaternion lastRot;
-        public bool lastRotValid;
         public float noTargetTimer;
 
-        // Ring buffer
+        // Buffer
         public RenderTexture[] frames;
-        public bool[] frameHasTarget;
         public int frameWrite;
         public int frameCount;
         public int maxFrames;
         public float frameInterval;
         public float frameTimer;
-        public bool isRecording;
 
         // Playback
         public bool playing;
         public bool inBlackout;
         public float blackoutTimer;
-        public int playStartIndex;
-        public int playIndex;
-        public int playShownCount;
+        public int playIndex;           // índice absoluto dentro del ring
+        public int playShownCount;      // cuántos frames del clip se mostraron en este ciclo
         public float playTimer;
         public float playFrameInterval;
         public bool tileDirty;
         public int lastShownIndex;
-        public bool lastSampleTargetVisible;
+
+        // Snapshot del clip (para loop)
+        public int clipStartIndex;      // inicio del clip en el ring
+        public int clipFrameCount;      // longitud del clip (frames)
     }
 
     Dictionary<VirtualSecurityCam, CamRuntime> _rt = new Dictionary<VirtualSecurityCam, CamRuntime>();
 
-    // Helpers RT
+    // ===== Helpers RT =====
     public static void SafeDestroyRT(ref RenderTexture rt)
     {
         if (rt == null) return;
@@ -171,24 +175,26 @@ public class CCTVPlaneAtlas : MonoBehaviour
         for (int i = 0; i < rts.Length; i++) SafeDestroyRT(ref rts[i]);
     }
 
-    // Public expose
+    // ===== Expose =====
     public RenderTexture GetCurrentAtlas() => _atlas;
     public IReadOnlyList<VirtualSecurityCam> GetActiveMasterCameras() => _activeMasterCams;
 
     public bool GetMasterTilePixelRect(VirtualSecurityCam v, out RectInt rect)
     {
         rect = default;
-        if (mode != InstanceMode.Master) return (masterForFollower != null) && masterForFollower.GetMasterTilePixelRect(v, out rect);
+        if (mode != InstanceMode.Master)
+            return (masterForFollower != null) && masterForFollower.GetMasterTilePixelRect(v, out rect);
 
         int count = (_activeMasterCams != null) ? _activeMasterCams.Count : 0;
         int idx = (count > 0) ? _activeMasterCams.IndexOf(v) : -1;
         if (idx < 0 || _atlas == null) return false;
 
-        int col = idx % Mathf.Max(1, columns);
-        int row = idx / Mathf.Max(1, columns);
+        int cols = Mathf.Max(1, columns);
+        int row = idx / cols;
+        int col = idx % cols;
 
-        int tilesInRow = (row == _rows - 1) ? Mathf.Max(1, count - row * Mathf.Max(1, columns)) : Mathf.Max(1, columns);
-        tilesInRow = Mathf.Clamp(tilesInRow, 1, Mathf.Max(1, columns));
+        int tilesInRow = (row == _rows - 1) ? Mathf.Max(1, count - row * cols) : cols;
+        tilesInRow = Mathf.Clamp(tilesInRow, 1, cols);
 
         int rowPixelWidth = tilesInRow * tileWidth + (tilesInRow + 1) * paddingX;
         int x0 = Mathf.Max(0, (_atlas.width - rowPixelWidth) / 2);
@@ -199,6 +205,7 @@ public class CCTVPlaneAtlas : MonoBehaviour
         return true;
     }
 
+    // ===== Lifecycle =====
     void Awake()
     {
         if (_mpb == null) _mpb = new MaterialPropertyBlock();
@@ -235,7 +242,7 @@ public class CCTVPlaneAtlas : MonoBehaviour
         _activeMasterCams.Clear();
     }
 
-    // Shared render camera (master)
+    // ===== Shared Render Camera =====
     void SetupSharedRenderCamera()
     {
         if (s_sharedCam != null)
@@ -274,7 +281,7 @@ public class CCTVPlaneAtlas : MonoBehaviour
         urp.dithering = false;
     }
 
-    // Plane material
+    // ===== Plane material =====
     void SafeSetupPlaneMaterial()
     {
         if (!targetRenderer) return;
@@ -362,7 +369,7 @@ public class CCTVPlaneAtlas : MonoBehaviour
         return "";
     }
 
-    // Atlas
+    // ===== Atlas =====
     void RecreateAtlas(bool minimal = false, int countOverride = -1)
     {
         int count = (countOverride >= 0) ? countOverride : (cameras != null ? cameras.Length : 0);
@@ -480,7 +487,7 @@ public class CCTVPlaneAtlas : MonoBehaviour
         RenderTexture.active = prev;
     }
 
-    // Utils
+    // ===== Utils =====
     static bool IsTargetVisible(VirtualSecurityCam v, Vector3 camPos, Vector3 camFwd)
     {
         if (v == null || v.detectionTarget == null) return false;
@@ -500,25 +507,17 @@ public class CCTVPlaneAtlas : MonoBehaviour
         return true;
     }
 
-    static float AngularSpeedDegPerSec(Quaternion last, Quaternion current, float dt)
-    {
-        if (dt <= 0f) return 0f;
-        float angle = Quaternion.Angle(last, current);
-        return angle / dt;
-    }
-
     void EnsureCamerasArray_Master()
     {
         if (cameras == null || cameras.Length == 0) cameras = s_sources.ToArray();
     }
 
-    // FSM helpers
+    // ===== FSM =====
     void BeginRecording(CamRuntime cr)
     {
         cr.frameWrite = 0;
         cr.frameCount = 0;
         cr.frameTimer = 0f;
-        cr.isRecording = true;
         cr.state = CamRuntime.State.Recording;
 
         cr.playing = false;
@@ -530,18 +529,17 @@ public class CCTVPlaneAtlas : MonoBehaviour
 
     void FinishRecordingAndPlay(CamRuntime cr)
     {
-        cr.isRecording = false;
+        // Snapshot del clip (lo que se alcanzó a grabar)
+        cr.clipStartIndex = Mod(cr.frameWrite - cr.frameCount, cr.maxFrames);
+        cr.clipFrameCount = cr.frameCount;
+
         cr.playing = true;
         cr.state = CamRuntime.State.Playing;
-
-        cr.playStartIndex = Mod(cr.frameWrite - cr.frameCount, cr.maxFrames);
-        cr.playIndex = cr.playStartIndex;
         cr.playShownCount = 0;
         cr.playTimer = 0f;
+        cr.playIndex = Mod(cr.clipStartIndex - 1, cr.maxFrames); // para que el primer advance muestre el inicio
         cr.lastShownIndex = -1;
         cr.tileDirty = true;
-
-        cr.armed = false; // will arm again after target is lost for a while
     }
 
     void EnterBlackout(CamRuntime cr)
@@ -552,33 +550,7 @@ public class CCTVPlaneAtlas : MonoBehaviour
         cr.blackoutTimer = 0f;
     }
 
-    void EnterRearmWait(CamRuntime cr)
-    {
-        cr.inBlackout = false;
-        cr.playing = false;
-        cr.isRecording = false;
-        cr.state = CamRuntime.State.RearmWait;
-        cr.noTargetTimer = 0f;
-    }
-
-    void TryArmIfNoTarget(CamRuntime cr, bool targetVisible, float dt, float stopAfterNoTargetSeconds)
-    {
-        if (!targetVisible)
-        {
-            cr.noTargetTimer += dt;
-            if (cr.noTargetTimer >= Mathf.Max(0.05f, stopAfterNoTargetSeconds))
-            {
-                cr.armed = true;
-                cr.state = CamRuntime.State.Idle;
-            }
-        }
-        else
-        {
-            cr.noTargetTimer = 0f;
-        }
-    }
-
-    // MAIN
+    // ===== MAIN =====
     void LateUpdate()
     {
         if (mode == InstanceMode.Follower)
@@ -591,16 +563,21 @@ public class CCTVPlaneAtlas : MonoBehaviour
         EnsureCamerasArray_Master();
         if (_renderCam == null || cameras == null) return;
 
-        bool targetLayoutChanged =
-            _atlas == null ||
-            _rows != Mathf.Max(1, Mathf.CeilToInt((cameras.Length) / (float)Mathf.Max(1, columns))) ||
-            _atlas.width != (columns * tileWidth + (columns + 1) * paddingX) ||
-            _atlas.height != (_rows * tileHeight + (_rows + 1) * paddingY);
+        // Layout esperado (NO uses _rows previo para la comparación)
+        int expectedRows = Mathf.Max(1, Mathf.CeilToInt((cameras.Length) / (float)Mathf.Max(1, columns)));
+        int expectedW = columns * tileWidth + (columns + 1) * paddingX;
+        int expectedH = expectedRows * tileHeight + (expectedRows + 1) * paddingY;
 
-        if (targetLayoutChanged)
+        bool needRecreate = (_atlas == null) ||
+                            (_atlas.width != expectedW) ||
+                            (_atlas.height != expectedH) ||
+                            (_atlas.format != atlasFormat) ||
+                            (_rows != expectedRows);
+
+        if (needRecreate)
         {
             RecreateAtlas(minimal: cameras.Length == 0, countOverride: cameras.Length);
-            InitPerCamState_Master();
+            InitPerCamState_Master(); // solo cuando cambia layout/cantidad
         }
 
         float updateInterval = 1f / Mathf.Max(1f, atlasUpdateFPS);
@@ -626,108 +603,101 @@ public class CCTVPlaneAtlas : MonoBehaviour
         int masterCount = cameras.Length;
         if (masterCount != _rt.Count) InitPerCamState_Master();
 
-        // RENDER + GRAB (only while Recording)
+        // ==== RENDER + GRAB (solo RECORDING y solo si ve al Player) ====
         for (int i = 0; i < masterCount && rendersLeft > 0; i++)
         {
             var v = cameras[i];
             if (v == null) continue;
             if (!_rt.TryGetValue(v, out var cr)) continue;
 
-            Transform p = v.Pivot;
+            var p = v.Pivot;
             Vector3 desiredFwd = v.GetDesiredForward();
             if (desiredFwd.sqrMagnitude < 1e-6f) desiredFwd = p.forward;
-
-            Quaternion rot = v.lockHorizon ? Quaternion.LookRotation(desiredFwd, Vector3.up) : (p.rotation * Quaternion.Euler(v.rotationOffsetEuler));
+            Quaternion rot = v.lockHorizon ? Quaternion.LookRotation(desiredFwd, Vector3.up)
+                                           : (p.rotation * Quaternion.Euler(v.rotationOffsetEuler));
             Vector3 camPos = p.position;
             Vector3 camFwd = (rot * Vector3.forward);
 
-            cr.lastRot = rot; cr.lastRotValid = true;
-
             bool targetVisible = IsTargetVisible(v, camPos, camFwd);
-            cr.lastSampleTargetVisible = targetVisible;
-            if (!targetVisible) cr.noTargetTimer += dt; else cr.noTargetTimer = 0f;
 
-            // FSM
-            if ((cr.state == CamRuntime.State.Idle || cr.state == CamRuntime.State.RearmWait) && cr.armed && targetVisible)
-            {
+            // Arranque de grabación: solo si ve al Player
+            if (cr.state == CamRuntime.State.Idle && targetVisible)
                 BeginRecording(cr);
-            }
-            if (cr.state == CamRuntime.State.Recording)
+
+            // Si ya tenemos clip (Playing/Blackout) y loopPlayback= true, NO volvemos a grabar.
+            bool clipYaArmado = (cr.clipFrameCount > 0);
+            if (clipYaArmado && (cr.state == CamRuntime.State.Playing || cr.state == CamRuntime.State.Blackout))
             {
-                if (!targetVisible && cr.noTargetTimer >= Mathf.Max(0.05f, v.stopAfterNoTargetSeconds))
+                // no hacemos nada caro aquí
+            }
+            else if (cr.state == CamRuntime.State.Recording)
+            {
+                // Si no ve, esperamos hasta stopAfterNoTargetSeconds para cerrar clip con lo que hay
+                if (!targetVisible)
                 {
-                    FinishRecordingAndPlay(cr);
+                    cr.noTargetTimer += dt;
+                    if (cr.noTargetTimer >= Mathf.Max(0.05f, v.stopAfterNoTargetSeconds))
+                    {
+                        // cerrar clip con lo acumulado
+                        FinishRecordingAndPlay(cr);
+                    }
+                    // NO render ni grab si no ve (ahorra costo)
+                    continue;
                 }
-                else if (cr.frameCount >= cr.maxFrames)
+                else
                 {
-                    FinishRecordingAndPlay(cr);
+                    cr.noTargetTimer = 0f;
                 }
-            }
-            if (cr.state == CamRuntime.State.Playing && cr.playShownCount >= cr.frameCount && cr.frameCount > 0)
-            {
-                EnterBlackout(cr);
-            }
-            if (cr.state == CamRuntime.State.Blackout)
-            {
-                cr.blackoutTimer += (1f / Mathf.Max(1f, atlasUpdateFPS));
-                if (cr.blackoutTimer >= Mathf.Max(0.01f, playbackBlackoutSeconds))
-                    EnterRearmWait(cr);
-            }
-            if (cr.state == CamRuntime.State.RearmWait)
-            {
-                TryArmIfNoTarget(cr, targetVisible, dt, v.stopAfterNoTargetSeconds);
-            }
 
-            bool shouldRenderThisCam = (cr.state == CamRuntime.State.Recording);
-            if (!shouldRenderThisCam) continue;
+                // Render solo si ve al Player
+                int maskBase = v.cullingMask.value;
+                if (overlayTopLayer != 0) maskBase = maskBase & ~overlayTopLayer.value;
+                if (maskBase == 0) maskBase = ~0;
 
-            int maskBase = v.cullingMask.value;
-            if (overlayTopLayer != 0) maskBase = maskBase & ~overlayTopLayer.value;
-            if (maskBase == 0) maskBase = ~0;
+                _renderCam.transform.SetPositionAndRotation(camPos, rot);
+                _renderCam.fieldOfView = v.fieldOfView;
+                _renderCam.nearClipPlane = Mathf.Max(0.001f, v.nearClip);
+                _renderCam.farClipPlane = v.farClip;
+                _renderCam.cullingMask = maskBase;
+                _renderCam.targetTexture = cr.tileRT;
+                _renderCam.clearFlags = CameraClearFlags.SolidColor;
+                _renderCam.backgroundColor = clearColor;
+                _renderCam.Render();
 
-            _renderCam.transform.SetPositionAndRotation(camPos, rot);
-            _renderCam.fieldOfView = v.fieldOfView;
-            _renderCam.nearClipPlane = Mathf.Max(0.001f, v.nearClip);
-            _renderCam.farClipPlane = v.farClip;
-            _renderCam.cullingMask = maskBase;
-            _renderCam.targetTexture = cr.tileRT;
-            _renderCam.clearFlags = CameraClearFlags.SolidColor;
-            _renderCam.backgroundColor = clearColor;
-            _renderCam.Render();
-
-            if (overlayTopLayer != 0)
-            {
-                int overlayMask = v.cullingMask.value & overlayTopLayer.value;
-                if (overlayMask != 0)
+                if (overlayTopLayer != 0)
                 {
-                    _renderCam.cullingMask = overlayMask;
-                    _renderCam.clearFlags = overlayClearDepth ? CameraClearFlags.Depth : CameraClearFlags.Nothing;
-                    _renderCam.Render();
+                    int overlayMask = v.cullingMask.value & overlayTopLayer.value;
+                    if (overlayMask != 0)
+                    {
+                        _renderCam.cullingMask = overlayMask;
+                        _renderCam.clearFlags = overlayClearDepth ? CameraClearFlags.Depth : CameraClearFlags.Nothing;
+                        _renderCam.Render();
+                    }
                 }
-            }
-            _renderCam.targetTexture = null;
+                _renderCam.targetTexture = null;
+                rendersLeft--;
 
-            rendersLeft--;
+                // Escribir al ring a recordFPS
+                cr.frameTimer += dt;
+                if (cr.frameTimer >= cr.frameInterval)
+                {
+                    cr.frameTimer -= cr.frameInterval;
 
-            // Write to ring buffer at recordFPS
-            cr.frameTimer += dt;
-            if (cr.frameTimer >= cr.frameInterval)
-            {
-                cr.frameTimer -= cr.frameInterval;
+                    var dst = cr.frames[cr.frameWrite];
+                    if (dst != null) Graphics.Blit(cr.tileRT, dst);
 
-                var dst = cr.frames[cr.frameWrite];
-                if (dst != null) Graphics.Blit(cr.tileRT, dst);
+                    cr.frameWrite = (cr.frameWrite + 1) % cr.maxFrames;
+                    cr.frameCount = Mathf.Min(cr.frameCount + 1, cr.maxFrames);
+                    cr.tileDirty = true;
 
-                if (cr.frameHasTarget != null && cr.frameWrite < cr.frameHasTarget.Length)
-                    cr.frameHasTarget[cr.frameWrite] = cr.lastSampleTargetVisible;
-
-                cr.frameWrite = (cr.frameWrite + 1) % cr.maxFrames;
-                cr.frameCount = Mathf.Min(cr.frameCount + 1, cr.maxFrames);
-                cr.tileDirty = true;
+                    // Si alcanzamos el máximo, cerramos clip y pasamos a loop
+                    if (cr.frameCount >= cr.maxFrames)
+                        FinishRecordingAndPlay(cr);
+                }
             }
         }
 
-        // PLAYBACK -> ATLAS
+        // ==== PLAYBACK -> ATLAS (loop + blackout) ====
         if (viewingPlane && doAtlasWork)
         {
             for (int i = 0; i < masterCount && blitsLeft > 0; i++)
@@ -736,38 +706,58 @@ public class CCTVPlaneAtlas : MonoBehaviour
                 if (v == null) continue;
                 if (!_rt.TryGetValue(v, out var cr)) continue;
 
-                if (cr.frameCount == 0)
+                // Si aún no hay nada grabado, limpiar tile
+                if (cr.clipFrameCount == 0 && cr.frameCount == 0)
                 {
                     ClearTileColor(i, tileBlackoutColor, masterCount);
                     continue;
                 }
 
+                // Estado Blackout: solo contar y limpiar
                 if (cr.state == CamRuntime.State.Blackout)
                 {
+                    cr.blackoutTimer += (1f / Mathf.Max(1f, atlasUpdateFPS));
                     ClearTileColor(i, tileBlackoutColor, masterCount);
+
+                    if (cr.blackoutTimer >= Mathf.Max(0.01f, playbackBlackoutSeconds))
+                    {
+                        if (loopPlayback && cr.clipFrameCount > 0)
+                        {
+                            // reiniciar PLAYING del clip
+                            cr.inBlackout = false;
+                            cr.playing = true;
+                            cr.state = CamRuntime.State.Playing;
+                            cr.playShownCount = 0;
+                            cr.playTimer = 0f;
+                            cr.playIndex = Mod(cr.clipStartIndex - 1, cr.maxFrames);
+                            cr.lastShownIndex = -1;
+                            cr.tileDirty = true;
+                        }
+                        else
+                        {
+                            // si no querés loop, podrías pasar a RearmWait. Acá mantenemos loop por defecto.
+                            cr.blackoutTimer = 0f;
+                        }
+                    }
+                    continue;
                 }
-                else if (cr.state == CamRuntime.State.Playing)
+
+                // Si estamos reproduciendo un clip
+                if (cr.state == CamRuntime.State.Playing && cr.clipFrameCount > 0)
                 {
                     cr.playTimer += (1f / Mathf.Max(1f, atlasUpdateFPS));
                     if (cr.playTimer >= cr.playFrameInterval)
                     {
                         cr.playTimer -= cr.playFrameInterval;
 
-                        int tries = 0;
-                        int next = Mod(cr.playIndex + 1, cr.maxFrames);
-                        while (tries < cr.frameCount)
-                        {
-                            bool ok = (cr.frameHasTarget == null) || (next < cr.frameHasTarget.Length ? cr.frameHasTarget[next] : true);
-                            if (ok) break;
-                            next = Mod(next + 1, cr.maxFrames);
-                            tries++;
-                        }
+                        int nextRel = (cr.playShownCount + 1) % cr.clipFrameCount;
+                        int next = Mod(cr.clipStartIndex + nextRel, cr.maxFrames);
 
                         cr.playIndex = next;
-                        cr.playShownCount = Mathf.Min(cr.playShownCount + 1, cr.frameCount);
+                        cr.playShownCount = Mathf.Min(cr.playShownCount + 1, cr.clipFrameCount);
                         cr.tileDirty = true;
 
-                        if (cr.playShownCount >= cr.frameCount)
+                        if (cr.playShownCount >= cr.clipFrameCount)
                         {
                             EnterBlackout(cr);
                         }
@@ -783,13 +773,14 @@ public class CCTVPlaneAtlas : MonoBehaviour
                 }
                 else
                 {
-                    // Idle / RearmWait / Recording: show last valid frame if exists
-                    int showIdx = (cr.lastShownIndex >= 0 && cr.lastShownIndex < cr.frames.Length)
-                                  ? cr.lastShownIndex
-                                  : Mod(cr.frameWrite - 1, cr.maxFrames);
-                    if (showIdx >= 0 && showIdx < cr.frames.Length && cr.frames[showIdx] != null)
+                    // Idle/Recording pero con algún dato: mostramos último frame válido
+                    int baseIdx = (cr.clipFrameCount > 0)
+                        ? Mod(cr.clipStartIndex + cr.clipFrameCount - 1, cr.maxFrames)
+                        : Mod(cr.frameWrite - 1, cr.maxFrames);
+
+                    if (baseIdx >= 0 && baseIdx < cr.frames.Length && cr.frames[baseIdx] != null)
                     {
-                        BlitTileToAtlas(cr.frames[showIdx], i, masterCount);
+                        BlitTileToAtlas(cr.frames[baseIdx], i, masterCount);
                         blitsLeft--;
                     }
                     else
@@ -806,7 +797,7 @@ public class CCTVPlaneAtlas : MonoBehaviour
         if (!_atlasEverCleared && lazyClearAtlas) ClearAtlasAll();
     }
 
-    // Follower
+    // ===== Follower =====
     void LateUpdate_Follower()
     {
         int followerCount = (cameras != null) ? cameras.Length : 0;
@@ -891,7 +882,7 @@ public class CCTVPlaneAtlas : MonoBehaviour
         ApplyPlaneStyling();
     }
 
-    // Init per-cam (master)
+    // ===== Init por-cámara =====
     void InitPerCamState_Master()
     {
         _rt.Clear();
@@ -914,23 +905,23 @@ public class CCTVPlaneAtlas : MonoBehaviour
             cr.maxFrames = pooled;
 
             cr.frames = new RenderTexture[pooled];
-            cr.frameHasTarget = new bool[pooled];
             for (int k = 0; k < pooled; k++) cr.frames[k] = CreateRT(tileWidth, tileHeight, 0, recordFormat);
 
             cr.frameWrite = 0;
             cr.frameCount = 0;
-            cr.isRecording = false;
 
             cr.state = CamRuntime.State.Idle;
             cr.armed = true;
 
             cr.playing = false;
             cr.inBlackout = false;
-            cr.playStartIndex = 0;
             cr.playIndex = 0;
             cr.playShownCount = 0;
             cr.lastShownIndex = -1;
             cr.tileDirty = true;
+
+            cr.clipStartIndex = 0;
+            cr.clipFrameCount = 0;
 
             _rt[v] = cr;
             _activeMasterCams.Add(v);
