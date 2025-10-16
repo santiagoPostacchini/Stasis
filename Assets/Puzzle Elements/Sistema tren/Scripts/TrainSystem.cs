@@ -23,14 +23,19 @@ public class TrainSystem : MonoBehaviour
     public float barricadeSpeed = 2.5f;
     public float barricadeArriveThreshold = 0.02f;
 
+    public enum TrainPathMode { Loop, PingPong }
+
     [Header("Train (Rigidbody + Waypoints)")]
     public Rigidbody trainRb;
     public List<Transform> trainWaypoints = new List<Transform>();
     public Transform departure;
     public float trainSpeed = 4f;
     public float trainArriveThreshold = 0.03f;
+    [Tooltip("Solo se usa en modo Loop (salto del último al primero).")]
     public float trainTeleportWaitSeconds = 2f;
-    public float trainRotationSpeed = 180f; // ya no se usa; se deja por compatibilidad
+    [Tooltip("Loop = salta del último al primero; PingPong = va y vuelve sin teletransportar.")]
+    public TrainPathMode trainPathMode = TrainPathMode.Loop;
+    public float trainRotationSpeed = 180f; // legacy, no usado
 
     [Header("Events")]
     public UnityEvent onTrainStarted;
@@ -56,18 +61,18 @@ public class TrainSystem : MonoBehaviour
     private BarricadeState barrState = BarricadeState.Idle;
     private Vector3 barrTarget;
     private bool barrConfigured;
-    private bool barricadeForceDown; // NUEVO: mantiene la barricada abajo tras DisableSystem
+    private bool barricadeForceDown;
 
-    private enum TrainPhase { IdleAtDeparture, RunDepToEnd, TeleportWait, RunFirstToEnd }
-    private TrainPhase trainPhase = TrainPhase.IdleAtDeparture;
+    // --- Nuevo modelo de tren (soporta Loop y PingPong) ---
+    private bool trainConfigured;
     private int trainFirstIdx;
     private int trainLastIdx;
     private int trainDepIdx;
     private int trainCurrentIdx;
+    private int trainDir = +1; // +1 adelante, -1 atrás (para PingPong)
     private float trainWaitUntil;
-    private bool trainConfigured;
-
-    private bool trainPassedDepartureThisLap;
+    private enum TrainState { IdleAtDeparture, Running, LoopTeleportWait }
+    private TrainState trainState = TrainState.IdleAtDeparture;
 
     void Awake()
     {
@@ -93,7 +98,7 @@ public class TrainSystem : MonoBehaviour
     {
         systemEnabled = true;
         trainHaltAtDeparture = false;
-        barricadeForceDown = false; // al habilitar, permitimos que la barricada suba
+        barricadeForceDown = false;
         ResolveHeights();
         PrepareSystems(true);
     }
@@ -104,16 +109,13 @@ public class TrainSystem : MonoBehaviour
     {
         if (!trainConfigured) return;
         trainHaltAtDeparture = true;
-        if (trainPhase == TrainPhase.IdleAtDeparture)
+        if (trainState == TrainState.IdleAtDeparture)
             trainRunRequested = true;
     }
 
     public void DisableSystem()
     {
-        // Pedimos frenar en departure, pero completando la vuelta con el �nico TP v�lido (�ltimo -> 0)
         RequestTrainHaltAtDeparture();
-
-        // Forzamos que la barricada baje y permanezca abajo
         barricadeForceDown = true;
         if (barrConfigured && barricadeRb != null && barricadeDown != null)
         {
@@ -125,9 +127,7 @@ public class TrainSystem : MonoBehaviour
     public void HardStopAll()
     {
         systemEnabled = false;
-        if (elevatorRb) { elevatorRb.velocity = Vector3.zero; elevatorRb.angularVelocity = Vector3.zero; }
-        if (barricadeRb) { barricadeRb.velocity = Vector3.zero; barricadeRb.angularVelocity = Vector3.zero; }
-        if (trainRb) { trainRb.velocity = Vector3.zero; trainRb.angularVelocity = Vector3.zero; }
+        // Kinematic: no tocar velocity/angularVelocity.
     }
 
     void FixedUpdate()
@@ -135,32 +135,6 @@ public class TrainSystem : MonoBehaviour
         elevConfigured = IsElevatorConfigured();
         barrConfigured = IsBarricadeConfigured();
         trainConfigured = ValidateTrainSetup();
-
-        //if (!systemEnabled)
-        //{
-
-        //    if (elevatorRb)
-        //    {
-        //        //elevatorRb.isKinematic = false;
-        //        elevatorRb.velocity = Vector3.zero; 
-        //        elevatorRb.angularVelocity = Vector3.zero;
-        //    }
-
-        //    if (barricadeRb)
-        //    {
-        //        //barricadeRb.isKinematic = false;
-        //        barricadeRb.velocity = Vector3.zero; 
-        //        barricadeRb.angularVelocity = Vector3.zero;
-        //    }
-
-        //    if (trainRb)
-        //    {
-        //        //trainRb.isKinematic = false;
-        //        trainRb.velocity = Vector3.zero; 
-        //        trainRb.angularVelocity = Vector3.zero;
-        //    }
-        //    return;
-        //}
 
         TickElevator();
         TickBarricade();
@@ -199,7 +173,7 @@ public class TrainSystem : MonoBehaviour
         }
         else elevState = ElevatorState.Idle;
 
-        // Barricade (controlada por barricadeForceDown)
+        // Barricade
         if (barrConfigured)
         {
             if (barricadeForceDown)
@@ -225,11 +199,12 @@ public class TrainSystem : MonoBehaviour
             if (resetPositions && !IsNear(trainRb.position, trainWaypoints[trainDepIdx].position, trainArriveThreshold))
                 TeleportBodyTo(trainRb, trainWaypoints[trainDepIdx].position);
 
-            trainPhase = TrainPhase.IdleAtDeparture;
+            trainState = TrainState.IdleAtDeparture;
             trainRunRequested = false;
-            trainPassedDepartureThisLap = false;
+            trainDir = +1; // arrancamos hacia adelante
+            trainCurrentIdx = NextIndexFrom(trainDepIdx, +1);
         }
-        else trainPhase = TrainPhase.IdleAtDeparture;
+        else trainState = TrainState.IdleAtDeparture;
     }
 
     private void ResolveHeights()
@@ -284,7 +259,6 @@ public class TrainSystem : MonoBehaviour
                 }
             case ElevatorState.WaitAtA:
                 {
-                    elevatorRb.velocity = Vector3.zero;
                     if (Time.fixedUnscaledTime >= elevWaitUntil)
                     {
                         elevTarget = (IsNear(elevTarget, elevatorHigh.position, 1e-4f)) ? elevatorLow.position : elevatorHigh.position;
@@ -305,7 +279,6 @@ public class TrainSystem : MonoBehaviour
                 }
             case ElevatorState.WaitAtB:
                 {
-                    elevatorRb.velocity = Vector3.zero;
                     if (Time.fixedUnscaledTime >= elevWaitUntil)
                     {
                         elevTarget = (IsNear(elevTarget, elevatorHigh.position, 1e-4f)) ? elevatorLow.position : elevatorHigh.position;
@@ -323,7 +296,6 @@ public class TrainSystem : MonoBehaviour
         if (distance <= elevatorArriveThreshold)
         {
             elevatorRb.MovePosition(targetPos);
-            elevatorRb.velocity = Vector3.zero;
             return true;
         }
 
@@ -337,7 +309,6 @@ public class TrainSystem : MonoBehaviour
         Vector3 dir = (distance > 1e-5f) ? (toTarget / distance) : Vector3.zero;
         Vector3 next = (step >= distance) ? targetPos : elevatorRb.position + dir * step;
 
-        elevatorRb.velocity = (next - elevatorRb.position) / Time.fixedDeltaTime;
         elevatorRb.MovePosition(next);
         return false;
     }
@@ -347,7 +318,6 @@ public class TrainSystem : MonoBehaviour
     {
         if (!barrConfigured) return;
 
-        // Prioridad: si est� forzada abajo, mantenerla abajo
         if (barricadeForceDown && barrState != BarricadeState.HoldDown)
         {
             barrState = BarricadeState.ToDown;
@@ -384,10 +354,8 @@ public class TrainSystem : MonoBehaviour
                     break;
                 }
             case BarricadeState.HoldUp:
-               // barricadeRb.velocity = Vector3.zero;
                 break;
             case BarricadeState.HoldDown:
-                //barricadeRb.velocity = Vector3.zero;
                 break;
             case BarricadeState.Idle:
                 break;
@@ -401,14 +369,14 @@ public class TrainSystem : MonoBehaviour
         onTrainStarted?.Invoke();
     }
 
-    // Train
+    // Train (Loop / PingPong)
     private void TickTrain()
     {
         if (!trainConfigured) return;
 
-        switch (trainPhase)
+        switch (trainState)
         {
-            case TrainPhase.IdleAtDeparture:
+            case TrainState.IdleAtDeparture:
                 {
                     Vector3 depPos = trainWaypoints[trainDepIdx].position;
                     if (!IsNear(trainRb.position, depPos, trainArriveThreshold))
@@ -416,81 +384,81 @@ public class TrainSystem : MonoBehaviour
 
                     if (trainRunRequested)
                     {
-                        trainCurrentIdx = NextIndexFrom(trainDepIdx);
-                        trainPassedDepartureThisLap = true;
-                        trainPhase = TrainPhase.RunDepToEnd;
+                        trainDir = +1; // arrancamos hacia adelante
+                        trainCurrentIdx = NextIndexFrom(trainDepIdx, trainDir);
+                        trainState = TrainState.Running;
                     }
                     break;
                 }
 
-            case TrainPhase.RunDepToEnd:
+            case TrainState.Running:
                 {
-                    if (trainCurrentIdx > trainLastIdx)
-                    {
-                        trainWaitUntil = Time.fixedUnscaledTime + trainTeleportWaitSeconds;
-                        trainPhase = TrainPhase.TeleportWait;
-                        break;
-                    }
-
+                    // Objetivo actual
                     Vector3 target = trainWaypoints[trainCurrentIdx].position;
-                    bool reached = MoveBodyLinear(trainRb, target, trainSpeed, trainArriveThreshold); // SIN ROTACI�N
-                    if (reached)
-                    {
-                        if (trainCurrentIdx == trainDepIdx) trainPassedDepartureThisLap = true;
-                        trainCurrentIdx++;
-                    }
-                    break;
-                }
-
-            case TrainPhase.TeleportWait:
-                {
-                    trainRb.velocity = Vector3.zero;
-                    if (Time.fixedUnscaledTime >= trainWaitUntil)
-                    {
-                        TeleportBodyTo(trainRb, trainWaypoints[trainFirstIdx].position);
-
-                        trainCurrentIdx = trainFirstIdx;
-                        trainPassedDepartureThisLap = false;
-
-                        if (trainHaltAtDeparture && trainDepIdx == trainFirstIdx)
-                        {
-                            trainRunRequested = false;
-                            onTrainStoppedAtDeparture?.Invoke();
-                            trainHaltAtDeparture = false;
-                            trainPhase = TrainPhase.IdleAtDeparture;
-                        }
-                        else
-                        {
-                            trainPhase = TrainPhase.RunFirstToEnd;
-                        }
-                    }
-                    break;
-                }
-
-            case TrainPhase.RunFirstToEnd:
-                {
-                    if (trainCurrentIdx > trainLastIdx)
-                    {
-                        trainPhase = TrainPhase.IdleAtDeparture;
-                        break;
-                    }
-
-                    Vector3 target = trainWaypoints[trainCurrentIdx].position;
-                    bool reached = MoveBodyLinear(trainRb, target, trainSpeed, trainArriveThreshold); // SIN ROTACI�N
+                    bool reached = MoveBodyLinear(trainRb, target, trainSpeed, trainArriveThreshold);
 
                     if (reached)
                     {
+                        // ¿Debemos frenar en departure?
                         if (trainHaltAtDeparture && trainCurrentIdx == trainDepIdx)
                         {
                             trainRunRequested = false;
                             onTrainStoppedAtDeparture?.Invoke();
                             trainHaltAtDeparture = false;
-                            trainPhase = TrainPhase.IdleAtDeparture;
+                            trainState = TrainState.IdleAtDeparture;
+                            break;
+                        }
+
+                        // Avanzar al siguiente índice según el modo
+                        if (trainPathMode == TrainPathMode.Loop)
+                        {
+                            int next = trainCurrentIdx + 1;
+                            if (next > trainLastIdx)
+                            {
+                                // fin de lista -> espera y teletransporta al primero
+                                trainWaitUntil = Time.fixedUnscaledTime + trainTeleportWaitSeconds;
+                                trainState = TrainState.LoopTeleportWait;
+                            }
+                            else
+                            {
+                                trainCurrentIdx = next;
+                            }
+                        }
+                        else // PingPong
+                        {
+                            int next = trainCurrentIdx + trainDir;
+                            if (next > trainLastIdx || next < trainFirstIdx)
+                            {
+                                // invertimos la dirección y corregimos el siguiente
+                                trainDir *= -1;
+                                next = Mathf.Clamp(trainCurrentIdx + trainDir, trainFirstIdx, trainLastIdx);
+                            }
+                            trainCurrentIdx = next;
+                        }
+                    }
+                    break;
+                }
+
+            case TrainState.LoopTeleportWait:
+                {
+                    if (Time.fixedUnscaledTime >= trainWaitUntil)
+                    {
+                        TeleportBodyTo(trainRb, trainWaypoints[trainFirstIdx].position);
+                        trainCurrentIdx = trainFirstIdx;
+                        // Si hay que frenar en departure y el primero es el departure, paramos.
+                        if (trainHaltAtDeparture && trainDepIdx == trainFirstIdx)
+                        {
+                            trainRunRequested = false;
+                            onTrainStoppedAtDeparture?.Invoke();
+                            trainHaltAtDeparture = false;
+                            trainState = TrainState.IdleAtDeparture;
                         }
                         else
                         {
-                            if (trainCurrentIdx == trainDepIdx) trainPassedDepartureThisLap = true;
-                            trainCurrentIdx++;
+                            // seguimos corriendo
+                            int next = trainCurrentIdx + 1;
+                            trainCurrentIdx = Mathf.Clamp(next, trainFirstIdx, trainLastIdx);
+                            trainState = TrainState.Running;
                         }
                     }
                     break;
@@ -498,7 +466,11 @@ public class TrainSystem : MonoBehaviour
         }
     }
 
-    private int NextIndexFrom(int idx) => Mathf.Clamp(idx + 1, 0, trainLastIdx);
+    private int NextIndexFrom(int idx, int dir)
+    {
+        int next = idx + Mathf.Clamp(dir, -1, 1);
+        return Mathf.Clamp(next, 0, (trainWaypoints.Count - 1));
+    }
 
     // Helpers
     private bool MoveBodyLinear(Rigidbody rb, Vector3 targetPos, float speed, float arriveThreshold)
@@ -508,17 +480,15 @@ public class TrainSystem : MonoBehaviour
         if (dist <= arriveThreshold)
         {
             rb.MovePosition(targetPos);
-            rb.velocity = Vector3.zero;
             return true;
         }
 
         float s = Mathf.Max(0f, speed);
         float step = s * Time.fixedDeltaTime;
-        Vector3 dir = (dist > 1e-5f) ? toTarget / dist : Vector3.zero;
+        Vector3 dir = (dist > 1e-5f) ? (toTarget / dist) : Vector3.zero;
         Vector3 next = (step >= dist) ? targetPos : rb.position + dir * step;
 
         rb.MovePosition(next);
-        rb.velocity = (next - rb.position) / Time.fixedDeltaTime;
         return false;
     }
 
@@ -528,8 +498,6 @@ public class TrainSystem : MonoBehaviour
     private void TeleportBodyTo(Rigidbody rb, Vector3 pos)
     {
         if (rb == null) return;
-        rb.velocity = Vector3.zero;
-        rb.angularVelocity = Vector3.zero;
 #if UNITY_2022_1_OR_NEWER
         rb.position = pos;
 #else
