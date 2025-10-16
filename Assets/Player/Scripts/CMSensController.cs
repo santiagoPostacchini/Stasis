@@ -9,8 +9,8 @@ namespace Player.Scripts
         public CinemachineInputAxisController axisController;
 
         // Rango permitido
-        public const float MIN_SENS = 2f;
-        public const float MAX_SENS = 7f;
+        public const float MIN_SENS = 7f;
+        public const float MAX_SENS = 15f;
 
         [Header("Sensitivity")]
         [Range(MIN_SENS, MAX_SENS)] public float sensitivity = 3f;
