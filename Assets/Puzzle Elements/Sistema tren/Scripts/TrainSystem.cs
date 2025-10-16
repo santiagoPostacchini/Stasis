@@ -136,31 +136,31 @@ public class TrainSystem : MonoBehaviour
         barrConfigured = IsBarricadeConfigured();
         trainConfigured = ValidateTrainSetup();
 
-        if (!systemEnabled)
-        {
+        //if (!systemEnabled)
+        //{
 
-            if (elevatorRb)
-            {
-                elevatorRb.isKinematic = false;
-                elevatorRb.velocity = Vector3.zero; 
-                elevatorRb.angularVelocity = Vector3.zero;
-            }
+        //    if (elevatorRb)
+        //    {
+        //        //elevatorRb.isKinematic = false;
+        //        elevatorRb.velocity = Vector3.zero; 
+        //        elevatorRb.angularVelocity = Vector3.zero;
+        //    }
 
-            if (barricadeRb)
-            {
-                barricadeRb.isKinematic = false;
-                barricadeRb.velocity = Vector3.zero; 
-                barricadeRb.angularVelocity = Vector3.zero;
-            }
+        //    if (barricadeRb)
+        //    {
+        //        //barricadeRb.isKinematic = false;
+        //        barricadeRb.velocity = Vector3.zero; 
+        //        barricadeRb.angularVelocity = Vector3.zero;
+        //    }
 
-            if (trainRb)
-            {
-                trainRb.isKinematic = false;
-                trainRb.velocity = Vector3.zero; 
-                trainRb.angularVelocity = Vector3.zero;
-            }
-            return;
-        }
+        //    if (trainRb)
+        //    {
+        //        //trainRb.isKinematic = false;
+        //        trainRb.velocity = Vector3.zero; 
+        //        trainRb.angularVelocity = Vector3.zero;
+        //    }
+        //    return;
+        //}
 
         TickElevator();
         TickBarricade();
@@ -384,10 +384,10 @@ public class TrainSystem : MonoBehaviour
                     break;
                 }
             case BarricadeState.HoldUp:
-                barricadeRb.velocity = Vector3.zero;
+               // barricadeRb.velocity = Vector3.zero;
                 break;
             case BarricadeState.HoldDown:
-                barricadeRb.velocity = Vector3.zero;
+                //barricadeRb.velocity = Vector3.zero;
                 break;
             case BarricadeState.Idle:
                 break;

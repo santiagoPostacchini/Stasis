@@ -33,7 +33,10 @@ public class StasisElevator : MonoBehaviour, IStasis
         if (!_isFreezed)
         {
             _saveVelocity = _trainSystem.elevatorSpeed;
+            _trainSystem.elevatorRb.isKinematic = false;
             _trainSystem.elevatorSpeed = 0;
+            _trainSystem.elevatorRb.isKinematic = true;
+
             _isFreezed = true;
             _stasisPartElevator._isFreezed = true;
             //splineAnimate.Pause();
@@ -46,6 +49,7 @@ public class StasisElevator : MonoBehaviour, IStasis
         if (!_isFreezed) return;
         _isFreezed = false;
         _stasisPartElevator._isFreezed = false;
+        _trainSystem.elevatorRb.isKinematic = true;
         _trainSystem.elevatorSpeed = _saveVelocity;
         //splineAnimate.Play();
         StasisEffect.StasisEffectStop();
