@@ -427,13 +427,21 @@ public class TrainSystem : MonoBehaviour
                         else // PingPong
                         {
                             int next = trainCurrentIdx + trainDir;
+
+                            // ¿Llegó a un extremo?
                             if (next > trainLastIdx || next < trainFirstIdx)
                             {
-                                // invertimos la dirección y corregimos el siguiente
+                                // Invertimos la dirección
                                 trainDir *= -1;
-                                next = Mathf.Clamp(trainCurrentIdx + trainDir, trainFirstIdx, trainLastIdx);
+
+                                // Espera antes de volver (usa el mismo sistema de espera que el modo Loop)
+                                trainWaitUntil = Time.fixedUnscaledTime + trainTeleportWaitSeconds;
+                                trainState = TrainState.LoopTeleportWait;
                             }
-                            trainCurrentIdx = next;
+                            else
+                            {
+                                trainCurrentIdx = next;
+                            }
                         }
                     }
                     break;
