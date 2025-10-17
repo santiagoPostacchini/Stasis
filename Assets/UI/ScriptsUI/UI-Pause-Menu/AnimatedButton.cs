@@ -3,7 +3,7 @@ using UnityEngine.UI;
 using UnityEngine.EventSystems;
 using DG.Tweening;
 
-// Define las direcciones de entrada para la animación del botón
+// Direcciones de entrada
 public enum EntryDirection { Left, Right, Top, Bottom, Scale }
 
 [RequireComponent(typeof(RectTransform))]
@@ -11,23 +11,34 @@ public enum EntryDirection { Left, Right, Top, Bottom, Scale }
 [RequireComponent(typeof(AudioSource))]
 public class AnimatedButton : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IPointerClickHandler
 {
+    [Header("General")]
+    [Tooltip("Usar tiempo no escalado (recomendado si el juego está en pausa).")]
+    public bool useUnscaledTime = true;
+
     [Header("Entry Animation")]
     public EntryDirection entryDirection = EntryDirection.Scale;
     public float entryDuration = 0.5f;
     public float entryDelay = 0f;
     public Vector2 offset = new Vector2(100, 0);
+    [Tooltip("Easing al entrar moviendo.")]
+    public Ease entryMoveEase = Ease.OutCubic;
+    [Tooltip("Easing al entrar por escala.")]
+    public Ease entryScaleEase = Ease.OutBack;
 
     [Header("Hover Animation")]
     public bool enableHover = true;
     public float hoverScale = 1.1f;
     public float hoverDuration = 0.2f;
+    public Ease hoverEase = Ease.OutBack;
     public bool hoverSound = false;
     public AudioClip hoverClip;
 
     [Header("Click Animation")]
     public bool enableClick = true;
+    [Tooltip("Escala objetivo al hacer click (ej. 0.9 = 90%).")]
     public float clickScale = 0.9f;
     public float clickDuration = 0.1f;
+    public Ease clickEase = Ease.OutFlash;
     public bool clickSound = false;
     public AudioClip clickClip;
 
@@ -53,6 +64,7 @@ public class AnimatedButton : MonoBehaviour, IPointerEnterHandler, IPointerExitH
     public void PlayEntry()
     {
         rect.DOKill();
+
         if (entryDirection == EntryDirection.Scale)
         {
             rect.localScale = Vector3.zero;
@@ -64,13 +76,30 @@ public class AnimatedButton : MonoBehaviour, IPointerEnterHandler, IPointerExitH
             rect.anchoredPosition = originalAnchoredPos + OffsetForDirection();
         }
 
-        Sequence seq = DOTween.Sequence();
-        seq.AppendInterval(entryDelay);
+        Sequence seq = DOTween.Sequence()
+            .SetUpdate(useUnscaledTime)
+            .SetLink(gameObject);
+
+        if (entryDelay > 0f) seq.AppendInterval(entryDelay);
 
         if (entryDirection == EntryDirection.Scale)
-            seq.Append(rect.DOScale(originalScale, entryDuration).SetEase(Ease.OutBack));
+        {
+            seq.Append(
+                rect.DOScale(originalScale, entryDuration)
+                    .SetEase(entryScaleEase)
+                    .SetUpdate(useUnscaledTime)
+                    .SetLink(gameObject)
+            );
+        }
         else
-            seq.Append(rect.DOAnchorPos(originalAnchoredPos, entryDuration).SetEase(Ease.OutCubic));
+        {
+            seq.Append(
+                rect.DOAnchorPos(originalAnchoredPos, entryDuration)
+                    .SetEase(entryMoveEase)
+                    .SetUpdate(useUnscaledTime)
+                    .SetLink(gameObject)
+            );
+        }
     }
 
     // Calcula el offset inicial según la dirección
@@ -86,28 +115,46 @@ public class AnimatedButton : MonoBehaviour, IPointerEnterHandler, IPointerExitH
         }
     }
 
-    // Animación y sonido al pasar el cursor
+    // Hover
     public void OnPointerEnter(PointerEventData eventData)
     {
         if (!enableHover) return;
         rect.DOKill();
-        rect.DOScale(originalScale * hoverScale, hoverDuration).SetEase(Ease.OutBack);
-        if (hoverSound && hoverClip) audioSource.PlayOneShot(hoverClip);
+        rect.DOScale(originalScale * hoverScale, hoverDuration)
+            .SetEase(hoverEase)
+            .SetUpdate(useUnscaledTime)
+            .SetLink(gameObject);
+
+        if (hoverSound && hoverClip && audioSource)
+            audioSource.PlayOneShot(hoverClip);
     }
 
     public void OnPointerExit(PointerEventData eventData)
     {
         if (!enableHover) return;
         rect.DOKill();
-        rect.DOScale(originalScale, hoverDuration).SetEase(Ease.OutBack);
+        rect.DOScale(originalScale, hoverDuration)
+            .SetEase(hoverEase)
+            .SetUpdate(useUnscaledTime)
+            .SetLink(gameObject);
     }
 
-    // Animación y sonido al hacer click
+    // Click
     public void OnPointerClick(PointerEventData eventData)
     {
         if (!enableClick) return;
         rect.DOKill();
-        rect.DOPunchScale(Vector3.one * (1 - clickScale), clickDuration).SetEase(Ease.OutFlash);
-        if (clickSound && clickClip) audioSource.PlayOneShot(clickClip);
+
+        // punch = (escalaObjetivo - escalaBase)
+        Vector3 targetScale = originalScale * Mathf.Max(0.0001f, clickScale);
+        Vector3 punch = targetScale - originalScale;
+
+        rect.DOPunchScale(punch, clickDuration)
+            .SetEase(clickEase)
+            .SetUpdate(useUnscaledTime)
+            .SetLink(gameObject);
+
+        if (clickSound && clickClip && audioSource)
+            audioSource.PlayOneShot(clickClip);
     }
 }
