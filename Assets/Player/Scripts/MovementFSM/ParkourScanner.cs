@@ -59,7 +59,6 @@ namespace Player.Scripts.MovementFSM
 
         [Header("Layers")] public LayerMask environmentMask;
         public LayerMask groundMask;
-        public LayerMask climbMask;
 
         [Header("Parkour Tags")] public string tagVault = "Vault";
         public string tagClimb = "Climb";
@@ -88,11 +87,10 @@ namespace Player.Scripts.MovementFSM
         public float vaultMaxForward = 2.2f;
         public float vaultDownCast = 2.5f;
 
-        [Header("Climb")] public float climbMinHeight = 1.0f;
-        public float climbMaxHeight = 2.2f;
-        public float climbForwardProbe = 0.25f;
-        public float climbTopClearance = 0.35f;
-        public float climbStandForward = 0.35f;
+        [Header("Climb")] public float climbDetectLength = 0.9f;
+        public float climbSphereRadius = 0.35f;
+        [Range(0f, 90f)] public float climbMaxLookAngle = 65f;
+        [Range(0f,89f)] public float climbMinWallSlopeDeg = 70f;
 
         [Header("Wallrun")] public float wallCheckDistance = 0.9f;
         public float wallMinHeight = 1.4f;
@@ -215,7 +213,7 @@ namespace Player.Scripts.MovementFSM
         public float groundEnterStability = 0.05f; // 50 ms va bien (0.04–0.07)
 
         [Tooltip("Retraso al soltar suelo. 0 para salida inmediata.")]
-        public float groundExitStability = 0.00f; // dejalo en 0
+        public float groundExitStability; // dejalo en 0
 
         private bool _rawGrounded;
         private float _rawChangeTime;
@@ -237,7 +235,7 @@ namespace Player.Scripts.MovementFSM
 
         bool IsValidGroundHit(in RaycastHit hit)
         {
-            if (hit.collider == null) return false;
+            if (!hit.collider) return false;
             float slope = Vector3.Angle(hit.normal, Vector3.up);
             if (slope > maxGroundSlopeDeg) return false;
 
@@ -512,105 +510,137 @@ namespace Player.Scripts.MovementFSM
 
         #region CLIMB
 
+        // ReSharper disable Unity.PerformanceAnalysis
         bool TryDetectClimb(out ParkourProbe result)
+{
+    result = ParkourProbe.None;
+
+    var m = GetComponent<Model>();
+    if (m && Time.time < m.blockClimbUntil)
+    {
+        if (verboseLogs) Debug.Log("[ClimbProbe] BLOCKED by cooldown.");
+        return false;
+    }
+
+    // Origen “pecho” + forward plano
+    float h = Height;
+    float chest = Mathf.Clamp(h * 0.55f, 0.8f, 1.1f);
+    Vector3 origin = transform.position + Vector3.up * chest;
+    Vector3 fwd = GetPlanarForward();
+
+    // --- 1) SphereCast indulgente (incluye triggers)
+    if (!Physics.SphereCast(origin, climbSphereRadius, fwd,
+            out RaycastHit rawHit, climbDetectLength, environmentMask, QueryTriggerInteraction.Collide))
+    {
+        if (verboseLogs) Debug.Log("[ClimbProbe] SphereCast no hit.");
+        return false;
+    }
+
+    // --- 2) Refinar normal real con un ray corto al punto golpeado
+    RaycastHit hit = rawHit;
+    Vector3 toWall = (rawHit.point - origin);
+    if (toWall.sqrMagnitude > 1e-6f)
+    {
+        toWall.Normalize();
+        if (Physics.Raycast(origin, toWall, out RaycastHit refine, rawHit.distance + 0.05f,
+                environmentMask, QueryTriggerInteraction.Collide))
+            hit = refine;
+    }
+
+    // Si el SphereCast pegó “desde adentro” (muy juntos), probá un pequeño Overlap delante
+    if (!hit.collider)
+    {
+        Vector3 ahead = origin + fwd * Mathf.Max(0.05f, climbSphereRadius * 0.5f);
+        var cols = Physics.OverlapSphere(ahead, climbSphereRadius * 0.9f, environmentMask,
+            QueryTriggerInteraction.Collide);
+        if (cols.Length == 0)
         {
-            result = ParkourProbe.None;
+            if (verboseLogs) Debug.Log("[ClimbProbe] Sin collider tras refine/overlap.");
+            return false;
+        }
+        // Elegí el más cercano con tag
+        Collider best = null;
+        float bestDist = float.MaxValue;
+        foreach (var c in cols)
+        {
+            if (!HasClimbTag(c)) continue;
+            float d = Vector3.Distance(origin, c.ClosestPoint(origin));
+            if (d < bestDist) { bestDist = d; best = c; }
+        }
+        if (!best)
+        {
+            if (verboseLogs) Debug.Log("[ClimbProbe] Overlap encontró colliders, pero ninguno con tag 'Climb'.");
+            return false;
+        }
+        // Fake hit
+        Vector3 p = best.ClosestPoint(origin);
+        hit = new RaycastHit { point = p, normal = (origin - p).sqrMagnitude>1e-6f ? (origin - p).normalized : -fwd};
+    }
 
-            var m = GetComponent<Model>();
-            if (m && Time.time < m.blockClimbUntil)
+    // --- 3) Tag gating
+    if (!HasClimbTag(hit.collider))
+    {
+        if (verboseLogs) Debug.Log($"[ClimbProbe] Collider '{hit.collider.name}' sin tag '{tagClimb}'.");
+        return false;
+    }
+
+    // --- 4) Rechazar suelos/techos (exigir pared)
+    float slopeDeg = Vector3.Angle(hit.normal, Vector3.up); // 0° suelo, 90° pared
+    if (slopeDeg < climbMinWallSlopeDeg)
+    {
+        if (verboseLogs) Debug.Log($"[ClimbProbe] Slope={slopeDeg:F1}° < min {climbMinWallSlopeDeg}° (no es pared).");
+        return false;
+    }
+
+    // --- 5) Mirada razonable
+    float lookAng = Vector3.Angle(fwd, -hit.normal);
+    if (lookAng > climbMaxLookAngle)
+    {
+        if (verboseLogs) Debug.Log($"[ClimbProbe] LookAngle={lookAng:F1}° > max {climbMaxLookAngle}°.");
+        return false;
+    }
+
+    // OK -> reportar
+    result = new ParkourProbe
+    {
+        action       = ParkourAction.Climb,
+        hitPoint     = hit.point,
+        hitNormal    = hit.normal,
+        playerHeight = h,
+        playerRadius = Radius
+    };
+
+    if (verboseLogs) Debug.Log($"[ClimbProbe] CLIMB ok | slope={slopeDeg:F1}° look={lookAng:F1}° hit={hit.collider.name}");
+    return true;
+}
+
+
+        bool HasClimbTag(Collider c)
+        {
+            if (!c) return false;
+            if (c.CompareTag(tagClimb)) return true;
+
+            // también aceptá el tag en el transform del collider o cualquier padre
+            var t = c.transform;
+            while (t)
             {
-                if (verboseLogs) Debug.Log("[ClimbProbe] BLOCKED by cooldown");
-                return false;
-            }
-
-            Vector3 forward = GetPlanarForward();
-
-            float chest = Mathf.Clamp(Height * 0.55f, 0.8f, 1.1f);
-            Vector3 chestOrigin = transform.position + Vector3.up * chest;
-
-            if (!Physics.Raycast(chestOrigin, forward, out RaycastHit wallHit,
-                    forwardCheckDistance, environmentMask, QueryTriggerInteraction.Ignore))
-                return false;
-
-            // <<< NUEVO: exige Tag "Climb" en el frente >>>
-            if (!wallHit.collider || !wallHit.collider.CompareTag(tagClimb))
-            {
-                if (verboseLogs) Debug.Log($"[ClimbProbe] Collider sin tag '{tagClimb}'.");
-                return false;
-            }
-
-            float minY = transform.position.y + Radius + climbMinHeight;
-            float probeUpMax = Mathf.Max(climbMaxHeight, 2.5f);
-            float maxY = transform.position.y + Radius + probeUpMax;
-
-            LayerMask maskTopAndClearance = environmentMask | groundMask;
-
-            const int steps = 8;
-            for (int i = 0; i <= steps; i++)
-            {
-                float y = Mathf.Lerp(minY, maxY, i / (float)steps);
-                Vector3 probeStart = new Vector3(transform.position.x, y, transform.position.z)
-                                     + forward * (Radius + climbForwardProbe);
-
-                if (Physics.Raycast(probeStart, Vector3.down, out RaycastHit down,
-                        probeUpMax + 1.0f, maskTopAndClearance, QueryTriggerInteraction.Ignore))
-                {
-                    float climbH = down.point.y - (transform.position.y + Radius);
-                    if (climbH < climbMinHeight) continue;
-
-                    Vector3 headSpace = down.point + Vector3.up * (Radius + climbTopClearance);
-                    if (!HasClearanceCapsule(headSpace, Height - Radius * 2f, maskTopAndClearance)) continue;
-
-                    Vector3 stand = down.point + forward * Mathf.Max(0.05f, climbStandForward)
-                                               + Vector3.up * (Radius + clearanceSkin);
-                    if (!HasClearanceCapsule(stand, Height - Radius * 2f, maskTopAndClearance)) continue;
-
-                    result = new ParkourProbe
-                    {
-                        action = ParkourAction.Climb,
-                        hitPoint = wallHit.point,
-                        hitNormal = wallHit.normal,
-                        obstacleHeight = climbH,
-                        climbLedgePoint = down.point,
-                        climbStandPoint = stand,
-                        climbHeight = climbH
-                    };
-                    return true;
-                }
+                if (t.CompareTag(tagClimb)) return true;
+                t = t.parent;
             }
 
             return false;
-        }
-
-        // Overload con máscara
-        bool HasClearanceCapsule(Vector3 center, float heightSegment, LayerMask mask)
-        {
-            float r = Radius - clearanceSkin * 0.5f;
-            float h = Mathf.Max(r * 2f + 0.01f, heightSegment);
-            float half = h * 0.5f - r;
-
-            Vector3 top = center + Vector3.up * half;
-            Vector3 bottom = center - Vector3.up * half;
-
-            return !Physics.CheckCapsule(top, bottom, r, mask, QueryTriggerInteraction.Ignore);
         }
 
         #endregion
 
         #region WALLRUN
 
+        // ReSharper disable Unity.PerformanceAnalysis
         bool TryDetectWallrun(int side, out ParkourProbe result)
         {
             result = ParkourProbe.None;
 
             var m = GetComponent<Model>();
-
-            // --- Ground gating con "gracia" de aire/pared ---
-            bool groundedBlocks = (requireAirForWallrun && Grounded);
-            if (groundedBlocks)
-            {
-                bool recentWallOff = m && (Time.time - m.lastWallDetachTime) <= wallCrossRegrabGrace;
-            }
 
             // --- Base de casting: perpendicular al heading real ---
             Vector3 heading = GetHeadingPlanar();
@@ -624,8 +654,7 @@ namespace Player.Scripts.MovementFSM
 
             // --- Lateral indulgente (SphereCast) ---
             float radius = Mathf.Max(0.08f, Radius * wallSideSphereRadiusMul);
-            RaycastHit hit;
-            bool got = Physics.SphereCast(origin, radius, sideDir, out hit, wallCheckDistance,
+            bool got = Physics.SphereCast(origin, radius, sideDir, out var hit, wallCheckDistance,
                 environmentMask, QueryTriggerInteraction.Ignore);
 
             // --- Front-acquire (si saltás "de frente" a la otra pared) ---

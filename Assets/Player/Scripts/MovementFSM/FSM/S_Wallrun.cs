@@ -234,7 +234,6 @@ namespace Player.Scripts.MovementFSM
 
             _model.blockWallrunUntil = Time.time + _model.wallRegrabCooldown;
             _model.lastWallDetachTime = Time.time;
-            
             Vector3 impulse = Vector3.up * _model.wallJumpUpForce + _wallNormal * _model.wallJumpSideForce;
 
             // limpiar componente hacia la pared + reset y
