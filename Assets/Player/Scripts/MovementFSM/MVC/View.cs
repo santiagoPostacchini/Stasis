@@ -4,43 +4,69 @@ namespace Player.Scripts.MovementFSM.MVC
 {
     public class View : MonoBehaviour
     {
-        private static readonly int XAxisHash = Animator.StringToHash("xAxis");
-        private static readonly int ZAxisHash = Animator.StringToHash("zAxis");
-        private static readonly int IsStopping = Animator.StringToHash("IsStopping");
+        private static readonly int XAxisHash   = Animator.StringToHash("xAxis");
+        private static readonly int ZAxisHash   = Animator.StringToHash("zAxis");
+        private static readonly int IsStopping  = Animator.StringToHash("IsStopping");
         private static readonly int CanInteract = Animator.StringToHash("CanInteract");
         private static readonly int IsGrounded  = Animator.StringToHash("IsGrounded");
         private static readonly int IsDeepFall  = Animator.StringToHash("IsDeepFall");
-        private static readonly int TurnLeftHash = Animator.StringToHash("TurnLeft");
+        private static readonly int TurnLeftHash  = Animator.StringToHash("TurnLeft");
         private static readonly int TurnRightHash = Animator.StringToHash("TurnRight");
 
         [SerializeField] private Animator animator;
         [SerializeField] private FirstPersonCameraEffects playerCamEffects;
 
+        // NUEVO: refs físicas para el filtro
+        [Header("Refs Filtro")]
+        [SerializeField] private Rigidbody rb;
+        [SerializeField] private StairStepper stepper;
+
         [Header("<color=yellow>Animator Settings</color>")]
         private float _animX, _animZ, _xAxis, _zAxis;
-        
+
         [Header("Air Anim")]
         [Tooltip("Tiempo en el aire antes de usar la anim de caída al vacío.")]
         [SerializeField] private float deepFallDelay = 0.45f;
+        [Tooltip("Tiempo mínimo en aire para permitir anim 'Air' si no hay salto claro.")]
+        [SerializeField] private float airAnimMinTime = 0.3f;
+        [Tooltip("Velocidad vertical mínima (|vy|) para permitir 'Air' inmediata.")]
+        [SerializeField] private float airAnimMinFallSpeed = 1.0f;
+        [Tooltip("Tiempo mínimo de aire para permitir 'Land' visible.")]
+        [SerializeField] private float landAnimMinAirTime = 0.12f;
+        [Tooltip("Caída mínima (metros) para permitir 'Land' visible.")]
+        [SerializeField] private float landAnimMinFallDistance = 0.15f;
+        [Tooltip("Velocidad vertical mínima al impactar para permitir 'Land' visible.")]
+        [SerializeField] private float landAnimMinImpactSpeed = 1.0f;
 
-        private float _targetAnimX, _targetAnimZ;
         [SerializeField] private float animLerpSpeed = 8f;
-        private bool _isRun, _isStopping, _canInteract, _isGrounded;
-        float _airElapsed;
+        private bool _isRun, _isStopping, _canInteract;
+
+        private bool _worldGrounded;
+        private bool _animGrounded = true;
+
+        // Timers/mediciones para el filtro
+        private float _leftGroundTime;
+        private float _leftGroundY;
+        private float _forceAirUntilTime;
+
+        private float _airElapsed;
 
         private void Awake()
         {
-            animator = GetComponentInChildren<Animator>();
+            if (!animator) animator = GetComponentInChildren<Animator>();
+            if (!rb) rb = GetComponentInParent<Rigidbody>();
+            if (!stepper) stepper = GetComponentInParent<StairStepper>();
         }
 
         private void Update()
         {
+            // ---- movimiento (igual que antes) ----
             float targetMax = _isRun ? 1f : 0.5f;
-            _targetAnimX = Mathf.Clamp(_xAxis, -1f, 1f) * targetMax;
-            _targetAnimZ = Mathf.Clamp(_zAxis, -1f, 1f) * targetMax;
+            float targetAnimX = Mathf.Clamp(_xAxis, -1f, 1f) * targetMax;
+            float targetAnimZ = Mathf.Clamp(_zAxis, -1f, 1f) * targetMax;
 
-            _animX = Mathf.Lerp(_animX, _targetAnimX, Time.deltaTime * animLerpSpeed);
-            _animZ = Mathf.Lerp(_animZ, _targetAnimZ, Time.deltaTime * animLerpSpeed);
+            _animX = Mathf.Lerp(_animX, targetAnimX, Time.deltaTime * animLerpSpeed);
+            _animZ = Mathf.Lerp(_animZ, targetAnimZ, Time.deltaTime * animLerpSpeed);
 
             _animX = Mathf.Clamp(_animX, -1f, 1f);
             _animZ = Mathf.Clamp(_animZ, -1f, 1f);
@@ -48,15 +74,32 @@ namespace Player.Scripts.MovementFSM.MVC
             animator.SetFloat(XAxisHash, _animX);
             animator.SetFloat(ZAxisHash, _animZ);
             animator.SetBool(IsStopping, _isStopping);
-            
-            if(!_isGrounded)
+
+            if (!_worldGrounded)
             {
-                _airElapsed += Time.deltaTime;
-                bool deep = _airElapsed >= deepFallDelay;
-                animator.SetBool(IsDeepFall, deep);
+                bool stepping = stepper && stepper.IsStepping;
+                float sinceLeft = Time.time - _leftGroundTime;
+                float vyAbs = rb ? Mathf.Abs(rb.velocity.y) : 0f;
+                bool forceAir = Time.time < _forceAirUntilTime;
+
+                bool qualifiesForAir =
+                    !stepping && (forceAir || sinceLeft >= airAnimMinTime || vyAbs >= airAnimMinFallSpeed);
+
+                if (qualifiesForAir && _animGrounded)
+                {
+                    _animGrounded = false;
+                    animator.SetBool(IsGrounded, false);
+                    _airElapsed = 0f;
+                }
+
+                if (!_animGrounded)
+                {
+                    _airElapsed += Time.deltaTime;
+                    bool deep = _airElapsed >= deepFallDelay;
+                    animator.SetBool(IsDeepFall, deep);
+                }
             }
         }
-
         public void OnMove(float x, float z)
         {
             _xAxis = x;
@@ -65,172 +108,120 @@ namespace Player.Scripts.MovementFSM.MVC
 
         public void OnRun(bool run)
         {
+            bool wasRun = _isRun;
             _isRun = run;
             if (playerCamEffects)
             {
-                if (run && !_isRun) playerCamEffects.OnRunStart();
-                else if(!run && _isRun)    playerCamEffects.OnRunEnd();
+                if (run && !wasRun) playerCamEffects.OnRunStart();
+                else if(!run && wasRun) playerCamEffects.OnRunEnd();
             }
         }
 
-        public void OnStop(bool stp)
-        {
-            _isStopping = stp;
-        }
-
+        public void OnStop(bool stp) => _isStopping = stp;
         public void GroundedChangedEvent(bool grounded, float airTime)
         {
-            _isGrounded = grounded;
-            animator.SetBool(IsGrounded, grounded);
+            _worldGrounded = grounded;
 
             if (grounded)
             {
-                _airElapsed = 0f;
+                // Vamos a decidir si mostramos anim de land o no
+                float totalAir = Time.time - _leftGroundTime;
+                float fallDist = _leftGroundY - (rb ? rb.position.y : 0f);
+                float impactSpeed = rb ? Mathf.Abs(rb.velocity.y) : 0f;
+
+                bool showLand = !_animGrounded && (
+                                    totalAir >= landAnimMinAirTime ||
+                                    fallDist >= landAnimMinFallDistance ||
+                                    impactSpeed >= landAnimMinImpactSpeed
+                                );
+
+                _animGrounded = true;
+                animator.SetBool(IsGrounded, true);
                 animator.SetBool(IsDeepFall, false);
-               
+
+                if (!showLand)
+                {
+                    // Asegurar una mezcla limpia de vuelta a locomotion si no queremos land fuerte
+                    // (Usá los nombres que tengas en tu controller)
+                    animator.CrossFade("Player_Leg_Locomotion", 0.05f);
+                    animator.CrossFade("Player_Arm_Locomotion", 0.05f);
+                }
+
+                _airElapsed = 0f;
             }
             else
             {
-                _airElapsed = Mathf.Max(0f, airTime);
+                // No forzamos 'air' del Animator aún; sólo registramos el momento y altura de salida
+                _leftGroundTime = Time.time;
+                _leftGroundY = rb ? rb.position.y : 0f;
+
+                // Mantengo compatibilidad con tu contador si lo usás externamente
+                _airElapsed = Mathf.Max(_airElapsed, airTime);
             }
         }
 
         public void OnJumpEvent()
         {
-            Debug.Log("Jump Event");
-            animator.CrossFade("Player_Leg_Jump", 0);
-            animator.CrossFade("Player_Arm_Jump", 0);
-            //playerCam.ClearTilt();
-            //EventManager.TriggerEvent("OnJump", gameObject);
+            // Esto es un salto real => queremos Air inmediato en Animator
+            _forceAirUntilTime = Time.time + 0.10f;
+            _animGrounded = false;
+            animator.SetBool(IsGrounded, false);
+
+            animator.CrossFade("Player_Leg_Jump", 0f);
+            animator.CrossFade("Player_Arm_Jump", 0f);
         }
 
-        public void OnShootEvent()
-        {
-            Debug.Log("Shoot Event");
-            //animator.SetTrigger(_jumpHash);
-            //EventManager.TriggerEvent("OnJump", gameObject);
-        }
-
-        public void OnCrouchStartEvent()
-        {
-            Debug.Log("Crouch Start Event");
-            //animator.SetBool(_crouchHash, isCrouching);
-        }
-
-        public void OnCrouchEndEvent()
-        {
-            Debug.Log("Crouch End Event");
-            //animator.SetBool(_crouchHash, isCrouching);
-        }
+        public void OnShootEvent()         { }
+        public void OnCrouchStartEvent()   { }
+        public void OnCrouchEndEvent()     { }
 
         public void OnVaultStartEvent()
         {
-            Debug.Log("Vault Start Event");
             animator.CrossFade("Player_Leg_Vault", 0.1f);
             animator.CrossFade("Player_Arm_Vault", 0.1f);
             animator.applyRootMotion = false;
-            playerCamEffects.VaultStart();
-            //animator.SetTrigger(_vaultHash);
+            if (playerCamEffects) playerCamEffects.VaultStart();
         }
 
-        public void OnVaultEndEvent()
-        {
-            Debug.Log("Vault End Event");
-            playerCamEffects.VaultEnd();
-        }
-
-        public void OnClimbStartEvent()
-        {
-            Debug.Log("Climb Start Event");
-            //EventManager.TriggerEvent("OnClimb", gameObject);
-        }
-
-        public void OnClimbEndEvent()
-        {
-            Debug.Log("Climb End Event");
-            //EventManager.TriggerEvent("OnClimb", gameObject);
-        }
-
-        public void OnSlideStartEvent()
-        {
-            Debug.Log("Slide Start Event");
-        }
-
-        public void OnSlideEndEvent()
-        {
-            Debug.Log("Slide End Event");
-        }
+        public void OnVaultEndEvent()      { if (playerCamEffects) playerCamEffects.VaultEnd(); }
+        public void OnClimbStartEvent()    { }
+        public void OnClimbEndEvent()      { }
+        public void OnSlideStartEvent()    { }
+        public void OnSlideEndEvent()      { }
 
         public void OnWallrunStartEvent(int dir)
         {
-            Debug.Log($"Wall Slide Event with dir: {dir}");
-            animator.CrossFade(dir > 0 ? "Player_Leg_Wallrun_Left" : "Player_Leg_Wallrun_Right", 0);
-            animator.CrossFade(dir > 0 ? "Player_Arm_Wallrun_Left" : "Player_Arm_Wallrun_Right", 0);
-            playerCamEffects.WallrunStart(dir);
+            animator.CrossFade(dir > 0 ? "Player_Leg_Wallrun_Left" : "Player_Leg_Wallrun_Right", 0f);
+            animator.CrossFade(dir > 0 ? "Player_Arm_Wallrun_Left" : "Player_Arm_Wallrun_Right", 0f);
+            if (playerCamEffects) playerCamEffects.WallrunStart(dir);
         }
 
-        public void OnWallrunEndEvent()
-        {
-            playerCamEffects.WallrunEnd();
-        }
-
-        public void OnDamageEvent()
-        {
-            Debug.Log("Damage Event");
-        }
-
-        public void OnDeathEvent()
-        {
-            Debug.Log("Death Event");
-        }
-
-        public void OnGrabEvent()
-        {
-            Debug.Log("Grab Event");
-            //animator.SetTrigger(_grabHash);
-            //EventManager.TriggerEvent("OnObjectGrab", gameObject);
-        }
-
-        public void OnTurnYaw(int dir)
-        {
-            animator.CrossFade(dir < 0 ? TurnLeftHash : TurnRightHash, 0.1f);
-        }
-
-        public void OnDropEvent()
-        {
-            Debug.Log("Drop Event");
-            //animator.SetTrigger(_dropHash);
-        }
-
-        public void OnThrowEvent()
-        {
-            Debug.Log("Throw Event");
-            //animator.SetTrigger(_throwHash);
-        }
+        public void OnWallrunEndEvent()    { if (playerCamEffects) playerCamEffects.WallrunEnd(); }
+        public void OnDamageEvent()        { }
+        public void OnDeathEvent()         { }
+        public void OnGrabEvent()          { }
+        public void OnTurnYaw(int dir)     { animator.CrossFade(dir < 0 ? TurnLeftHash : TurnRightHash, 0.1f); }
+        public void OnDropEvent()          { }
+        public void OnThrowEvent()         { }
 
         public void OnCanInteractEnterEvent()
         {
-            Debug.Log("Can Interact Start");
-            animator.CrossFade("Player_Arm_CanPickup", 0.1f);
             _canInteract = true;
             animator.SetBool(CanInteract, _canInteract);
+            animator.CrossFade("Player_Arm_CanPickup", 0.1f);
         }
 
         public void OnCanInteractExitEvent()
         {
-            Debug.Log("Can Interact Exit");
             _canInteract = false;
             animator.SetBool(CanInteract, _canInteract);
-            //animator.SetTrigger(_throwHash);
         }
 
         public void OnInteractEvent()
         {
-            Debug.Log("Interact Event");
             _canInteract = false;
             animator.SetBool(CanInteract, _canInteract);
             animator.CrossFade("Player_Arm_Interact", 0.1f);
-            //EventManager.TriggerEvent("OnInteract", gameObject);
         }
     }
 }

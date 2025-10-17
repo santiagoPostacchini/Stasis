@@ -86,8 +86,9 @@ namespace Player.Scripts.MovementFSM
 
         [Header("Debug")] public bool debugDraw;
         public float assistEase = 0.6f;
+        
+        public bool IsStepping => _stepping;
 
-        // ---- runtime ----
         const float Skin = 0.02f;
         bool _stepping;
         float _t0, _t1, _y0, _y1;
