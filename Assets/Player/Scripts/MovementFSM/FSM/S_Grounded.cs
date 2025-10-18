@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Player.Scripts.MovementFSM.MVC;
+using Player.Scripts.MovementFSM.Player.Scripts.MovementFSM;
 using UnityEngine;
 
 namespace Player.Scripts.MovementFSM

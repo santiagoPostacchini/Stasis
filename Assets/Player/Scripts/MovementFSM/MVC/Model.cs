@@ -2,6 +2,7 @@ using System;
 using Audio.Scripts;
 using Player.FullBody_Scripts.MovementFSM;
 using Player.Scripts.Interactor;
+using Player.Scripts.MovementFSM.Player.Scripts.MovementFSM;
 using Player.Stasis;
 using UnityEngine;
 
