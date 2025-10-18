@@ -6,6 +6,10 @@ public class ScanDescriptor : ScriptableObject
     [Header("Contenido")]
     public string displayName = "Interactable";
     [TextArea] public string hint = "Press [E] to interact";
+
+    [Tooltip("Texto secundario opcional (p.ej. acción alternativa, estado, requisito).")]
+    [TextArea] public string extraHint = "";       // <-- NUEVO
+
     public Sprite icon;
     public Color color = new Color(0f, 1f, 0.7f);
 

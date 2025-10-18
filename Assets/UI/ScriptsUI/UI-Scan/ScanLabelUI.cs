@@ -12,6 +12,9 @@ public class ScanLabelUI : MonoBehaviour
     public TextMeshProUGUI title;
     public TextMeshProUGUI hint;
 
+    [Tooltip("TMP opcional para texto secundario (si el SO trae 'extraHint').")]
+    public TextMeshProUGUI extra;   // <-- NUEVO
+
     [Header("Apariencia")]
     public float fadeTime = 0.15f;         // unscaled
     public Vector2 screenOffset = new Vector2(0f, 32f);
@@ -34,14 +37,13 @@ public class ScanLabelUI : MonoBehaviour
     {
         if (target == null || _cam == null) return;
 
-        // Posicionar en pantalla
-        Vector2 screen = RectTransformUtility.WorldToScreenPoint(_cam, target.WorldPoint);
+        Vector3 wp = target.GetWorldPoint(_cam); // usa el mejor pivot
+        Vector2 screen = RectTransformUtility.WorldToScreenPoint(_cam, wp);
         ((RectTransform)transform).position = screen + screenOffset;
 
-        // Escalar con distancia (sutil)
         if (scaleWithDistance)
         {
-            float d = Vector3.Distance(_cam.transform.position, target.WorldPoint);
+            float d = Vector3.Distance(_cam.transform.position, wp);
             float k = Mathf.InverseLerp(2f, 20f, d);
             float s = Mathf.Lerp(scaleRange.y, scaleRange.x, k);
             ((RectTransform)transform).localScale = Vector3.one * s;
@@ -76,13 +78,30 @@ public class ScanLabelUI : MonoBehaviour
 
     private void ApplyDescriptor(ScanDescriptor d)
     {
+        if (d == null) return;
+
+        // Principal
         if (title) { title.text = d.displayName; title.color = d.color; }
         if (hint)  { hint.text  = d.hint;        hint.color  = d.color; }
+
+        // Secundario (mostrar solo si hay contenido)
+        if (extra)
+        {
+            bool hasExtra = !string.IsNullOrWhiteSpace(d.extraHint);
+            extra.gameObject.SetActive(hasExtra);
+            if (hasExtra)
+            {
+                extra.text  = d.extraHint;
+                extra.color = d.color;
+            }
+        }
+
+        // Icono
         if (icon)
         {
             icon.sprite = d.icon;
             icon.enabled = d.icon != null;
-            icon.color = d.color;
+            icon.color   = d.color;
         }
     }
 }
