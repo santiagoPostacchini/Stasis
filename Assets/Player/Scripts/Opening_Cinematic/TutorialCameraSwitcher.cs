@@ -25,7 +25,7 @@ public class TutorialCameraSwitcher : MonoBehaviour
 
     [Header("🎭 REFERENCIAS PRINCIPALES")]
     public RagdollHanger ragdollHanger;
-    public GameObject objectToDeactivate; // opcional para lógica extra
+    public GameObject objectToDeactivate; // opcional
 
     [Header("🖼️ CANVAS CONFIGURACIÓN")]
     public CanvasGroup canvasGroup;
@@ -40,6 +40,10 @@ public class TutorialCameraSwitcher : MonoBehaviour
     public Animator targetAnimator;
     public float animatorStartDelay = 1f;
     public float transitionAfterAnimatorDelay = 3f; // tiempo antes de pasar de B→C
+
+    [Header("🧩 SCRIPTS A ACTIVAR DESPUÉS DE LA TRANSICIÓN B→C")]
+    public MonoBehaviour[] scriptsToEnable;
+    public float scriptsActivationDelay = 1f; // Delay configurable
 
     private bool isTransitioning = false;
     private bool prevA, prevB, prevC;
@@ -66,6 +70,14 @@ public class TutorialCameraSwitcher : MonoBehaviour
     {
         // Inicializar cámaras y objetos
         SetInitialCameraState();
+
+        // 🔸 Desactivar scripts desde el inicio
+        if (scriptsToEnable != null)
+        {
+            foreach (var script in scriptsToEnable)
+                if (script != null)
+                    script.enabled = false;
+        }
 
         // Inicializar canvas
         if (canvasGroup != null)
@@ -94,17 +106,14 @@ public class TutorialCameraSwitcher : MonoBehaviour
     #region === CÁMARA ===
     private void SetInitialCameraState()
     {
-        // Asegurarse que los objetos están en el estado inicial correcto
         if (objectA) objectA.SetActive(true);
         if (objectB) objectB.SetActive(false);
         if (objectC) objectC.SetActive(false);
 
-        // Activar cámaras (aunque algunas estén desactivadas)
         if (cameraA) cameraA.gameObject.SetActive(true);
         if (cameraB) cameraB.gameObject.SetActive(true);
         if (cameraC) cameraC.gameObject.SetActive(true);
 
-        // Asignar prioridad inicial
         switch (startCamera)
         {
             case StartCamera.CameraA: SetPriority(cameraA); break;
@@ -132,7 +141,6 @@ public class TutorialCameraSwitcher : MonoBehaviour
         prevB = transitionToB;
         prevC = transitionToC;
 
-        // Transición automática por fadeBlack
         if (ragdollHanger.fadeBlack && !fadeBlackPrev)
             StartCoroutine(SwitchRoutine(cameraB, "B"));
 
@@ -148,7 +156,6 @@ public class TutorialCameraSwitcher : MonoBehaviour
         if (targetCamera == "B" && objectB) objectB.SetActive(true);
         if (targetCamera == "C" && objectC) objectC.SetActive(true);
 
-        // Cambiar prioridad de cámaras
         foreach (var vcam in FindObjectsOfType<CinemachineVirtualCameraBase>())
             vcam.Priority = (vcam == newCam) ? 20 : 5;
 
@@ -163,9 +170,22 @@ public class TutorialCameraSwitcher : MonoBehaviour
         else if (targetCamera == "C")
         {
             if (objectB) objectB.SetActive(false);
+
+            // 🔹 Activar scripts desactivados después de la transición B→C con delay
+            if (scriptsToEnable != null && scriptsToEnable.Length > 0)
+                StartCoroutine(ActivateScriptsWithDelay());
         }
 
         isTransitioning = false;
+    }
+
+    private IEnumerator ActivateScriptsWithDelay()
+    {
+        yield return new WaitForSeconds(scriptsActivationDelay);
+
+        foreach (var script in scriptsToEnable)
+            if (script != null)
+                script.enabled = true;
     }
     #endregion
 
@@ -276,6 +296,9 @@ public class TutorialCameraSwitcher : MonoBehaviour
     }
     #endregion
 }
+
+
+
 
 
 
