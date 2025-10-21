@@ -276,6 +276,10 @@ namespace Player.Scripts.MovementFSM.MVC
         // ReSharper disable Unity.PerformanceAnalysis
         public void WallrunStartEvent(int dir) => OnWallrunStart?.Invoke(dir);
         public void WallrunEndEvent() => OnWallrunEnd?.Invoke();
+        
+        public void ClimbStartEvent() => OnClimbStart?.Invoke();
+        
+        public void ClimbEndEvent() => OnClimbEnd?.Invoke();
 
         // ReSharper disable Unity.PerformanceAnalysis
         public void VaultStartEvent() => OnVaultStart?.Invoke();

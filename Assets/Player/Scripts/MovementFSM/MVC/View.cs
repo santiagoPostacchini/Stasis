@@ -15,6 +15,7 @@ namespace Player.Scripts.MovementFSM.MVC
 
         [SerializeField] private Animator animator;
         [SerializeField] private FirstPersonCameraEffects playerCamEffects;
+        [SerializeField] private VisualYawFollower visualYawFollower;
 
         // NUEVO: refs físicas para el filtro
         [Header("Refs Filtro")]
@@ -184,8 +185,11 @@ namespace Player.Scripts.MovementFSM.MVC
         }
 
         public void OnVaultEndEvent()      { if (playerCamEffects) playerCamEffects.VaultEnd(); }
-        public void OnClimbStartEvent()    { }
-        public void OnClimbEndEvent()      { }
+        public void OnClimbStartEvent()
+        {
+            if (visualYawFollower) visualYawFollower.followEnabled = false;
+        }
+        public void OnClimbEndEvent()      { if (visualYawFollower) visualYawFollower.followEnabled = true; }
         public void OnSlideStartEvent()    { }
         public void OnSlideEndEvent()      { }
 
