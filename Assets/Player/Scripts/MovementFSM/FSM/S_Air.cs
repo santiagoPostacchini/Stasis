@@ -43,13 +43,14 @@ namespace Player.Scripts.MovementFSM
                 return;
             }
             
-            if (p.action == ParkourAction.WallrunLeft ||
-                p.action == ParkourAction.WallrunRight)
+            bool wantsWall = (p.action == ParkourAction.WallrunLeft || p.action == ParkourAction.WallrunRight);
+            if (wantsWall && Time.time >= _model.blockWallrunUntil)
             {
                 _model.ClearJumpBuffer();
                 _fsm.ChangeState(FSM.States.Wallrun);
                 return;
             }
+
             
             if (_model.IsGroundedNow())
             {

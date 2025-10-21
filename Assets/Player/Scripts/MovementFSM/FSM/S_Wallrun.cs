@@ -7,18 +7,19 @@ namespace Player.Scripts.MovementFSM
     {
         private readonly FSM _fsm;
         private readonly Model _model;
-
         private Rigidbody _rb;
         private Transform _orient;
         private Vector3 _wallNormal;
         private int _side;
-
         private float _timer;
         private bool _exiting;
         private float _exitTimer;
         private float _enterTime;
         private Vector3 _lastWallPoint;
-        
+        private Vector3 _smoothNormal;
+        private float _seamHoldTimer;
+
+
         public S_Wallrun(FSM fsm, Model model)
         {
             _fsm = fsm;
@@ -33,14 +34,17 @@ namespace Player.Scripts.MovementFSM
             var p = _model.probe;
             ReadProbe(p);
             _lastWallPoint = p.wallRunWallPoint;
-            
+
+            _smoothNormal = _wallNormal;
+            _seamHoldTimer = 0f;
+
             _model.WallrunStartEvent(_side);
-            
+
             _timer = _model.maxWallRunTime;
             _exiting = false;
             _enterTime = Time.time;
-            
         }
+
 
         public void OnUpdate()
         {
@@ -49,25 +53,33 @@ namespace Player.Scripts.MovementFSM
                 _fsm.ChangeState(FSM.States.Grounded);
                 return;
             }
-            
+
             var p = _model.probe;
-            
+
             if (p.action == ParkourAction.Climb &&
                 (_model.zAxis > 0.1f || _model.jumpDownThisFrame))
             {
                 _fsm.ChangeState(FSM.States.Climb);
                 return;
             }
-            
-            if (p.action != ParkourAction.WallrunLeft && p.action != ParkourAction.WallrunRight)
+
+            bool hasWall = (p.action == ParkourAction.WallrunLeft || p.action == ParkourAction.WallrunRight);
+            if (!hasWall)
             {
-                _fsm.ChangeState(FSM.States.Air);
-                return;
+                _seamHoldTimer += Time.deltaTime;
+                if (_seamHoldTimer > _model.wallSeamHold)
+                {
+                    _fsm.ChangeState(FSM.States.Air);
+                    return;
+                }
+                // si estamos dentro del hold, seguimos como si tuviéramos pared (forces en FixedUpdate)
             }
-            
-            ReadProbe(p);
-            _lastWallPoint = p.wallRunWallPoint;
-            
+            else
+            {
+                ReadProbe(p);
+                _lastWallPoint = p.wallRunWallPoint;
+            }
+
             if (!_exiting)
             {
                 _timer -= Time.deltaTime;
@@ -93,9 +105,11 @@ namespace Player.Scripts.MovementFSM
         public void OnFixedUpdate()
         {
             if (_exiting) return;
-            
+
             var p = _model.probe;
-            if (p.action != ParkourAction.WallrunLeft && p.action != ParkourAction.WallrunRight)
+            bool hasWall = (p.action == ParkourAction.WallrunLeft || p.action == ParkourAction.WallrunRight);
+
+            if (!hasWall && _seamHoldTimer > _model.wallSeamHold)
             {
                 _fsm.ChangeState(FSM.States.Air);
                 return;
@@ -103,6 +117,7 @@ namespace Player.Scripts.MovementFSM
 
             WallrunForces();
         }
+
 
         public void OnExit()
         {
@@ -117,14 +132,22 @@ namespace Player.Scripts.MovementFSM
 
         private void ReadProbe(in ParkourProbe p)
         {
-            if (p.action == ParkourAction.WallrunRight || p.action == ParkourAction.WallrunLeft)
+            if (p.action is ParkourAction.WallrunRight or ParkourAction.WallrunLeft)
             {
                 _wallNormal = p.wallRunNormal;
+                _smoothNormal = Vector3.Slerp(
+                    _smoothNormal == Vector3.zero ? p.wallRunNormal : _smoothNormal,
+                    p.wallRunNormal,
+                    1f - Mathf.Exp(-_model.wallNormalSmooth * Time.deltaTime)
+                );
                 _side = p.wallSide;
                 _model.lastWallCollider = p.wallRunCollider;
-                _model.lastWallNormal   = p.wallRunNormal;
+                _model.lastWallNormal = p.wallRunNormal;
+
+                _seamHoldTimer = 0f;
             }
         }
+
 
         float EnterBlend01()
         {
@@ -133,27 +156,26 @@ namespace Player.Scripts.MovementFSM
 
         private void WallrunForces()
         {
-            // --- 1) Tangente de la pared (elegir sentido más cercano al forward) ---
-            Vector3 wallForward = Vector3.Cross(_wallNormal, Vector3.up);
+            // Usar normal suavizada
+            Vector3 n = (_smoothNormal == Vector3.zero) ? _wallNormal : _smoothNormal;
+
+            // 1) Tangente
+            Vector3 wallForward = Vector3.Cross(n, Vector3.up);
             Vector3 fwd = _orient ? _orient.forward : _model.transform.forward;
             fwd.y = 0f;
-            if (fwd.sqrMagnitude < 0.0001f) fwd = _model.transform.forward;
+            if (fwd.sqrMagnitude < 1e-4f) fwd = _model.transform.forward;
             fwd.Normalize();
-            if ((fwd - wallForward).sqrMagnitude > (fwd + wallForward).sqrMagnitude)
-                wallForward = -wallForward;
+            if ((fwd - wallForward).sqrMagnitude > (fwd + wallForward).sqrMagnitude) wallForward = -wallForward;
 
-            // Alinear suavemente la dirección objetivo (suaviza cambios bruscos de tangente)
             float alignT = 1f - Mathf.Exp(-_model.wallAlignLerp * Time.fixedDeltaTime);
+
             Vector3 vHoriz = new Vector3(_rb.velocity.x, 0f, _rb.velocity.z);
             if (vHoriz.sqrMagnitude > 1e-6f)
             {
-                Vector3 curDir = vHoriz.normalized;
-                Vector3 newDir = Vector3.Slerp(curDir, wallForward, alignT);
-                float speed = vHoriz.magnitude;
-                vHoriz = newDir * speed;
+                Vector3 newDir = Vector3.Slerp(vHoriz.normalized, wallForward, alignT);
+                vHoriz = newDir * vHoriz.magnitude;
             }
 
-            // --- 2) Objetivo de velocidad a lo largo de la pared (usa tu lógica de cruise) ---
             Vector3 camF = _orient ? _orient.forward : _model.transform.forward;
             camF.y = 0f;
             camF.Normalize();
@@ -167,83 +189,71 @@ namespace Player.Scripts.MovementFSM
             bool pushingForward = inputAlong > _model.wallInputThreshold;
 
             float curAlong = Vector3.Dot(vHoriz, wallForward);
-            float targetAlong = pushingForward
-                ? _model.wallRunMaxSpeed
-                : Mathf.Max(_model.wallCruiseSpeed, curAlong);
-
+            float targetAlong = pushingForward ? _model.wallRunMaxSpeed : Mathf.Max(_model.wallCruiseSpeed, curAlong);
             float accel = pushingForward ? _model.wallRunAccel : _model.wallCruiseAccel;
-            float delta = Mathf.Clamp(targetAlong - curAlong,
-                -accel * Time.fixedDeltaTime,
+            float delta = Mathf.Clamp(targetAlong - curAlong, -accel * Time.fixedDeltaTime,
                 accel * Time.fixedDeltaTime);
 
             Vector3 addAlong = wallForward * delta;
             _rb.AddForce(addAlong, ForceMode.VelocityChange);
 
-            // --- 3) Adherencia SUAVE: PD hacia standOff (no snap duro) ---
-            // Medimos distancia actual a la pared a lo largo de la normal (punto más reciente)
-            // _lastWallPoint viene del probe de Update (si querés, refrescalo ahí)
+            // Distancia al plano (con normal suavizada)
             Vector3 fromWall = _rb.position - _lastWallPoint;
-            float dist = Vector3.Dot(fromWall, -_wallNormal); // distancia positiva si “dentro”
-            float err = (_model.wallStandOff - dist); // >0 queremos alejarnos, <0 acercarnos
+            float dist = Vector3.Dot(fromWall, -n);
+            float err = (_model.wallStandOff - dist);
+            float vInto = Vector3.Dot(_rb.velocity, -n);
 
-            // Velocidad "hacia la pared" (componente contra la normal)
-            float vInto = Vector3.Dot(_rb.velocity, -_wallNormal);
-
-            // PD (resorte + amortiguador)
-            float blend = EnterBlend01(); // rampa 0→1 al entrar
+            float blend = EnterBlend01();
             float stick = blend * _model.wallStickKp * err - _model.wallStickKd * vInto;
+            _rb.AddForce(-n * stick, ForceMode.Force);
 
-            _rb.AddForce(-_wallNormal * stick, ForceMode.Force);
-
-            // --- 4) Atenuar la gravedad con blend-in ---
             if (_model.wallUseGravity)
-            {
                 _rb.AddForce(Vector3.up * (_model.gravityCounterForce * blend), ForceMode.Force);
-            }
 
-            // --- 5) Y vertical: subir/bajar/glide (igual que antes) ---
+            // Vertical
             bool upwards = _model.runningKeyPressed;
             bool downwards = Input.GetKey(_model.crouchKey);
             float vy = _rb.velocity.y;
 
-            if (upwards)
-                vy = Mathf.MoveTowards(vy, _model.wallClimbSpeed, 12f * Time.fixedDeltaTime);
-            else if (downwards)
-                vy = Mathf.MoveTowards(vy, -_model.wallDescendSpeed, 12f * Time.fixedDeltaTime);
-            else if (!pushingForward)
-                vy = Mathf.MoveTowards(vy, -_model.wallGlideDownSpeed, 8f * Time.fixedDeltaTime);
-            else
-                vy = Mathf.MoveTowards(vy, 0f, 8f * Time.fixedDeltaTime);
+            if (upwards) vy = Mathf.MoveTowards(vy, _model.wallClimbSpeed, 12f * Time.fixedDeltaTime);
+            else if (downwards) vy = Mathf.MoveTowards(vy, -_model.wallDescendSpeed, 12f * Time.fixedDeltaTime);
+            else if (!pushingForward) vy = Mathf.MoveTowards(vy, -_model.wallGlideDownSpeed, 8f * Time.fixedDeltaTime);
+            else vy = Mathf.MoveTowards(vy, 0f, 8f * Time.fixedDeltaTime);
 
-            // Aplicar vy
             _rb.velocity = new Vector3(vHoriz.x + addAlong.x, vy, vHoriz.z + addAlong.z);
 
-            // --- 6) NO elimines de golpe la componente que se mete en la pared: disípala suave ---
-            float into = Vector3.Dot(_rb.velocity, -_wallNormal);
+            // Disipar “meterse” en la pared suavemente
+            float into = Vector3.Dot(_rb.velocity, -n);
             if (into > 0f)
             {
                 float remove = Mathf.Min(into, _model.wallIntoDamp * Time.fixedDeltaTime);
-                _rb.velocity -= _wallNormal * remove;
+                _rb.velocity -= n * remove;
             }
         }
-        
+
         private void WallJump()
         {
             _exiting = true;
             _exitTimer = _model.exitWallTime;
 
-            _model.blockWallrunUntil = Time.time + _model.wallRegrabCooldown;
-            _model.lastWallDetachTime = Time.time;
-            Vector3 impulse = Vector3.up * _model.wallJumpUpForce + _wallNormal * _model.wallJumpSideForce;
+            // Lockouts post salto
+            float until = Time.time + _model.wallPostJumpNoRegrab;
+            _model.blockWallrunUntil   = until;            // bloqueo general
+            _model.wallJustJumpedUntil = until;            // flag “acabo de saltar”
+            _model.wallSeamDisableUntil = until;           // seam-hold OFF el mismo lapso
+            _model.lastWallDetachTime  = Time.time;
 
-            // limpiar componente hacia la pared + reset y
+            // Impulso: limpiar componente hacia la pared y vel.Y
             Vector3 v = _rb.velocity;
             float into = Vector3.Dot(v, -_wallNormal);
             if (into > 0f) v -= _wallNormal * into;
             v.y = 0f;
             _rb.velocity = v;
 
-            _rb.AddForce(impulse, ForceMode.Impulse);
+            Vector3 velChange = Vector3.up * _model.wallJumpUpForce
+                                + _wallNormal * _model.wallJumpSideForce;
+            _rb.AddForce(velChange, ForceMode.VelocityChange);
         }
+
     }
 }

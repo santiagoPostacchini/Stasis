@@ -80,7 +80,7 @@ namespace Player.Scripts.MovementFSM
             [Header("Grounding (Masks)")]
             [Tooltip("Si true, también considera environmentMask como 'caminar' (filtra por pendiente).")]
             public bool useEnvAsGround = true;
-            
+
             // ===== Ground Notify (extra) =====
             [Header("Ground Notify (extra)")]
             [Tooltip("Si true, re-notifica OnGroundedChanged(true, hit) estando en suelo.")]
@@ -92,8 +92,8 @@ namespace Player.Scripts.MovementFSM
             [Tooltip("Re-notifica si el punto de apoyo cambia más de este umbral (m).")]
             public float groundReNotifyPosEps = 0.01f;
 
-            [Tooltip("Re-notifica si la normal cambia más que este cos(ángulo). 0.999≈2.6°")]
-            [Range(-1f, 1f)] public float groundReNotifyNormalCos = 0.999f;
+            [Tooltip("Re-notifica si la normal cambia más que este cos(ángulo). 0.999≈2.6°")] [Range(-1f, 1f)]
+            public float groundReNotifyNormalCos = 0.999f;
 
             float _nextGroundNotifyTime;
             RaycastHit _lastNotifiedGroundHit;
@@ -126,6 +126,18 @@ namespace Player.Scripts.MovementFSM
             [Range(0f, 70f)] public float wallToForwardMaxAngle = 55f;
             public float wallMinSpeed = 3.5f;
 
+            [Tooltip("m/s hacia la pared para permitir entrada aunque el ángulo/tangente fallen")]
+            public float wallApproachMinInto = 2.0f;
+
+            [Tooltip("Ventana para mantener el último hit al cruzar un seam")]
+            public float wallSeamStickTime = 0.15f;
+
+            [Tooltip("Gap máximo al plano anterior para tratarlo como continuidad")]
+            public float wallSeamMaxGap = 0.12f;
+
+            [Tooltip("Relaja ángulo máx.  si venís en carrera hacia la pared")]
+            public float wallApproachAngleBonus = 25f;
+
             [Tooltip("Tiempo para permitir reenganchar OTRA pared aún en cooldown.")]
             public float wallCrossRegrabGrace = 0.15f;
 
@@ -144,6 +156,9 @@ namespace Player.Scripts.MovementFSM
             [Tooltip("Empuje extra fuera de la pared para el check de cabeza.")]
             public float wallHeadClearPush = 0.12f;
 
+            private RaycastHit _lastWallHit;
+            private float _lastWallTime = -999f;
+
             [Header("Ground")] public bool requireAirForWallrun = true;
 
             [Header("Debug")] public bool drawGizmos = true;
@@ -151,7 +166,7 @@ namespace Player.Scripts.MovementFSM
             [Tooltip("Activa logs verbosos en consola.")]
             public bool verboseLogs = true;
 
-            public ParkourProbe Probe { get; set; }
+            public ParkourProbe Probe { get; private set; }
             public event Action<ParkourProbe> OnProbeUpdated = delegate { };
             public event Action<bool, RaycastHit> OnGroundedChanged = delegate { };
 
@@ -178,7 +193,8 @@ namespace Player.Scripts.MovementFSM
                 if (Grounded != _prevGrounded)
                 {
                     if (verboseLogs)
-                        Debug.Log($"[Scanner] Grounded={Grounded} Slope={GroundSlopeDeg:F1} pos={transform.position:F3}");
+                        Debug.Log(
+                            $"[Scanner] Grounded={Grounded} Slope={GroundSlopeDeg:F1} pos={transform.position:F3}");
 
                     OnGroundedChanged(Grounded, GroundHit);
                     _prevGrounded = Grounded;
@@ -204,7 +220,8 @@ namespace Player.Scripts.MovementFSM
                         GroundHit.collider != _lastNotifiedGroundHit.collider ||
                         (GroundHit.point - _lastNotifiedGroundHit.point).sqrMagnitude >
                         (groundReNotifyPosEps * groundReNotifyPosEps) ||
-                        Vector3.Dot(GroundHit.normal.normalized, _lastNotifiedGroundHit.normal.normalized) < groundReNotifyNormalCos;
+                        Vector3.Dot(GroundHit.normal.normalized, _lastNotifiedGroundHit.normal.normalized) <
+                        groundReNotifyNormalCos;
 
                     if (timeOk || hitDiff)
                     {
@@ -274,7 +291,7 @@ namespace Player.Scripts.MovementFSM
             public float groundEnterStability = 0.05f; // 50 ms va bien (0.04–0.07)
 
             [Tooltip("Retraso al soltar suelo. 0 para salida inmediata.")]
-            public float groundExitStability; // dejalo en 0
+            public float groundExitStability;
 
             private bool _rawGrounded;
             private float _rawChangeTime;
@@ -658,7 +675,6 @@ namespace Player.Scripts.MovementFSM
                         hit = refine;
                 }
 
-                // Si el SphereCast pegó “desde adentro” (muy juntos), probá un pequeño Overlap delante
                 if (!hit.collider)
                 {
                     Vector3 ahead = origin + fwd * Mathf.Max(0.05f, climbSphereRadius * 0.5f);
@@ -742,7 +758,6 @@ namespace Player.Scripts.MovementFSM
                 if (!c) return false;
                 if (c.CompareTag(tagClimb)) return true;
 
-                // también aceptá el tag en el transform del collider o cualquier padre
                 var t = c.transform;
                 while (t)
                 {
@@ -761,79 +776,109 @@ namespace Player.Scripts.MovementFSM
             bool TryDetectWallrun(int side, out ParkourProbe result)
             {
                 result = ParkourProbe.None;
-
                 var m = GetComponent<Model>();
+                
+                if (m && Time.time < m.wallJustJumpedUntil)
+                {
+                    result = ParkourProbe.None;
+                    return false;
+                }
 
-                // --- Base de casting: perpendicular al heading real ---
+                // 0) Heading y lados
                 Vector3 heading = GetHeadingPlanar();
                 if (heading.sqrMagnitude < 1e-6f) return false;
-
                 Vector3 rightHeading = Vector3.Cross(Vector3.up, heading).normalized;
                 Vector3 sideDir = (side < 0 ? -rightHeading : rightHeading);
 
                 float mid = Mathf.Clamp(Height * 0.5f, 0.8f, 1.0f);
                 Vector3 origin = transform.position + Vector3.up * mid;
-
-                // --- Lateral indulgente (SphereCast) ---
                 float radius = Mathf.Max(0.08f, Radius * wallSideSphereRadiusMul);
+
+                // 1) Lateral + fallback frontal
                 bool got = Physics.SphereCast(origin, radius, sideDir, out var hit, wallCheckDistance,
                     environmentMask, QueryTriggerInteraction.Ignore);
 
-                // --- Front-acquire (si saltás "de frente" a la otra pared) ---
                 if (!got)
                     got = Physics.Raycast(origin, heading, out hit, wallFrontAcquireDistance,
                         environmentMask, QueryTriggerInteraction.Ignore);
+
+                if (!got && (Time.time - _lastWallTime) <= wallSeamStickTime && _lastWallHit.collider)
+                {
+                    if (!(m && Time.time < m.wallSeamDisableUntil))
+                    {
+                        float distToPlane = Mathf.Abs(Vector3.Dot((transform.position - _lastWallHit.point), _lastWallHit.normal));
+                        if (distToPlane <= wallSeamMaxGap) { hit = _lastWallHit; got = true; }
+                    }
+                }
+
                 if (!got) return false;
 
-                // --- Refinar normal real de superficie (SphereCast puede mentir) ---
-                Vector3 dirToWall = (hit.point - origin).sqrMagnitude > 1e-6f
-                    ? (hit.point - origin).normalized
-                    : heading;
-                if (Physics.Raycast(origin, dirToWall, out RaycastHit refine, hit.distance + 0.05f,
-                        environmentMask, QueryTriggerInteraction.Ignore))
-                    hit = refine; // ahora hit.normal es la de la pared real
+                // 2) Refinar normal verdadera
+                Vector3 toWall = (hit.point - origin);
+                if (toWall.sqrMagnitude > 1e-6f)
+                {
+                    toWall.Normalize();
+                    if (Physics.Raycast(origin, toWall, out RaycastHit refine, hit.distance + 0.05f,
+                            environmentMask, QueryTriggerInteraction.Ignore))
+                        hit = refine;
+                }
 
                 if (!hit.collider || !hit.collider.CompareTag(tagWallrun)) return false;
 
-                // Pared casi vertical
-                float upDot = Vector3.Dot(hit.normal, Vector3.up);
-                if (Mathf.Abs(upDot) > Mathf.Sin(wallMaxSlopeDeg * Mathf.Deg2Rad)) return false;
+                // 3) Validar casi vertical
+                float upDot = Mathf.Abs(Vector3.Dot(hit.normal.normalized, Vector3.up));
+                if (upDot > Mathf.Sin(wallMaxSlopeDeg * Mathf.Deg2Rad)) return false;
 
-                // --- Cooldown "smart": bloquear misma pared/plano, permitir otra ---
+                // 4) Cooldown inteligente: permití re-grab si venís entrando fuerte
                 bool cooldownActive = (m && Time.time < m.blockWallrunUntil);
+                bool forceAllow = false;
+                if (!(m && Time.time < m.wallJustJumpedUntil)) // <-- NO permitir override si recién saltó
+                {
+                    float speedInto = rb ? Vector3.Dot(rb.velocity, -hit.normal) : 0f;
+                    forceAllow = speedInto >= wallApproachMinInto
+                                 || ((Time.time - m.lastWallDetachTime) <= wallCrossRegrabGrace);
+                }
                 if (cooldownActive && m)
                 {
-                    bool sameCol = m.lastWallCollider && hit.collider == m.lastWallCollider;
+                    bool sameCol   = m.lastWallCollider && hit.collider == m.lastWallCollider;
                     bool samePlane = (m.lastWallNormal != Vector3.zero &&
-                                      Vector3.Dot(hit.normal.normalized, m.lastWallNormal.normalized) > 0.84f);
-                    if (sameCol || samePlane) return false;
-                    // si es otra pared, permitimos cross-regrab
+                                      Vector3.Dot(hit.normal.normalized, m.lastWallNormal.normalized) > 0.96f);
+                    if ((sameCol || samePlane) && !forceAllow) return false;
                 }
 
-                // Tangente de la pared
+                // 5) Tangente de pared y tests de entrada
                 Vector3 wallForward = Vector3.Cross(hit.normal, Vector3.up).normalized;
                 if (Vector3.Dot(heading, wallForward) < 0f) wallForward = -wallForward;
 
-                // Tolerancias con "gracia"
                 bool inGrace = (m && ((Time.time - m.lastWallDetachTime) <= wallCrossRegrabGrace));
                 float angMax = wallToForwardMaxAngle + (inGrace ? wallGraceAngleBonus : 0f);
-                if (Vector3.Angle(heading, wallForward) > angMax) return false;
 
                 Vector3 horizVel = rb ? new Vector3(rb.velocity.x, 0f, rb.velocity.z) : Vector3.zero;
                 float tangentialSpeed = Mathf.Abs(Vector3.Dot(horizVel, wallForward));
                 float minSpeed = wallMinSpeed * (inGrace ? wallGraceMinSpeedMul : 1f);
-                if (tangentialSpeed < minSpeed) return false;
 
-                // Clearance de cabeza (empujado leve fuera de la pared)
+                float speedInto2 = rb ? Vector3.Dot(rb.velocity, -hit.normal) : 0f;
+                bool approachOk = speedInto2 >= wallApproachMinInto && Vector3.Dot(heading, -hit.normal) > 0.1f;
+
+                if (Vector3.Angle(heading, wallForward) > (angMax + (approachOk ? wallApproachAngleBonus : 0f)) &&
+                    !approachOk) return false;
+
+                if (tangentialSpeed < minSpeed && !approachOk) return false;
+
+                // 6) Clearance cabeza
                 Vector3 head = origin + Vector3.up * wallMinHeight +
                                hit.normal * (Radius + clearanceSkin + wallHeadClearPush);
                 if (!HasClearanceCapsule(head, Radius * 2f)) return false;
 
-                // Resolver lado en el mismo marco del heading
+                // 7) Resolver lado
                 int resolvedSide = (Vector3.Dot(hit.normal, rightHeading) < 0f) ? -1 : +1;
 
-                // Armamos el probe
-                var probe = new ParkourProbe
+                // 8) Guardar último buen hit para seam
+                _lastWallHit = hit;
+                _lastWallTime = Time.time;
+
+                // 9) Probe
+                result = new ParkourProbe
                 {
                     action = resolvedSide > 0 ? ParkourAction.WallrunRight : ParkourAction.WallrunLeft,
                     wallRunWallPoint = hit.point,
@@ -843,8 +888,6 @@ namespace Player.Scripts.MovementFSM
                     playerRadius = Radius,
                     playerHeight = Height
                 };
-
-                result = probe;
                 return true;
             }
 

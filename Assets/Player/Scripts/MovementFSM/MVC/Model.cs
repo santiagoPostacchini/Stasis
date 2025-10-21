@@ -120,6 +120,12 @@ namespace Player.Scripts.MovementFSM.MVC
         public Collider lastWallCollider;
         public Vector3  lastWallNormal;
         public float    lastWallDetachTime;
+        
+        [Tooltip("Tiempo máx. para sostener el estado cuando se pierde el hit entre dos paredes (s)")]
+        public float wallSeamHold = 0.12f;
+
+        [Tooltip("Velocidad de suavizado de la normal de pared (lerp exp)")]
+        public float wallNormalSmooth = 14f;
 
         [HideInInspector] public float blockWallrunUntil = -999f;
 
@@ -155,6 +161,12 @@ namespace Player.Scripts.MovementFSM.MVC
 
         [Header("Runtime / Shared")] [HideInInspector]
         public float lastJumpPressedTime = -999f;
+        
+        [Tooltip("Tiempo sin poder reengancharse a paredes después de un walljump")]
+        public float wallPostJumpNoRegrab = 0.20f; // 0.18–0.25 va bien
+
+        [HideInInspector] public float wallJustJumpedUntil = -999f;
+        [HideInInspector] public float wallSeamDisableUntil = -999f;
 
         [HideInInspector] public float lastLeftGroundTime = -999f;
 

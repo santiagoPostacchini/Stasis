@@ -163,7 +163,6 @@ namespace Player.Scripts
         public void WallrunEnd()
         {
             _rollTarget = 0f;
-            if (useCinemachineDutch) ApplyDutch(0f);
             AddFov(-Mathf.Abs(wallrunFovAdd));
         }
 
