@@ -14,14 +14,13 @@ public class CamHolderRotationReset : MonoBehaviour
     [Header("Curva de transición (0 a 1)")]
     public AnimationCurve transitionCurve = AnimationCurve.EaseInOut(0, 0, 1, 1);
 
-    [Header("Referencia al AnimatorManager")]
-    public AnimatorManager animatorManager;
+    [Header("Referencia al TutorialCameraSwitcher")]
+    public TutorialCameraSwitcher tutorialCameraSwitcher;
 
     private Quaternion startRotation;
     private Quaternion targetRotation = Quaternion.identity;
     private bool isLerping = false;
     private float lerpTimer = 0f;
-
     private bool hasTriggeredLerp = false;
 
     void Start()
@@ -33,11 +32,11 @@ public class CamHolderRotationReset : MonoBehaviour
 
     void Update()
     {
-        if (animatorManager == null)
+        if (tutorialCameraSwitcher == null)
             return;
 
-        // Esperar a que el AnimatorManager active el Animator
-        if (animatorManager.animatorActivated && !hasTriggeredLerp)
+        // Esperar a que el Animator del TutorialCameraSwitcher se active
+        if (tutorialCameraSwitcher.animatorActivated && !hasTriggeredLerp)
         {
             hasTriggeredLerp = true;
             Invoke(nameof(BeginLerp), waitTime);
@@ -48,8 +47,8 @@ public class CamHolderRotationReset : MonoBehaviour
 
         lerpTimer += Time.deltaTime;
         float t = Mathf.Clamp01(lerpTimer / lerpDuration);
-
         float curvedT = transitionCurve.Evaluate(t);
+
         transform.localRotation = Quaternion.Lerp(startRotation, targetRotation, curvedT);
 
         if (t >= 1f)
@@ -58,14 +57,15 @@ public class CamHolderRotationReset : MonoBehaviour
 
     void BeginLerp()
     {
-        // Volver a la rotación inicial antes de iniciar
+        // Reiniciar rotación y comenzar Lerp
         transform.localRotation = Quaternion.Euler(initialRotation);
         startRotation = transform.localRotation;
-
-        isLerping = true;
         lerpTimer = 0f;
+        isLerping = true;
     }
 }
+
+
 
 
 
