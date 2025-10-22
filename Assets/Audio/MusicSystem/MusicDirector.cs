@@ -179,6 +179,7 @@ namespace Audio.MusicSystem
         // ---------- Internals: transitions ----------
         private void TryTransitionByTrigger(string triggerName)
         {
+            if (!graph) return;
             foreach (var t in graph.transitions)
             {
                 if (t.fromNodeId != _currentNodeId) continue;
@@ -192,6 +193,7 @@ namespace Audio.MusicSystem
 
         private void TryTransitionByParameters()
         {
+            if (!graph) return;
             foreach (var t in graph.transitions)
             {
                 if (t.fromNodeId != _currentNodeId) continue;
