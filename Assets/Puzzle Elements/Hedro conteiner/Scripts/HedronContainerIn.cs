@@ -589,6 +589,7 @@ public class HedronContainerIn : MonoBehaviour, IInteractable
                     if (rbBox != null) rbBox.useGravity = false;
 
                     _box.transform.SetParent(transform, true);
+                    _box.gameObject.SetActive(false);
 
                     if (_anim != null && !string.IsNullOrEmpty(closeTrigger))
                         _anim.SetTrigger(closeTrigger);
@@ -730,6 +731,7 @@ public class HedronContainerIn : MonoBehaviour, IInteractable
 
     IEnumerator EjectToPosAfterDelay(float delay)
     {
+        _box.gameObject.SetActive(true);
         if (!HasOccupant || _box == null) { _isEjecting = false; yield break; }
         if (delay > 0f) yield return new WaitForSeconds(delay);
 
@@ -775,6 +777,7 @@ public class HedronContainerIn : MonoBehaviour, IInteractable
 
     IEnumerator EjectAfterDelay(float delay)
     {
+        _box.gameObject.SetActive(true);
         if (!HasOccupant || _box == null) { _isEjecting = false; yield break; }
         if (delay > 0f) yield return new WaitForSeconds(delay);
 

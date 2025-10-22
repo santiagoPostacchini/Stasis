@@ -22,11 +22,11 @@ public class ElevatorPlatform : MonoBehaviour
     [Tooltip("If true, starts moving automatically on Enable.")]
     public bool autoStart = true;
 
-    // Waypoints resueltos
+    // Resolved waypoints (low/high by Y)
     private Transform elevatorLow;
     private Transform elevatorHigh;
 
-    // Estado (id�ntico al del TrainSystem)
+    // State
     private enum ElevatorState { Idle, ToA, WaitAtA, ToB, WaitAtB }
     private ElevatorState elevState = ElevatorState.Idle;
     private Vector3 elevTarget;
@@ -39,12 +39,14 @@ public class ElevatorPlatform : MonoBehaviour
     {
         ResolveHeights();
         PrepareElevator();
+        EnsureKinematic();
     }
 
     void OnEnable()
     {
         ResolveHeights();
         PrepareElevator();
+        EnsureKinematic();
         if (autoStart) StartElevator();
     }
 
@@ -53,40 +55,39 @@ public class ElevatorPlatform : MonoBehaviour
         StopElevator();
     }
 
+    void OnValidate()
+    {
+        EnsureKinematic();
+        if (elevatorArriveThreshold < 0f) elevatorArriveThreshold = 0f;
+        if (elevatorSpeed < 0f) elevatorSpeed = 0f;
+        if (elevatorAcceleration < 0f) elevatorAcceleration = 0f;
+        if (elevatorWaitSeconds < 0f) elevatorWaitSeconds = 0f;
+    }
+
     public void StartElevator()
     {
         systemEnabled = true;
         ResolveHeights();
         PrepareElevator(true);
+        EnsureKinematic();
     }
 
     public void StopElevator()
     {
         systemEnabled = false;
-        if (elevatorRb)
-        {
-            elevatorRb.velocity = Vector3.zero;
-            elevatorRb.angularVelocity = Vector3.zero;
-        }
         elevState = ElevatorState.Idle;
+        // No velocity/angularVelocity touches; kinematic uses MovePosition only.
     }
 
     void FixedUpdate()
     {
         elevConfigured = IsElevatorConfigured();
+        if (!elevConfigured) return;
 
-        if (!systemEnabled)
-        {
-            if (elevatorRb)
-            {
+        // Force kinematic usage at runtime as well.
+        EnsureKinematic();
 
-                elevatorRb.isKinematic = false;
-
-            elevatorRb.velocity = Vector3.zero;
-                elevatorRb.angularVelocity = Vector3.zero;
-            }
-            return;
-        }
+        if (!systemEnabled) return;
 
         TickElevator();
     }
@@ -126,6 +127,7 @@ public class ElevatorPlatform : MonoBehaviour
             float dLow = Vector3.Distance(p, elevatorLow.position);
             float dHigh = Vector3.Distance(p, elevatorHigh.position);
 
+            // Start toward the farther point so it bounces between ends
             Transform first = (dLow <= dHigh) ? elevatorHigh : elevatorLow;
             elevTarget = first.position;
             elevState = ElevatorState.ToA;
@@ -133,8 +135,7 @@ public class ElevatorPlatform : MonoBehaviour
 
             if (snapIfNeeded)
             {
-                // no teleporta salvo que quieras alinear al arranque
-                // ac� dejamos la posici�n actual
+                // Optional: align to current (do nothing). Kept intentionally.
             }
         }
         else
@@ -143,11 +144,8 @@ public class ElevatorPlatform : MonoBehaviour
         }
     }
 
-    // --------- L�gica (id�ntica a TrainSystem) ---------
     private void TickElevator()
     {
-        if (!elevConfigured) return;
-
         switch (elevState)
         {
             case ElevatorState.ToA:
@@ -156,17 +154,18 @@ public class ElevatorPlatform : MonoBehaviour
                     if (reached)
                     {
                         elevCurrentSpeed = 0f;
-                        elevWaitUntil = Time.fixedUnscaledTime + elevatorWaitSeconds;
+                        elevWaitUntil = Time.fixedTime + elevatorWaitSeconds;
                         elevState = ElevatorState.WaitAtA;
                     }
                     break;
                 }
             case ElevatorState.WaitAtA:
                 {
-                    elevatorRb.velocity = Vector3.zero;
-                    if (Time.fixedUnscaledTime >= elevWaitUntil)
+                    if (Time.fixedTime >= elevWaitUntil)
                     {
-                        elevTarget = (IsNear(elevTarget, elevatorHigh.position, 1e-4f)) ? elevatorLow.position : elevatorHigh.position;
+                        elevTarget = IsNear(elevTarget, elevatorHigh.position, 1e-4f)
+                            ? elevatorLow.position
+                            : elevatorHigh.position;
                         elevState = ElevatorState.ToB;
                     }
                     break;
@@ -177,17 +176,18 @@ public class ElevatorPlatform : MonoBehaviour
                     if (reached)
                     {
                         elevCurrentSpeed = 0f;
-                        elevWaitUntil = Time.fixedUnscaledTime + elevatorWaitSeconds;
+                        elevWaitUntil = Time.fixedTime + elevatorWaitSeconds;
                         elevState = ElevatorState.WaitAtB;
                     }
                     break;
                 }
             case ElevatorState.WaitAtB:
                 {
-                    elevatorRb.velocity = Vector3.zero;
-                    if (Time.fixedUnscaledTime >= elevWaitUntil)
+                    if (Time.fixedTime >= elevWaitUntil)
                     {
-                        elevTarget = (IsNear(elevTarget, elevatorHigh.position, 1e-4f)) ? elevatorLow.position : elevatorHigh.position;
+                        elevTarget = IsNear(elevTarget, elevatorHigh.position, 1e-4f)
+                            ? elevatorLow.position
+                            : elevatorHigh.position;
                         elevState = ElevatorState.ToA;
                     }
                     break;
@@ -195,22 +195,23 @@ public class ElevatorPlatform : MonoBehaviour
         }
     }
 
+    // Kinematic-friendly mover using only MovePosition
     private bool MoveElevatorAcc(Vector3 targetPos)
     {
-        Vector3 toTarget = targetPos - elevatorRb.position;
+        Vector3 current = elevatorRb.position;
+        Vector3 toTarget = targetPos - current;
         float distance = toTarget.magnitude;
 
         if (distance <= elevatorArriveThreshold)
         {
             elevatorRb.MovePosition(targetPos);
-            elevatorRb.velocity = Vector3.zero;
             return true;
         }
 
         float maxSpeed = Mathf.Max(0f, elevatorSpeed);
         float accel = Mathf.Max(0f, elevatorAcceleration);
 
-        // v_max para poder detenerse a tiempo: v <= sqrt(2*a*d)
+        // Speed cap so we can stop in remaining distance: v <= sqrt(2*a*d)
         float maxSpeedForStop = Mathf.Sqrt(Mathf.Max(0f, 2f * accel * distance));
         float desiredSpeed = Mathf.Min(maxSpeed, maxSpeedForStop);
 
@@ -218,15 +219,29 @@ public class ElevatorPlatform : MonoBehaviour
 
         float step = elevCurrentSpeed * Time.fixedDeltaTime;
         Vector3 dir = (distance > 1e-5f) ? (toTarget / distance) : Vector3.zero;
-        Vector3 next = (step >= distance) ? targetPos : elevatorRb.position + dir * step;
+        Vector3 next = (step >= distance) ? targetPos : current + dir * step;
 
-        elevatorRb.velocity = (next - elevatorRb.position) / Time.fixedDeltaTime;
         elevatorRb.MovePosition(next);
         return false;
     }
 
     private static bool IsNear(Vector3 a, Vector3 b, float eps) =>
         (a - b).sqrMagnitude <= eps * eps;
+
+    private void EnsureKinematic()
+    {
+        if (elevatorRb == null) return;
+        if (!elevatorRb.isKinematic)
+        {
+            elevatorRb.isKinematic = true;
+        }
+        // For visual smoothness when camera is not in fixed time:
+        if (elevatorRb.interpolation == RigidbodyInterpolation.None)
+            elevatorRb.interpolation = RigidbodyInterpolation.Interpolate;
+        // Continuous Speculative works well for kinematic movers:
+        if (elevatorRb.collisionDetectionMode == CollisionDetectionMode.Discrete)
+            elevatorRb.collisionDetectionMode = CollisionDetectionMode.ContinuousSpeculative;
+    }
 
 #if UNITY_EDITOR
     void OnDrawGizmosSelected()

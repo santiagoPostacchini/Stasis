@@ -31,7 +31,7 @@ public class TrainSystem : MonoBehaviour
     public Transform departure;
     public float trainSpeed = 4f;
     public float trainArriveThreshold = 0.03f;
-    [Tooltip("Solo se usa en modo Loop (salto del último al primero).")]
+    [Tooltip("Tiempo de espera en el extremo. En Loop también se usa antes del teletransporte al primero.")]
     public float trainTeleportWaitSeconds = 2f;
     [Tooltip("Loop = salta del último al primero; PingPong = va y vuelve sin teletransportar.")]
     public TrainPathMode trainPathMode = TrainPathMode.Loop;
@@ -63,16 +63,18 @@ public class TrainSystem : MonoBehaviour
     private bool barrConfigured;
     private bool barricadeForceDown;
 
-    // --- Nuevo modelo de tren (soporta Loop y PingPong) ---
+    // --- Tren (Loop / PingPong) ---
     private bool trainConfigured;
     private int trainFirstIdx;
     private int trainLastIdx;
     private int trainDepIdx;
     private int trainCurrentIdx;
-    private int trainDir = +1; // +1 adelante, -1 atrás (para PingPong)
+    private int trainDir = +1; // +1 adelante, -1 atrás
     private float trainWaitUntil;
-    private enum TrainState { IdleAtDeparture, Running, LoopTeleportWait }
+    private enum TrainState { IdleAtDeparture, Running, PauseAtEnd }
     private TrainState trainState = TrainState.IdleAtDeparture;
+    private int trainPauseNextIdx;
+    private bool trainPauseDoTeleport;
 
     void Awake()
     {
@@ -127,7 +129,6 @@ public class TrainSystem : MonoBehaviour
     public void HardStopAll()
     {
         systemEnabled = false;
-        // Kinematic: no tocar velocity/angularVelocity.
     }
 
     void FixedUpdate()
@@ -201,7 +202,7 @@ public class TrainSystem : MonoBehaviour
 
             trainState = TrainState.IdleAtDeparture;
             trainRunRequested = false;
-            trainDir = +1; // arrancamos hacia adelante
+            trainDir = +1;
             trainCurrentIdx = NextIndexFrom(trainDepIdx, +1);
         }
         else trainState = TrainState.IdleAtDeparture;
@@ -384,7 +385,7 @@ public class TrainSystem : MonoBehaviour
 
                     if (trainRunRequested)
                     {
-                        trainDir = +1; // arrancamos hacia adelante
+                        trainDir = +1;
                         trainCurrentIdx = NextIndexFrom(trainDepIdx, trainDir);
                         trainState = TrainState.Running;
                     }
@@ -393,81 +394,76 @@ public class TrainSystem : MonoBehaviour
 
             case TrainState.Running:
                 {
-                    // Objetivo actual
                     Vector3 target = trainWaypoints[trainCurrentIdx].position;
                     bool reached = MoveBodyLinear(trainRb, target, trainSpeed, trainArriveThreshold);
 
-                    if (reached)
+                    if (!reached) break;
+
+                    if (trainHaltAtDeparture && trainCurrentIdx == trainDepIdx)
                     {
-                        // ¿Debemos frenar en departure?
-                        if (trainHaltAtDeparture && trainCurrentIdx == trainDepIdx)
+                        trainRunRequested = false;
+                        onTrainStoppedAtDeparture?.Invoke();
+                        trainHaltAtDeparture = false;
+                        trainState = TrainState.IdleAtDeparture;
+                        break;
+                    }
+
+                    if (trainPathMode == TrainPathMode.Loop)
+                    {
+                        int next = trainCurrentIdx + 1;
+                        if (next > trainLastIdx)
                         {
-                            trainRunRequested = false;
-                            onTrainStoppedAtDeparture?.Invoke();
-                            trainHaltAtDeparture = false;
-                            trainState = TrainState.IdleAtDeparture;
-                            break;
+                            trainWaitUntil = Time.fixedUnscaledTime + trainTeleportWaitSeconds;
+                            trainPauseDoTeleport = true;
+                            trainPauseNextIdx = Mathf.Clamp(trainFirstIdx + 1, trainFirstIdx, trainLastIdx);
+                            trainState = TrainState.PauseAtEnd;
                         }
-
-                        // Avanzar al siguiente índice según el modo
-                        if (trainPathMode == TrainPathMode.Loop)
+                        else
                         {
-                            int next = trainCurrentIdx + 1;
-                            if (next > trainLastIdx)
-                            {
-                                // fin de lista -> espera y teletransporta al primero
-                                trainWaitUntil = Time.fixedUnscaledTime + trainTeleportWaitSeconds;
-                                trainState = TrainState.LoopTeleportWait;
-                            }
-                            else
-                            {
-                                trainCurrentIdx = next;
-                            }
+                            trainCurrentIdx = next;
                         }
-                        else // PingPong
+                    }
+                    else // PingPong
+                    {
+                        int next = trainCurrentIdx + trainDir;
+
+                        if (next > trainLastIdx || next < trainFirstIdx)
                         {
-                            int next = trainCurrentIdx + trainDir;
-
-                            // ¿Llegó a un extremo?
-                            if (next > trainLastIdx || next < trainFirstIdx)
-                            {
-                                // Invertimos la dirección
-                                trainDir *= -1;
-
-                                // Espera antes de volver (usa el mismo sistema de espera que el modo Loop)
-                                trainWaitUntil = Time.fixedUnscaledTime + trainTeleportWaitSeconds;
-                                trainState = TrainState.LoopTeleportWait;
-                            }
-                            else
-                            {
-                                trainCurrentIdx = next;
-                            }
+                            trainDir *= -1;
+                            trainWaitUntil = Time.fixedUnscaledTime + trainTeleportWaitSeconds;
+                            trainPauseDoTeleport = false; // no teletransporte en ping-pong
+                            trainPauseNextIdx = Mathf.Clamp(trainCurrentIdx + trainDir, trainFirstIdx, trainLastIdx);
+                            trainState = TrainState.PauseAtEnd;
+                        }
+                        else
+                        {
+                            trainCurrentIdx = next;
                         }
                     }
                     break;
                 }
 
-            case TrainState.LoopTeleportWait:
+            case TrainState.PauseAtEnd:
                 {
-                    if (Time.fixedUnscaledTime >= trainWaitUntil)
+                    if (Time.fixedUnscaledTime < trainWaitUntil) break;
+
+                    if (trainPauseDoTeleport)
                     {
                         TeleportBodyTo(trainRb, trainWaypoints[trainFirstIdx].position);
-                        trainCurrentIdx = trainFirstIdx;
-                        // Si hay que frenar en departure y el primero es el departure, paramos.
-                        if (trainHaltAtDeparture && trainDepIdx == trainFirstIdx)
-                        {
-                            trainRunRequested = false;
-                            onTrainStoppedAtDeparture?.Invoke();
-                            trainHaltAtDeparture = false;
-                            trainState = TrainState.IdleAtDeparture;
-                        }
-                        else
-                        {
-                            // seguimos corriendo
-                            int next = trainCurrentIdx + 1;
-                            trainCurrentIdx = Mathf.Clamp(next, trainFirstIdx, trainLastIdx);
-                            trainState = TrainState.Running;
-                        }
+                    }
+
+                    trainCurrentIdx = trainPauseNextIdx;
+
+                    if (trainHaltAtDeparture && trainCurrentIdx == trainDepIdx)
+                    {
+                        trainRunRequested = false;
+                        onTrainStoppedAtDeparture?.Invoke();
+                        trainHaltAtDeparture = false;
+                        trainState = TrainState.IdleAtDeparture;
+                    }
+                    else
+                    {
+                        trainState = TrainState.Running;
                     }
                     break;
                 }
