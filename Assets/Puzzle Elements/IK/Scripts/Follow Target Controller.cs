@@ -24,7 +24,7 @@ public class FollowTargetController : MonoBehaviour
     public float outMax = 1f;
     public AnimationCurve remapLerp = AnimationCurve.Linear(0, 0, 1, 1);
 
-    [Header("Estabilidad del cálculo")]
+    [Header("Estabilidad del cï¿½lculo")]
     public bool onlyHorizontalDistance = true;
     public float distanceSmoothHz = 12f;
     public float distanceDeadZone = 0.03f;
@@ -47,7 +47,7 @@ public class FollowTargetController : MonoBehaviour
     [Header("Frame de referencia (toggle para comparar)")]
     [Tooltip("ON: anclas y Punto A viven en el marco local (tren). OFF: en mundo (comportamiento anterior).")]
     public bool anchorInParentFrame = true;
-    [Tooltip("Opcional: marco explícito. Si es null usa transform.parent (o este transform si no hay padre).")]
+    [Tooltip("Opcional: marco explï¿½cito. Si es null usa transform.parent (o este transform si no hay padre).")]
     public Transform frame;
 
     private Rigidbody rb;
@@ -236,12 +236,12 @@ public class FollowTargetController : MonoBehaviour
     }
     void SetLayerRecursively(GameObject parent, LayerMask layerMask)
     {
-        // El valor del LayerMask es un bitmask, necesitamos el índice (el número de bit activo)
+        // El valor del LayerMask es un bitmask, necesitamos el ï¿½ndice (el nï¿½mero de bit activo)
         int newLayer = Mathf.RoundToInt(Mathf.Log(layerMask.value, 2));
 
         if (newLayer < 0 || newLayer > 31)
         {
-            Debug.LogError("LayerMask inválido. Asegurate de pasar solo una layer, no múltiples.");
+            Debug.LogError("LayerMask invï¿½lido. Asegurate de pasar solo una layer, no mï¿½ltiples.");
             return;
         }
 

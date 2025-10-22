@@ -7,33 +7,46 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: M_Red_Energy
-  m_Shader: {fileID: 4800000, guid: 933532a4fcc9baf4fa0491de14d08ed7, type: 3}
-  m_Parent: {fileID: 2100000, guid: cc462f71718da88419389eb384936e51, type: 2}
-  m_ModifiedSerializedProperties: 8
-  m_ValidKeywords:
-  - _EMISSION
+  m_Name: Fade_White_M
+  m_Shader: {fileID: -6465566751694194690, guid: 8f182edcc79a66c4eaee5b271befb4f1,
+    type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords: []
   m_InvalidKeywords: []
-  m_LightmapFlags: 4
+  m_LightmapFlags: 2
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
   m_CustomRenderQueue: -1
-  stringTagMap:
-    RenderType: Opaque
+  stringTagMap: {}
   disabledShaderPasses: []
   m_LockedProperties: 
   m_SavedProperties:
     serializedVersion: 3
-    m_TexEnvs: []
+    m_TexEnvs:
+    - unity_Lightmaps:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - unity_LightmapsInd:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - unity_ShadowMasks:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
-    - _Cull: 2
+    - _FadeHeight: -90
+    - _FadeSmoothness: 10000
+    - _Main_Color: 0
+    - _QueueControl: 0
+    - _QueueOffset: 0
     m_Colors:
-    - _BaseColor: {r: 1, g: 0.16546921, b: 0.08018869, a: 1}
-    - _Color: {r: 1, g: 0.16546917, b: 0.080188684, a: 1}
-    - _EmissionColor: {r: 0.0625, g: 0.0006067961, b: 0, a: 0.5}
+    - _Fade_Color: {r: 1, g: 1, b: 1, a: 0}
   m_BuildTextureStacks: []
---- !u!114 &696663705113328131
+--- !u!114 &7370175447633699549
 MonoBehaviour:
   m_ObjectHideFlags: 11
   m_CorrespondingSourceObject: {fileID: 0}
