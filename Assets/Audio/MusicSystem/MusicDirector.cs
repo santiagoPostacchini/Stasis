@@ -223,12 +223,47 @@ namespace Audio.MusicSystem
         private void EnsureLayerScheduled(MusicCue cue, MusicCue.Layer layer, double whenDsp)
         {
             var src = GetOrCreateMusic2DSource(layer.id, cue.outputMixer);
+
+            // 🔎 Diagnóstico: ¿está siendo compartido?
+            if (_activeLayerSources.Values.Contains(src))
+                Debug.LogWarning($"[MusicDirector] Pool devolvió la MISMA instancia para layer '{layer.id}' (InstanceID={src.GetInstanceID()}). Se forzará instancia nueva.", this);
+
+            // 🔒 Fallback: si ya está en uso por otra layer, fuerza una instancia “fresh”
+            if (_activeLayerSources.Values.Contains(src))
+                src = ForceFresh2DSource(cue.outputMixer, layer.id);
+
+            // Música: prioridad alta y sin doppler
+            src.priority = 0;          // evita voice stealing
+            src.dopplerLevel = 0f;
+            src.spatialBlend = 0f;
+            src.panStereo = 0f;
+
             src.clip = layer.clip;
             src.volume = Mathf.Clamp01(layer.defaultVolume) * globalVolume;
             src.loop = layer.loop;
             AlignSourceSettingsForCue(src, cue);
             src.PlayScheduled(whenDsp);
+
             _activeLayerSources[layer.id] = src;
+        }
+
+        private AudioSource ForceFresh2DSource(AudioMixerGroup mixer, string layerId)
+        {
+            var factory = AudioSourceFactory.Instance;
+            if (factory != null && factory.Has2DPool)
+            {
+                var fresh = factory.Get2DSource(audioRoot, mixer);
+                fresh.name = $"Music2D_{layerId}_fresh";
+                return fresh;
+            }
+            // Fallback no-pooleado
+            var go = new GameObject($"Music2D_{layerId}_fresh");
+            go.transform.SetParent(audioRoot, false);
+            var src = go.AddComponent<AudioSource>();
+            src.playOnAwake = false;
+            src.outputAudioMixerGroup = mixer;
+            src.spatialBlend = 0f;
+            return src;
         }
 
         private void EnsureLayerPlaying(MusicCue.Layer layer, float fadeSeconds)
@@ -246,7 +281,6 @@ namespace Audio.MusicSystem
             _activeLayerSources[layer.id] = src;
         }
 
-        // Crossfade out actual (el fade termina EXACTAMENTE en 'anchorWhen')
         private void CrossfadeOutCurrent(float fadeSeconds, double anchorWhen)
         {
             foreach (var kv in _activeLayerSources.ToArray())

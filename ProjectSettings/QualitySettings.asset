@@ -4,7 +4,7 @@
 QualitySettings:
   m_ObjectHideFlags: 0
   serializedVersion: 5
-  m_CurrentQuality: 0
+  m_CurrentQuality: 2
   m_QualitySettings:
   - serializedVersion: 3
     name: Performant
@@ -22,7 +22,7 @@ QualitySettings:
     globalTextureMipmapLimit: 0
     textureMipmapLimitSettings: []
     anisotropicTextures: 1
-    antiAliasing: 4
+    antiAliasing: 2
     softParticles: 0
     softVegetation: 0
     realtimeReflectionProbes: 0
@@ -32,7 +32,7 @@ QualitySettings:
     realtimeGICPUUsage: 25
     lodBias: 0.4
     maximumLODLevel: 0
-    enableLODCrossFade: 1
+    enableLODCrossFade: 0
     streamingMipmapsActive: 1
     streamingMipmapsAddAllCameras: 1
     streamingMipmapsMemoryBudget: 512
@@ -40,11 +40,11 @@ QualitySettings:
     streamingMipmapsMaxLevelReduction: 2
     streamingMipmapsMaxFileIORequests: 1024
     particleRaycastBudget: 4
-    asyncUploadTimeSlice: 2
-    asyncUploadBufferSize: 16
+    asyncUploadTimeSlice: 6
+    asyncUploadBufferSize: 64
     asyncUploadPersistentBuffer: 1
     resolutionScalingFixedDPIFactor: 1
-    customRenderPipeline: {fileID: 11400000, guid: 930f92679ed32d5498ff2676c26fe761,
+    customRenderPipeline: {fileID: 11400000, guid: f9bc3fea9c5e1f6418b282a5f5caf28a,
       type: 2}
     terrainQualityOverrides: 0
     terrainPixelError: 1
@@ -90,8 +90,8 @@ QualitySettings:
     streamingMipmapsMaxLevelReduction: 2
     streamingMipmapsMaxFileIORequests: 1024
     particleRaycastBudget: 64
-    asyncUploadTimeSlice: 2
-    asyncUploadBufferSize: 16
+    asyncUploadTimeSlice: 6
+    asyncUploadBufferSize: 64
     asyncUploadPersistentBuffer: 1
     resolutionScalingFixedDPIFactor: 1
     customRenderPipeline: {fileID: 11400000, guid: 598549b59c1c6c04cbf3e2054aac1efb,

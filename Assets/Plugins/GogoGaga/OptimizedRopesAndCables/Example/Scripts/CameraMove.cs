@@ -9,13 +9,7 @@ namespace GogoGaga.OptimizedRopesAndCables
         public float speed = 15;
         public Transform[] cameraPoses;
         int current = 0;
-        void Start()
-        {
-
-        }
-
-
-
+        
         void Update()
         {
             transform.position = Vector3.Lerp(transform.position, cameraPoses[current].position, Time.deltaTime * speed);

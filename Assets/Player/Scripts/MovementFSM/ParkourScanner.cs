@@ -163,9 +163,6 @@ namespace Player.Scripts.MovementFSM
 
             [Header("Debug")] public bool drawGizmos = true;
 
-            [Tooltip("Activa logs verbosos en consola.")]
-            public bool verboseLogs = true;
-
             public ParkourProbe Probe { get; private set; }
             public event Action<ParkourProbe> OnProbeUpdated = delegate { };
             public event Action<bool, RaycastHit> OnGroundedChanged = delegate { };
@@ -192,10 +189,6 @@ namespace Player.Scripts.MovementFSM
                 // 1) Notificación por CAMBIO de estado (igual que antes)
                 if (Grounded != _prevGrounded)
                 {
-                    if (verboseLogs)
-                        Debug.Log(
-                            $"[Scanner] Grounded={Grounded} Slope={GroundSlopeDeg:F1} pos={transform.position:F3}");
-
                     OnGroundedChanged(Grounded, GroundHit);
                     _prevGrounded = Grounded;
 
@@ -247,31 +240,21 @@ namespace Player.Scripts.MovementFSM
 
                 if (TryDetectVault(out var vault))
                 {
-                    if (verboseLogs)
-                        Debug.Log(
-                            $"[Scanner] VAULT ok | h={vault.obstacleHeight:F2} dist={vault.vaultDistance:F2} sameTop={vault.vaultLandOnSameCollider} land={vault.vaultLandPoint:F3}");
                     return vault;
                 }
 
                 if (TryDetectClimb(out var climb))
                 {
-                    if (verboseLogs)
-                        Debug.Log(
-                            $"[Scanner] CLIMB ok | height={climb.climbHeight:F2} ledge={climb.climbLedgePoint:F3}");
                     return climb;
                 }
 
                 if (TryDetectWallrun(+1, out var wrRight))
                 {
-                    if (verboseLogs)
-                        Debug.Log($"[Scanner] WALLRUN RIGHT ok | wall={wrRight.wallRunWallPoint:F3}");
                     return wrRight;
                 }
 
                 if (TryDetectWallrun(-1, out var wrLeft))
                 {
-                    if (verboseLogs)
-                        Debug.Log($"[Scanner] WALLRUN LEFT ok | wall={wrLeft.wallRunWallPoint:F3}");
                     return wrLeft;
                 }
 
@@ -481,13 +464,11 @@ namespace Player.Scripts.MovementFSM
                 bool runHeld = m && m.runningKeyPressed;
                 if (!runHeld)
                 {
-                    if (verboseLogs) Debug.Log("[VaultProbe] BLOCKED: runningKeyPressed == false");
                     return false;
                 }
 
                 if (m && Time.time < m.blockVaultUntil)
                 {
-                    if (verboseLogs) Debug.Log("[VaultProbe] BLOCKED by cooldown");
                     return false;
                 }
 
@@ -506,13 +487,11 @@ namespace Player.Scripts.MovementFSM
                 // <<< NUEVO: exige Tag "Vault" en el frente >>>
                 if (!hitFront.collider || !hitFront.collider.CompareTag(tagVault))
                 {
-                    if (verboseLogs) Debug.Log($"[VaultProbe] Collider sin tag '{tagVault}'.");
                     return false;
                 }
 
                 if (!TopFromHit(hitFront, out float topY))
                 {
-                    if (verboseLogs) Debug.Log("[VaultProbe] No top from hit.");
                     return false;
                 }
 
@@ -529,12 +508,6 @@ namespace Player.Scripts.MovementFSM
 
                 Vector3 midXZ = new Vector3(topPoint.x, topPoint.y, topPoint.z) + fwd * Mathf.Max(r * 0.6f, 0.2f);
                 midXZ.y = topPoint.y;
-
-                // Clearance sobre tapa (geométrico; sin tags)
-                if (!HasClearanceCapsule(topPoint + Vector3.up * (vaultTopClearance * 0.5f), vaultTopClearance))
-                {
-                    if (verboseLogs) Debug.Log("[VaultProbe] No clearance above top.");
-                }
 
                 float minF = Mathf.Max(vaultMinForward, r * 1.2f);
                 float maxF = Mathf.Max(minF + 0.3f, vaultMaxForward);
@@ -734,10 +707,6 @@ namespace Player.Scripts.MovementFSM
                     climbStandPoint = climbStand,
                     climbHeight = climbHeight
                 };
-
-                if (verboseLogs)
-                    Debug.Log(
-                        $"[ClimbProbe] slope={slopeDeg:F1} look={lookAng:F1} ledge={(climbLedge != Vector3.zero)} stand={(climbStand != Vector3.zero)}");
 
                 return true;
             }
