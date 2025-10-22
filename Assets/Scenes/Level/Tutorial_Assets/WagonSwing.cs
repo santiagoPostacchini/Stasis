@@ -23,7 +23,7 @@ public class WagonSwingRotation : MonoBehaviour
             initialRotation = wagonMover.transform.rotation;
     }
 
-    void Update()
+    void LateUpdate()
     {
         if (wagonMover == null)
             return;

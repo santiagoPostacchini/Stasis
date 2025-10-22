@@ -15,7 +15,7 @@ public class WagonMover : MonoBehaviour
         transform.position = startPoint;
     }
 
-    void Update()
+    void FixedUpdate()
     {
         if (hasReachedEnd)
             return;
