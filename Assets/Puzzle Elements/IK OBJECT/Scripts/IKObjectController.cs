@@ -56,7 +56,7 @@ namespace IKSuite
         public bool liveRebuildInEditor = true;
         public bool editorFreePose = true;
 
-        // Offset de orientación para Distance/Inverse
+        // Offset de orientaciï¿½n para Distance/Inverse
         public Vector3 tipEulerOffset_Distance = new Vector3(0f, 180f, 0f);
 
         // caches
@@ -96,17 +96,13 @@ namespace IKSuite
 #if UNITY_EDITOR
             if (liveRebuildInEditor) ScheduleRebuild();
             else RebuildNow();
-#else
-            RebuildNow();
 #endif
         }
 
         void OnDisable()
         {
 #if UNITY_EDITOR
-            // nada
-#else
-            PurgeGeneratedRuntime();
+            
 #endif
         }
 
@@ -192,7 +188,7 @@ namespace IKSuite
                     return;
                 }
 
-                // Si no había cadena, construir.
+                // Si no habï¿½a cadena, construir.
                 PurgeGeneratedRuntime();
                 BuildArm(false);
 
@@ -793,7 +789,7 @@ namespace IKSuite
         }
 
         // =====================================================================
-        // Validación
+        // Validaciï¿½n
         // =====================================================================
         bool ValidateSetup()
         {

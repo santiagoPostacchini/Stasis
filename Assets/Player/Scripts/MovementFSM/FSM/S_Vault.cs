@@ -54,7 +54,7 @@ namespace Player.Scripts.MovementFSM
         const float StepUpExtraUp = 0.045f;
         const float StepUpApexCap = 0.26f;
 
-        bool LogOn => !_scanner || _scanner.verboseLogs;
+        private bool LogOn => !_scanner;
 
         public void OnEnter()
         {

@@ -19,12 +19,6 @@ public class SpiderMovement : MonoBehaviour
 
     }
 
-    private void Update()
-    {
-        
-    }
-
-
     private void FixedUpdate()
     {
         _rb.AddForce(transform.forward * _forwardMoveForce * Time.fixedDeltaTime * _currentInput.y, ForceMode.Acceleration);

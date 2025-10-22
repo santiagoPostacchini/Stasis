@@ -433,7 +433,6 @@ namespace Audio.MusicSystem
             FireStinger(targetCue, st, at);
         }
 
-        // Genérico (pool 2D + devolución)
         private void FireStinger(MusicCue cue, MusicCue.Stinger st, double whenDsp)
         {
             var factory = AudioSourceFactory.Instance;

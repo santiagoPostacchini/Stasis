@@ -1,8 +1,7 @@
-// MusicGraph.cs
 using System;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Serialization; // <— para FormerlySerializedAs
+using UnityEngine.Serialization;
 
 namespace Audio.MusicSystem
 {

@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.Experimental.Rendering; // GraphicsFormat, FormatUsage
 using System.Collections.Generic;
+using Puzzle_Elements.Vigillance_Camera.Scripts.New_Folder;
 
 [DisallowMultipleComponent]
 public class VirtualSecurityCam : MonoBehaviour
@@ -13,48 +14,48 @@ public class VirtualSecurityCam : MonoBehaviour
     public float nearClip = 0.03f;
     public float farClip = 500f;
 
-    // === Grabación (arranque) ===
-    [Header("Grabación")]
+    // === Grabaciï¿½n (arranque) ===
+    [Header("Grabaciï¿½n")]
     public bool startRecordingOnAwake = true;
 
-    // === Salida (no se usa para atlas, pero sí para otros usos) ===
+    // === Salida (no se usa para atlas, pero sï¿½ para otros usos) ===
     [Header("Salida")]
     public int outputWidth = 512;
     public int outputHeight = 288;
     public bool sRGB = true;
 
-    // === Orientación / “adelante” ===
+    // === Orientaciï¿½n / ï¿½adelanteï¿½ ===
     public enum ForwardAxis { ZPlus, ZMinus, XPlus, XMinus, YPlus, YMinus }
 
-    [Header("Orientación")]
+    [Header("Orientaciï¿½n")]
     [Tooltip("Nivelar horizonte (UP = Vector3.up). Elimina el roll.")]
     public bool lockHorizon = true;
 
-    [Tooltip("Qué eje de TU malla considerás como 'adelante'.")]
+    [Tooltip("Quï¿½ eje de TU malla considerï¿½s como 'adelante'.")]
     public ForwardAxis forwardAxis = ForwardAxis.ZPlus;
 
-    [Tooltip("Offset adicional de rotación (grados) aplicado a tu malla.")]
+    [Tooltip("Offset adicional de rotaciï¿½n (grados) aplicado a tu malla.")]
     public Vector3 rotationOffsetEuler = Vector3.zero;
 
-    // === Detección (para iniciar/parar grabación) ===
-    [Header("Detección (player visible / movimiento)")]
-    [Tooltip("Asigná aquí el Transform del Player (sin Find).")]
+    // === Detecciï¿½n (para iniciar/parar grabaciï¿½n) ===
+    [Header("Detecciï¿½n (player visible / movimiento)")]
+    [Tooltip("Asignï¿½ aquï¿½ el Transform del Player (sin Find).")]
     public Transform detectionTarget;
 
-    [Tooltip("Capas que bloquean la visión (paredes/piso/props).")]
+    [Tooltip("Capas que bloquean la visiï¿½n (paredes/piso/props).")]
     public LayerMask visibilityBlockers = ~0;
 
-    [Tooltip("Grados/seg necesarios para considerar que la cámara 'se movió'.")]
+    [Tooltip("Grados/seg necesarios para considerar que la cï¿½mara 'se moviï¿½'.")]
     public float startOnAngularSpeedDegPerSec = 8f;
 
-    [Tooltip("Ángulo máximo (°) respecto al forward para considerar visible al target.")]
+    [Tooltip("ï¿½ngulo mï¿½ximo (ï¿½) respecto al forward para considerar visible al target.")]
     public float maxViewAngle = 60f;
 
-    [Tooltip("Segundos sin ver al target para detener la grabación.")]
+    [Tooltip("Segundos sin ver al target para detener la grabaciï¿½n.")]
     public float stopAfterNoTargetSeconds = 1.0f;
 
     // === Gizmo del frustum (Scene View) ===
-    [Header("Gizmo de visión (Scene View)")]
+    [Header("Gizmo de visiï¿½n (Scene View)")]
     public bool gizmoEnabled = true;
     public Color gizmoColor = new Color(0f, 0.8f, 1f, 0.65f);
     public bool gizmoDrawNearRect = true;
@@ -79,7 +80,7 @@ public class VirtualSecurityCam : MonoBehaviour
             Debug.LogError("[VirtualSecurityCam:" + name + "] No se pudo crear RenderTexture compatible.");
 
         _recording = startRecordingOnAwake;
-        CCTVPlaneAtlas.RegisterSource(this); // <-- ahora el atlas maneja el registro
+        CctvPlaneAtlas.RegisterSource(this); // <-- ahora el atlas maneja el registro
     }
     private void Start()
     {
@@ -87,7 +88,7 @@ public class VirtualSecurityCam : MonoBehaviour
     }
     void OnDestroy()
     {
-        CCTVPlaneAtlas.UnregisterSource(this);
+        CctvPlaneAtlas.UnregisterSource(this);
         SafeDestroyRT(ref _rt);
     }
 
