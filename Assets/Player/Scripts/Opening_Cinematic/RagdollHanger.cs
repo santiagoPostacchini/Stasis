@@ -19,6 +19,14 @@ public class RagdollHanger : MonoBehaviour
     public bool fadeBlack = false;           // Bool que se activa tras la espera
     public float fadeDelayAfterRelease = 2f; // Segundos después de soltar el ragdoll para activar fade
 
+    [Header("Scripts to Disable On Release")]
+    [Tooltip("Arrastrá acá los scripts que querés desactivar cuando se haga el release")]
+    public MonoBehaviour[] scriptsToDisable;
+
+    [Header("Rigidbody to Activate On Release")]
+    [Tooltip("Arrastrá acá el Rigidbody que querés activar cuando se suelte el ragdoll")]
+    public Rigidbody rigidbodyToActivate;
+
     private ConfigurableJoint joint;
     public bool hasReleased = false;        // Para evitar que se suelte más de una vez
     private float timer = 0f;
@@ -101,6 +109,20 @@ public class RagdollHanger : MonoBehaviour
 
         hasReleased = true;
 
+        // 🔹 Desactiva los scripts asignados
+        foreach (var script in scriptsToDisable)
+        {
+            if (script != null)
+                script.enabled = false;
+        }
+
+        // 🔹 Activa el Rigidbody asignado
+        if (rigidbodyToActivate != null)
+        {
+            rigidbodyToActivate.isKinematic = false;
+            rigidbodyToActivate.WakeUp();
+        }
+
         // Inicia el contador para activar el fade
         StartCoroutine(FadeAfterDelay());
     }
@@ -111,6 +133,8 @@ public class RagdollHanger : MonoBehaviour
         fadeBlack = true;
     }
 }
+
+
 
 
 

@@ -14,6 +14,9 @@ public class TutorialCameraSwitcher : MonoBehaviour
     public GameObject objectB;
     public GameObject objectC;
 
+    [Header("🎥 MAIN CAMERA A DESACTIVAR EN B→C")]
+    public GameObject mainCameraToDisable;
+
     [Header("⏱️ CONFIGURACIÓN DE TRANSICIONES")]
     public float blendTime = 1f;
     public StartCamera startCamera = StartCamera.CameraA;
@@ -170,6 +173,10 @@ public class TutorialCameraSwitcher : MonoBehaviour
         else if (targetCamera == "C")
         {
             if (objectB) objectB.SetActive(false);
+
+            // 🔹 Apagar la cámara principal asignada
+            if (mainCameraToDisable != null)
+                mainCameraToDisable.SetActive(false);
 
             // 🔹 Activar scripts desactivados después de la transición B→C con delay
             if (scriptsToEnable != null && scriptsToEnable.Length > 0)
