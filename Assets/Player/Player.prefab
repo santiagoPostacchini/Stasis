@@ -1940,8 +1940,8 @@ MonoBehaviour:
   sourceTemplate: {fileID: 0}
   globalEmitterOverride: {fileID: 0}
   events:
-  - guid: 7f145c23-9ff7-4abb-83d7-4c96a31b6c82
-    eventKey: -990802::-894878::OnStepLeft
+  - guid: 49ff65d9-4acb-4a29-9763-3c7baa2affb4
+    eventKey: -9769818::-9769816::OnStepLeft
     displayName: OnStepLeft
     eventName: OnStepLeft
     enabled: 1
@@ -1952,11 +1952,11 @@ MonoBehaviour:
       volume: 0.1
       delay: 0
       loop: 0
-    - clip: {fileID: 8300000, guid: f27183989ad70814f8947b1a872705e8, type: 3}
+    - clip: {fileID: 8300000, guid: 60e0bbc9b61f6264292a8e96dd39f695, type: 3}
       volume: 0.1
       delay: 0
       loop: 0
-    - clip: {fileID: 8300000, guid: 90120c2fb2fe95f418bd935f16ee4376, type: 3}
+    - clip: {fileID: 8300000, guid: f27183989ad70814f8947b1a872705e8, type: 3}
       volume: 0.1
       delay: 0
       loop: 0
@@ -1971,19 +1971,23 @@ MonoBehaviour:
     maxSimultaneous: 2
     coalesceWindow: 0.3
     blockSameFrameDuplicates: 1
-  - guid: 591e7622-dcec-43a4-bfd8-0382e041094e
-    eventKey: -990802::-894878::OnStepRight
+  - guid: e51ff32c-4713-4884-9ba4-0a542b8d1003
+    eventKey: -9769818::-9769816::OnStepRight
     displayName: OnStepRight
     eventName: OnStepRight
     enabled: 1
     isStopEvent: 0
     randomOne: 1
     clips:
-    - clip: {fileID: 8300000, guid: 60e0bbc9b61f6264292a8e96dd39f695, type: 3}
+    - clip: {fileID: 8300000, guid: f27183989ad70814f8947b1a872705e8, type: 3}
       volume: 0.1
       delay: 0
       loop: 0
     - clip: {fileID: 8300000, guid: 4874c6c234f61934fb52292d4fb0f9fb, type: 3}
+      volume: 0.1
+      delay: 0
+      loop: 0
+    - clip: {fileID: 8300000, guid: 90120c2fb2fe95f418bd935f16ee4376, type: 3}
       volume: 0.1
       delay: 0
       loop: 0
@@ -2354,11 +2358,11 @@ MonoBehaviour:
   tagVault: Vault
   tagClimb: Climb
   tagWallrun: Wallrun
-  walkingSpeed: 4
+  walkingSpeed: 5
   runningSpeed: 8
   acceleration: 20
   deceleration: 30
-  jumpHeight: 1.8
+  jumpHeight: 2
   isRunningRuntime: 0
   coyoteTime: 0.12
   jumpBufferTime: 0.5
@@ -2370,7 +2374,7 @@ MonoBehaviour:
   airAcceleration: 12
   minAirTime: 0.2
   landVelThreshold: -2.5
-  landEventCooldown: 0.15
+  landEventCooldown: 0.5
   landedPending: 0
   lastAirTime: 0
   lastFallSpeed: 0
