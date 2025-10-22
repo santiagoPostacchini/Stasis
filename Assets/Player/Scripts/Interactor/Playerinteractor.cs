@@ -109,9 +109,8 @@ namespace Player.Scripts.Interactor
 
         [Tooltip("Tiempo de cambio de palma durante wallrun")] [SerializeField]
         private float handSwitchTime = 0.18f;
-        // =================================================
 
-        private Model _model; // para eventos de wallrun
+        private Model _model;
 
         void Start()
         {
@@ -132,10 +131,6 @@ namespace Player.Scripts.Interactor
             exitDistance = Mathf.Max(exitDistance, enterDistance + 0.25f);
         }
 
-        void OnDestroy()
-        {
-            if (_model) _model.OnWallrunStart -= HandleWallrunStart;
-        }
 
         private void HandleWallrunStart(int dir)
         {
@@ -304,7 +299,63 @@ namespace Player.Scripts.Interactor
             }
         }
 
-        // Devuelve el mejor candidato que sea IInteractable o PhysicsBox.
+        // 1) Agregá este helper (puede ir cerca de tus otros privados)
+        private struct TargetHit
+        {
+            public GameObject go; // GameObject "representativo" para foco/LoS
+            public IInteractable interactable; // Nulo si es grabbable
+            public PhysicsBox box; // Nulo si es interactuable
+        }
+
+// Busca un IInteractable o PhysicsBox partiendo del collider golpeado,
+// subiendo a padres, luego a hijos y finalmente al árbol completo (incluye inactivos).
+        private bool TryResolveTarget(Transform fromHit, out TargetHit target)
+        {
+            target = default;
+
+            // --- 1) Interactuable: padres -> hijos inmediatos -> todo el árbol (incluye inactivos)
+            IInteractable ia =
+                fromHit.GetComponentInParent<IInteractable>() ??
+                fromHit.GetComponentInChildren<IInteractable>();
+
+            if (ia == null)
+            {
+                var root = fromHit.root;
+                var all = root.GetComponentsInChildren<IInteractable>(true); // incluye inactivos
+                if (all != null && all.Length > 0) ia = all[0];
+            }
+
+            if (ia != null)
+            {
+                var iaComp = (Component)ia;
+                target.go = iaComp.gameObject; // usamos el GO real que porta el interactuable
+                target.interactable = ia;
+                return true;
+            }
+
+            // --- 2) Grabbable (PhysicsBox) con la misma lógica
+            PhysicsBox pb =
+                fromHit.GetComponentInParent<PhysicsBox>() ??
+                fromHit.GetComponentInChildren<PhysicsBox>();
+
+            if (pb == null)
+            {
+                var root = fromHit.root;
+                var all = root.GetComponentsInChildren<PhysicsBox>(true);
+                if (all != null && all.Length > 0) pb = all[0];
+            }
+
+            if (pb != null)
+            {
+                target.go = pb.gameObject;
+                target.box = pb;
+                return true;
+            }
+
+            return false;
+        }
+
+        // 2) Reemplazá tu método GetBestInteractable(...) por este:
         private GameObject GetBestInteractable(out float distance, out float angleDeg)
         {
             Vector3 origin = transform.position + transform.forward * castStartOffset;
@@ -315,41 +366,42 @@ namespace Player.Scripts.Interactor
 
             int targetMask = interactableMask | grabbableMask;
 
+            // --- Raycast fino (primera prioridad)
             if (Physics.Raycast(origin, dir, out RaycastHit rh, exitDistance, targetMask,
                     QueryTriggerInteraction.Ignore))
             {
-                var rootGo = rh.collider.transform.root.gameObject;
-                if (IsValidTarget(rootGo))
+                if (TryResolveTarget(rh.collider.transform, out var tg))
                 {
                     distance = rh.distance;
                     angleDeg = 0f;
-                    return rootGo;
+                    return tg.go;
                 }
             }
 
-            RaycastHit[] hits = Physics.SphereCastAll(origin, focusSphereRadius, dir, exitDistance,
-                targetMask, QueryTriggerInteraction.Ignore);
+            // --- SphereCast (captura candidatos cercanos al centro de mira)
+            RaycastHit[] hits = Physics.SphereCastAll(origin, focusSphereRadius, dir, exitDistance, targetMask,
+                QueryTriggerInteraction.Ignore);
 
             GameObject best = null;
             float bestDist = Mathf.Infinity;
             float bestAngle = 999f;
             float maxAngle = (!_currentFocused) ? enterAngleDeg : exitAngleDeg;
 
-            foreach (var t in hits)
+            foreach (var h in hits)
             {
-                var rootGo = t.collider.transform.root.gameObject;
-                if (!IsValidTarget(rootGo)) continue;
+                if (!TryResolveTarget(h.collider.transform, out var tg)) continue;
 
-                Vector3 to = t.point - origin;
+                Vector3 targetPos = ClosestPointOrCenter(tg.go, origin);
+                Vector3 to = targetPos - origin;
                 float d = to.magnitude;
                 if (d <= 0.0001f) continue;
 
                 float ang = Vector3.Angle(dir, to.normalized);
                 if (ang > maxAngle) continue;
 
-                if (d < bestDist && HasLineOfSight(rootGo))
+                if (d < bestDist && HasLineOfSight(tg.go))
                 {
-                    best = rootGo;
+                    best = tg.go;
                     bestDist = d;
                     bestAngle = ang;
                 }
@@ -358,14 +410,6 @@ namespace Player.Scripts.Interactor
             distance = bestDist;
             angleDeg = bestAngle;
             return best;
-        }
-
-        private bool IsValidTarget(GameObject rootGo)
-        {
-            if (!rootGo) return false;
-            if (rootGo.GetComponentInParent<IInteractable>() != null) return true;
-            if (rootGo.GetComponent<PhysicsBox>()) return true;
-            return false;
         }
 
         private bool HasLineOfSight(GameObject targetRoot)

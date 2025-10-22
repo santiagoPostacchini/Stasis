@@ -1482,7 +1482,7 @@ MonoBehaviour:
   m_VolumeTrigger: {fileID: 0}
   m_VolumeFrameworkUpdateModeOption: 2
   m_RenderPostProcessing: 1
-  m_Antialiasing: 0
+  m_Antialiasing: 1
   m_AntialiasingQuality: 2
   m_StopNaN: 0
   m_Dithering: 0
@@ -2304,6 +2304,8 @@ MonoBehaviour:
   lastWallCollider: {fileID: 0}
   lastWallNormal: {x: 0, y: 0, z: 0}
   lastWallDetachTime: 0
+  wallSeamHold: 0.12
+  wallNormalSmooth: 14
   blockWallrunUntil: -999
   groundedIgnoreAfterJump: 0.08
   groundedIgnoreUntil: -999
@@ -2317,6 +2319,9 @@ MonoBehaviour:
   wallUseGravity: 1
   gravityCounterForce: 14
   lastJumpPressedTime: -999
+  wallPostJumpNoRegrab: 0.2
+  wallJustJumpedUntil: -999
+  wallSeamDisableUntil: -999
   lastLeftGroundTime: -999
   xAxis: 0
   zAxis: 0
@@ -2425,6 +2430,10 @@ MonoBehaviour:
   wallMaxSlopeDeg: 15
   wallToForwardMaxAngle: 55
   wallMinSpeed: 1
+  wallApproachMinInto: 2
+  wallSeamStickTime: 0.15
+  wallSeamMaxGap: 0.12
+  wallApproachAngleBonus: 25
   wallCrossRegrabGrace: 0.15
   wallGraceMinSpeedMul: 0.6
   wallGraceAngleBonus: 10
@@ -2433,7 +2442,6 @@ MonoBehaviour:
   wallHeadClearPush: 0.12
   requireAirForWallrun: 1
   drawGizmos: 1
-  verboseLogs: 0
   groundSnapDistance: 0.08
   fallProbeVelocityMul: 0.035
   groundEnterStability: 0.05
@@ -2452,6 +2460,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   animator: {fileID: 0}
   playerCamEffects: {fileID: 4059597041131144283}
+  visualYawFollower: {fileID: 4134548861764723539}
   rb: {fileID: 8599163464542453061}
   stepper: {fileID: 8342117866707623542}
   deepFallDelay: 2
