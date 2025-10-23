@@ -217,20 +217,20 @@ public class FollowTargetController : MonoBehaviour
         Transform to = atStart ? brother : startAnchor;
         
         currentTip = to;
-        if(currentTip == brother)
-        {
-            if(_platformModifyTag != null)
-            {
-                SetLayerRecursively(_platformModifyTag, _layerBrother);
-            }
-        }
-        else if(currentTip == startAnchor)
-        {
-            if (_platformModifyTag)
-            {
-                SetLayerRecursively(_platformModifyTag, _layerTipController);
-            }
-        }
+        //if(currentTip == brother)
+        //{
+        //    if(_platformModifyTag != null)
+        //    {
+        //        SetLayerRecursively(_platformModifyTag, _layerBrother);
+        //    }
+        //}
+        //else if(currentTip == startAnchor)
+        //{
+        //    if (_platformModifyTag)
+        //    {
+        //        SetLayerRecursively(_platformModifyTag, _layerTipController);
+        //    }
+        //}
         if (moveRoutine != null) StopCoroutine(moveRoutine);
         moveRoutine = StartCoroutine(MoveRB_Pausable(to, moveDuration));
     }
