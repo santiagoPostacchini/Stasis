@@ -2,10 +2,8 @@ using UnityEngine;
 using UnityEngine.Events;
 
 [DisallowMultipleComponent]
-[RequireComponent(typeof(Collider))]
-public class DirectionImpulseOnCanMove_Collision : MonoBehaviour
+public class DirectionImpulseTrigger : MonoBehaviour
 {
-    public bool playerInContact = false;
     [Header("Direccion (from -> to)")]
     public Transform from;
     public Transform to;
@@ -16,8 +14,9 @@ public class DirectionImpulseOnCanMove_Collision : MonoBehaviour
 
     [Header("Jugador a impulsar")]
     public Rigidbody playerRb;
-    [Tooltip("Si playerRb es null, se intentara encontrar por tag.")]
+    [Tooltip("Fallback por tag si playerRb es null.")]
     public string playerTag = "Player";
+    public LayerMask playerMask = ~0; // opcional: capa del player
 
     [Header("Parametros del impulso")]
     public float forceMagnitude = 10f;
@@ -28,28 +27,42 @@ public class DirectionImpulseOnCanMove_Collision : MonoBehaviour
     [Tooltip("Si es false, dispara una unica vez (no vuelve a disparar en futuros false->true).")]
     public bool retriggerOnStop = true;
 
-    [Header("Deteccion 'arriba' por colision")]
-    [Tooltip("Requerir que el jugador este arriba para disparar.")]
+    [Header("Activacion por distancia")]
+    [Tooltip("Activa el OverlapBox solo si el player esta a esta distancia o menos.")]
+    public float activationDistance = 5f;
+
+    [Header("OverlapBox config")]
+    [Tooltip("Si hay BoxCollider y esto es true, usa su centro y tamaño locales.")]
+    public bool useBoxCollider = true;
+    [Tooltip("Si no usas BoxCollider, define el tamaño manual (en unidades).")]
+    public Vector3 boxSize = new Vector3(1f, 0.5f, 1f);
+    [Tooltip("Offset del centro del OverlapBox, en espacio local.")]
+    public Vector3 boxCenterOffset = Vector3.up * 0.25f;
+
+    [Header("Deteccion 'arriba' (sin contactos)")]
+    [Tooltip("Requerir que el jugador este 'encima' (geometricamente) para disparar.")]
     public bool requirePlayerOnTop = true;
-    [Tooltip("Umbral del dot(normal, up). 0.5 ~ 60°, 0.7 ~ 45°.")]
+    [Tooltip("Umbral del dot((player - centro).normalized, up). 0.5 ~ 60°, 0.7 ~ 45°.")]
     [Range(0f, 1f)] public float minUpDot = 0.5f;
     [Tooltip("Si true usa Vector3.up; si false usa transform.up.")]
     public bool useWorldUp = true;
 
     [Header("Eventos (opcional)")]
     public UnityEvent onImpulseFired;
-    //
-    // Estado interno
-    private bool prevCanMove = false;
-   
-    private bool playerOnTop = false;
-    private int contactCount = 0; // para manejar multiples contactos/superficies
 
-    private void Reset()
-    {
-        var col = GetComponent<Collider>();
-        if (col) col.isTrigger = false; // necesitamos colisiones, no triggers
-    }
+    [Header("Gizmos")]
+    public bool showGizmos = true;
+    public Color gizmoInactive = new Color(0f, 0.6f, 1f, 0.25f);
+    public Color gizmoActive = new Color(0f, 1f, 0.2f, 0.35f);
+    public Color gizmoWire = new Color(0f, 0f, 0f, 1f);
+
+    // Estado
+    [HideInInspector] public bool playerInContact = false;
+    private bool prevCanMove = false;
+    private bool overlapActive = false;
+
+    // Cache
+    private BoxCollider boxCol;
 
     private void Awake()
     {
@@ -61,6 +74,8 @@ public class DirectionImpulseOnCanMove_Collision : MonoBehaviour
             var go = GameObject.FindGameObjectWithTag(playerTag);
             if (go) playerRb = go.GetComponent<Rigidbody>();
         }
+
+        boxCol = GetComponent<BoxCollider>();
     }
 
     private void FixedUpdate()
@@ -68,33 +83,44 @@ public class DirectionImpulseOnCanMove_Collision : MonoBehaviour
         if (followController == null || from == null || to == null || playerRb == null)
             return;
 
-        bool canMoveNow = followController.canMove;
+        // 1) Activacion por distancia
+        float distToPlayer = Vector3.Distance(playerRb.worldCenterOfMass, transform.position);
+        overlapActive = distToPlayer <= activationDistance;
 
-        // Flanco ascendente false -> true
-        if (!prevCanMove && canMoveNow)
+        // 2) Evaluar OverlapBox solo si activo
+        if (overlapActive)
         {
-            bool allowed = playerInContact && (!requirePlayerOnTop || playerOnTop);
-            if (allowed)
-            {
-                FireImpulse();
+            playerInContact = CheckPlayerOverlapBox(out bool isOnTop);
+            bool canMoveNow = followController.canMove;
 
-                if (!retriggerOnStop)
+            // 3) Flanco ascendente: false -> true
+            if (!prevCanMove && canMoveNow)
+            {
+                bool allowed = playerInContact && (!requirePlayerOnTop || isOnTop);
+                if (allowed)
                 {
-                    // Queda latcheado: no re-dispara mas
-                    prevCanMove = true;
-                    return;
+                    FireImpulse();
+
+                    if (!retriggerOnStop)
+                    {
+                        prevCanMove = true; // latcheado
+                        return;
+                    }
                 }
             }
+            prevCanMove = canMoveNow;
         }
-
-        prevCanMove = canMoveNow;
+        else
+        {
+            playerInContact = false;
+            prevCanMove = followController.canMove; // mantener estado consistente
+        }
     }
 
     private void FireImpulse()
     {
         Vector3 dir = to.position - from.position;
         if (onlyHorizontalDirection) dir.y = 0f;
-
         if (dir.sqrMagnitude < 1e-6f) return;
 
         dir.Normalize();
@@ -102,59 +128,113 @@ public class DirectionImpulseOnCanMove_Collision : MonoBehaviour
         onImpulseFired?.Invoke();
     }
 
-    // -------- Colisiones con el Player --------
-
-    private bool IsPlayerCollision(Collision c)
+    private bool CheckPlayerOverlapBox(out bool isOnTop)
     {
-        if (playerRb && c.rigidbody == playerRb) return true;
-        if (!playerRb && c.collider.CompareTag(playerTag)) return true;
-        return false;
-    }
+        // Calcular centro y halfExtents en MUNDO, respetando rotacion del objeto
+        Vector3 worldCenter;
+        Vector3 halfExtents;
+        Quaternion rot = transform.rotation;
 
-    private bool AnyTopContact(Collision c)
-    {
-        Vector3 up = useWorldUp ? Vector3.up : transform.up;
-
-        // Si este collider es la "plataforma", la normal apunta desde la plataforma hacia el otro collider.
-        // Para un contacto arriba, la normal tiende a alinear con up (dot alto).
-        for (int i = 0; i < c.contactCount; i++)
+        if (useBoxCollider && boxCol != null)
         {
-            ContactPoint cp = c.GetContact(i);
-            float d = Vector3.Dot(cp.normal.normalized, up);
-            if (d >= minUpDot) return true;
+            // Centro en mundo respetando offset local del BoxCollider
+            worldCenter = transform.TransformPoint(boxCol.center + boxCenterOffset);
+            // half extents aplicando escala
+            Vector3 scaledSize = Vector3.Scale(boxCol.size, transform.lossyScale);
+            halfExtents = scaledSize * 0.5f;
         }
-        return false;
-    }
-
-    private void OnCollisionEnter(Collision c)
-    {
-        if (!IsPlayerCollision(c)) return;
-
-        contactCount++;
-        playerInContact = true;
-
-        if (requirePlayerOnTop)
-            playerOnTop = playerOnTop || AnyTopContact(c);
-    }
-
-    private void OnCollisionStay(Collision c)
-    {
-        if (!IsPlayerCollision(c)) return;
-        playerInContact = true;
-        // Re-evaluar "arriba" por si cambian los contactos
-        if (requirePlayerOnTop)
-            playerOnTop = AnyTopContact(c);
-    }
-
-    private void OnCollisionExit(Collision c)
-    {
-        if (!IsPlayerCollision(c)) return;
-
-        contactCount = Mathf.Max(0, contactCount - 1);
-        if (contactCount == 0)
+        else
         {
-            playerInContact = false;
-            playerOnTop = false;
+            worldCenter = transform.TransformPoint(boxCenterOffset);
+            Vector3 scaledSize = Vector3.Scale(boxSize, transform.lossyScale);
+            halfExtents = scaledSize * 0.5f;
         }
+
+        // Overlap con buffer minimo
+        Collider[] hits = new Collider[8];
+        int count = Physics.OverlapBoxNonAlloc(worldCenter, halfExtents, hits, rot, playerMask, QueryTriggerInteraction.Ignore);
+
+        bool found = false;
+        for (int i = 0; i < count; i++)
+        {
+            var rb = hits[i].attachedRigidbody;
+            if (!rb) continue;
+
+            // ¿Es el player?
+            if (playerRb != null && rb == playerRb)
+            {
+                found = true;
+                break;
+            }
+            if (playerRb == null && hits[i].CompareTag(playerTag))
+            {
+                // si no teniamos cacheado el RB, guardalo
+                playerRb = rb;
+                found = true;
+                break;
+            }
+        }
+
+        // Criterio de "arriba" geométrico (sin normales de contacto)
+        if (requirePlayerOnTop && playerRb != null)
+        {
+            Vector3 up = useWorldUp ? Vector3.up : transform.up;
+            Vector3 toPlayer = (playerRb.worldCenterOfMass - worldCenter);
+            float len = toPlayer.magnitude;
+            float dot = (len > 1e-5f) ? Vector3.Dot(toPlayer / len, up) : 0f;
+            isOnTop = dot >= minUpDot;
+        }
+        else
+        {
+            isOnTop = true;
+        }
+
+        return found;
+    }
+
+    // ---------------- Gizmos ----------------
+    private void OnDrawGizmos()
+    {
+        if (!showGizmos) return;
+
+        // Recalcular igual que en runtime (maneja falta de boxCol en edit)
+        BoxCollider bc = useBoxCollider ? GetComponent<BoxCollider>() : null;
+        Quaternion rot = transform.rotation;
+
+        Vector3 worldCenter;
+        Vector3 halfExtents;
+
+        if (useBoxCollider && bc != null)
+        {
+            worldCenter = transform.TransformPoint(bc.center + boxCenterOffset);
+            Vector3 scaledSize = Vector3.Scale(bc.size, transform.lossyScale);
+            halfExtents = scaledSize * 0.5f;
+        }
+        else
+        {
+            worldCenter = transform.TransformPoint(boxCenterOffset);
+            Vector3 scaledSize = Vector3.Scale(boxSize, transform.lossyScale);
+            halfExtents = scaledSize * 0.5f;
+        }
+
+        // Cambiar color si está activo (requiere playerRb en escena para evaluar distancia)
+        bool active = overlapActive;
+        if (!Application.isPlaying && playerRb != null)
+        {
+            float d = Vector3.Distance(playerRb.worldCenterOfMass, transform.position);
+            active = d <= activationDistance;
+        }
+
+        Color fill = active ? gizmoActive : gizmoInactive;
+        Gizmos.color = fill;
+        Gizmos.matrix = Matrix4x4.TRS(worldCenter, rot, Vector3.one);
+        Gizmos.DrawCube(Vector3.zero, halfExtents * 2f);
+
+        Gizmos.color = gizmoWire;
+        Gizmos.DrawWireCube(Vector3.zero, halfExtents * 2f);
+
+        // Radio de activación (opcional)
+        Gizmos.matrix = Matrix4x4.identity;
+        Gizmos.DrawWireSphere(transform.position, activationDistance);
     }
 }
