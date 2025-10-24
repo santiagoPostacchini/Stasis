@@ -140,7 +140,7 @@ public class DirectionImpulseOnCanMove_Collision : MonoBehaviour
     private void OnCollisionStay(Collision c)
     {
         if (!IsPlayerCollision(c)) return;
-
+        playerInContact = true;
         // Re-evaluar "arriba" por si cambian los contactos
         if (requirePlayerOnTop)
             playerOnTop = AnyTopContact(c);
