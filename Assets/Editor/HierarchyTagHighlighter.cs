@@ -6,20 +6,23 @@ using UnityEngine;
 [InitializeOnLoad]
 public static class HierarchyTagHighlighter
 {
-    // Colores por Tag (podés editar/añadir los que quieras)
+    // Colores por Tag (podï¿½s editar/aï¿½adir los que quieras)
     // bg = color de fondo (usa alpha bajo), text = color del texto
     static readonly Dictionary<string, (Color bg, Color text)> tagColors = new()
     {
         //           R    G    B    A                  R    G    B    A
         { "Player", (new Color(1f, 0f, 0f, 0.4f), new Color(0.85f, 0.95f, 1.00f, 1f)) },
         { "Conteiner", (new Color(0f, 1f, 0f, 0.4f), new Color(1.00f, 0.85f, 0.85f, 1f)) },
+        { "Manager", (new Color(1f, 1f, 0f, 0.3f),       new Color(1f, 1f, 0.6f, 1f)) },
+        { "Level", (new Color(0f, 1f, 0f, 0.4f), new Color(1.00f, 0.85f, 0.85f, 1f)) },
+        { "LevelBackground", (new Color(0f, 1f, 0f, 0.4f), new Color(1.00f, 0.85f, 0.85f, 1f)) },
         //{ "UI", (new Color(0.20f, 1.00f, 0.70f, 0.12f), new Color(0.85f, 1.00f, 0.95f, 1f)) },
         //{ "Props", (new Color(1.00f, 0.85f, 0.20f, 0.10f), new Color(0.20f, 0.20f, 0.20f, 1f)) },
         // { "TuTag", (new Color(...),                 new Color(...)) },
     };
 
     // Opciones
-    static bool overrideTextColor = false;   // si querés SOLO fondo, ponelo en false
+    static bool overrideTextColor = false;   // si querï¿½s SOLO fondo, ponelo en false
     static bool boldText = true;   // texto en negrita
     static float leftIndent = 32f;    // deja espacio para el foldout/icono
 
@@ -34,21 +37,21 @@ public static class HierarchyTagHighlighter
         Object obj = EditorUtility.InstanceIDToObject(instanceID);
         if (obj is not GameObject go) return;
 
-        // ¿Hay configuración de color para este tag?
+        // ï¿½Hay configuraciï¿½n de color para este tag?
         if (!tagColors.TryGetValue(go.tag, out var colors)) return;
 
-        // Si el item está seleccionado, atenuamos o variamos para que no pelee con el highlight de Unity
+        // Si el item estï¿½ seleccionado, atenuamos o variamos para que no pelee con el highlight de Unity
         bool isSelected = Selection.instanceIDs != null && System.Array.IndexOf(Selection.instanceIDs, instanceID) >= 0;
         Color bg = colors.bg;
         Color tx = colors.text;
 
         if (isSelected)
         {
-            // Suaviza el fondo al estar seleccionado (para no “tapar” el azul/gris de selección)
+            // Suaviza el fondo al estar seleccionado (para no ï¿½taparï¿½ el azul/gris de selecciï¿½n)
             bg.a *= 0.5f;
         }
 
-        // Dibuja el fondo (rectángulo a lo ancho de la fila)
+        // Dibuja el fondo (rectï¿½ngulo a lo ancho de la fila)
         EditorGUI.DrawRect(selectionRect, bg);
 
         // Opcional: pintar texto con color propio encima del label original
@@ -74,7 +77,7 @@ public static class HierarchyTagHighlighter
             EditorGUI.LabelField(labelRect, go.name, style);
         }
 
-        // Tip: si querés también colorear hijos cuando el padre tiene un tag,
-        // podés recorrer go.transform.parent y aplicar un color distinto por jerarquía.
+        // Tip: si querï¿½s tambiï¿½n colorear hijos cuando el padre tiene un tag,
+        // podï¿½s recorrer go.transform.parent y aplicar un color distinto por jerarquï¿½a.
     }
 }
