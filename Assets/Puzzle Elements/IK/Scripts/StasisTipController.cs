@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using Player.Stasis;
 using System;
+using Managers.Game;
 
 public class StasisTipController : MonoBehaviour,IStasis
 {
@@ -31,8 +32,12 @@ public class StasisTipController : MonoBehaviour,IStasis
         _mpb = new MaterialPropertyBlock();
         _followTargetController = GetComponent<FollowTargetController>();
         StartCoroutine(wait());
+        GameManager.Instance.OnDeathPlayer += PlayerDeath;
     }
-    
+    private void PlayerDeath()
+    {
+        StatisEffectDeactivate();
+    }
     IEnumerator wait()
     {
         yield return new WaitForSeconds(2f);

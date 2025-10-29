@@ -1,6 +1,7 @@
 using Player.Scripts;
 using Player.Scripts.MovementFSM.MVC;
 using Puzzle_Elements.Hedron.Scripts;
+using System.Collections;
 using UnityEngine;
 using UnityEngine.Events;
 
@@ -17,8 +18,9 @@ namespace Puzzle_Elements.Water.Scripts
             Model player = other.GetComponent<Model>();
             if(player != null)
             {
-                player.transform.position = _checkpoint.CurrentCheckpointPos();
+                
                 OnFallInWater?.Invoke();
+                StartCoroutine(waitDeath(player));
                 Rigidbody rb = player.GetComponent<Rigidbody>();
                 if(rb != null)
                 {
@@ -42,8 +44,8 @@ namespace Puzzle_Elements.Water.Scripts
             Model player = collision.gameObject.GetComponent<Model>();
             if (player != null)
             {
-                player.transform.position = _checkpoint.CurrentCheckpointPos();
                 OnFallInWater?.Invoke();
+                StartCoroutine(waitDeath(player));
                 Rigidbody rb = player.GetComponent<Rigidbody>();
                 if (rb != null)
                 {
@@ -62,6 +64,11 @@ namespace Puzzle_Elements.Water.Scripts
                     rb.velocity = Vector3.zero;
                 }
             }
+        }
+        IEnumerator waitDeath(Model player)
+        {
+            yield return new WaitForSeconds(0.3f);
+            player.transform.position = _checkpoint.CurrentCheckpointPos();
         }
 
     }

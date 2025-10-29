@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.Experimental.Rendering; // GraphicsFormat, FormatUsage
 using System.Collections.Generic;
 using Puzzle_Elements.Vigillance_Camera.Scripts.New_Folder;
+using Managers.Game;
 
 [DisallowMultipleComponent]
 public class VirtualSecurityCam : MonoBehaviour

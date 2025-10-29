@@ -6,6 +6,7 @@ using UI.Scripts;
 using UnityEngine;
 using System.Collections;
 using Player.Scripts.MovementFSM.MVC;
+using Managers.Game;
 
 namespace Player.Scripts.Interactor
 {
@@ -34,6 +35,7 @@ namespace Player.Scripts.Interactor
         private PhysicsBox _releasingTarget;
         private float _releaseAimUntil = -999f;
 
+        
         public PhysicsBox GetReleasingTarget()
         {
             return (Time.time <= _releaseAimUntil) ? _releasingTarget : null;
@@ -117,6 +119,7 @@ namespace Player.Scripts.Interactor
             _rotationSmoothQuat = objectGrabPointTransform ? objectGrabPointTransform.rotation : Quaternion.identity;
             _view = GetComponentInParent<View>();
             OnGrabItem += _view.OnGrabEvent;
+            GameManager.Instance.OnDeathPlayer += TryDropOnDeath;
 
             // Elegimos palma por defecto: derecha si existe, si no izquierda, si no backTransform
             _currentPalm = rightPalmTransform ?? leftPalmTransform ?? objectGrabPointBackTransform;
@@ -464,7 +467,12 @@ namespace Player.Scripts.Interactor
                 EventManager.TriggerEvent("Grab", gameObject);
             }
         }
+        public void TryDropOnDeath()
+        {
+            if (_objectGrabbable == null) return;
 
+            TryDropObject();
+        }
         public void TryDropObject()
         {
             if (_objectGrabbable)
