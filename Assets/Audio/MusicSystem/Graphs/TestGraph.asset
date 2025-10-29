@@ -15,11 +15,9 @@ MonoBehaviour:
   nodes:
   - id: 1
     cue: {fileID: 11400000, guid: 62b46ada9f985504fa5cba4ceaf52ce8, type: 2}
-  - id: 2
-    cue: {fileID: 11400000, guid: b69653169cc50eb42b11aa0902ab025a, type: 2}
   transitions:
   - fromNodeId: 1
-    toNodeId: 2
+    toNodeId: 1
     triggerName: Cambio 1 a 2
     paramName: 
     compare: 0
@@ -34,7 +32,7 @@ MonoBehaviour:
     exitStingerId: 
     quantizeExitStinger: 0
     exitOffsetSeconds: 0
-  - fromNodeId: 2
+  - fromNodeId: 1
     toNodeId: 1
     triggerName: Cambio 2 a 1
     paramName: 
