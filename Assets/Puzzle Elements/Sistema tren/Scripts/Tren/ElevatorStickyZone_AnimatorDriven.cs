@@ -116,8 +116,7 @@ public class ElevatorSticky_AnimatorDriven : MonoBehaviour
                 // No tocar isKinematic del player; solo apagar gravedad mientras lo arrastramos
                 _playerRb.useGravity = false;
                 _playerRb.isKinematic = true;
-
-
+               // Vector3 movement = new Vector3(hitModel.transform.position.x, t.position.y, hitModel.transform.position.z);
                 _playerRb.MovePosition(t.position);
             }
             else
