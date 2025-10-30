@@ -435,6 +435,12 @@ namespace Player.Scripts.MovementFSM
 
             return !Physics.SphereCast(headFrom, r * 0.95f, Vector3.up, out _, upDist, walkableMask, QueryTriggerInteraction.Ignore);
         }
+        
+        public void CancelStep()
+        {
+            _stepping = false;
+            _snapActive = false;
+        }
 
         void OnValidate()
         {

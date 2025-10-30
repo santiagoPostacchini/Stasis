@@ -41,6 +41,8 @@ namespace Player.Scripts.MovementFSM.MVC
         private StairStepper _stair;
         internal ParkourScanner Scanner;
         private FSM _fsm;
+        
+        public StairStepper StairStepper => _stair;
 
         [Header("References")] public Rigidbody rb;
         public Transform cameraHolderTransform;

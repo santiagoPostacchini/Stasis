@@ -227,7 +227,7 @@ namespace Player.Scripts.MovementFSM
         {
             _model.BufferJumpNow();
             if (!_model.canMove) return;
-            if (!_model.IsGroundedNow()) return;
+            //if (!_model.IsGroundedNow()) return;
 
             PerformJumpAndGoAir();
         }
@@ -241,10 +241,7 @@ namespace Player.Scripts.MovementFSM
             float h = Mathf.Max(0.01f, _model.jumpHeight);
             float jumpVel = Mathf.Sqrt(2f * Mathf.Abs(g) * h);
 
-            var v = _model.rb.velocity;
-            v.y = 0f;
-            _model.rb.velocity = v;
-            _model.rb.AddForce(Vector3.up * jumpVel, ForceMode.VelocityChange);
+            _model.rb.velocity = new Vector3(_model.rb.velocity.x, jumpVel, _model.rb.velocity.z);
 
             // Bloquear cualquier grounded/land por un ratito:
             _model.groundedIgnoreUntil = Time.time + _model.groundedIgnoreAfterJump;
