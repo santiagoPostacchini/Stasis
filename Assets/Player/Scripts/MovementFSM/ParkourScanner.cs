@@ -186,13 +186,11 @@ namespace Player.Scripts.MovementFSM
             {
                 UpdateGrounding();
 
-                // 1) Notificación por CAMBIO de estado (igual que antes)
                 if (Grounded != _prevGrounded)
                 {
                     OnGroundedChanged(Grounded, GroundHit);
                     _prevGrounded = Grounded;
 
-                    // reset de tracking para re-notify
                     if (Grounded)
                     {
                         _hasNotifiedGroundOnce = true;

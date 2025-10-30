@@ -1,9 +1,11 @@
 using System;
 using Audio.Scripts;
+using DG.Tweening;
 using Player.FullBody_Scripts.MovementFSM;
 using Player.Scripts.Interactor;
 using Player.Scripts.MovementFSM.Player.Scripts.MovementFSM;
 using Player.Stasis;
+using Unity.Cinemachine;
 using UnityEngine;
 
 namespace Player.Scripts.MovementFSM.MVC
@@ -32,8 +34,7 @@ namespace Player.Scripts.MovementFSM.MVC
         public event Action OnInteractFocusEnter = delegate { };
         public event Action OnInteractFocusExit = delegate { };
         public event Action OnInteract = delegate { };
-
-
+        
         IController _controller;
         private StasisGun _stasisGun;
         private PlayerInteractor _interactor;
@@ -43,7 +44,7 @@ namespace Player.Scripts.MovementFSM.MVC
 
         [Header("References")] public Rigidbody rb;
         public Transform cameraHolderTransform;
-
+        public CinemachineBrain cinemachineBrain;
         public ParkourProbe probe;
 
         [Header("Movement Keys")] public KeyCode runningKey = KeyCode.LeftShift;
@@ -104,13 +105,10 @@ namespace Player.Scripts.MovementFSM.MVC
 
         [Header("Wallrun")] public float wallRunMaxSpeed = 8.0f;
         public float wallRunAccel = 30.0f;
-        public float wallRegrabCooldown = 0.25f;
-
         public float wallCruiseSpeed = 4.0f;
         public float wallCruiseAccel = 18.0f;
         public float wallGlideDownSpeed = 1.2f;
         public float wallInputThreshold = 0.12f;
-
         public float wallStandOff = 0.18f;
         public float wallStickKp = 220f;
         public float wallStickKd = 16f;
@@ -120,6 +118,7 @@ namespace Player.Scripts.MovementFSM.MVC
         public Collider lastWallCollider;
         public Vector3  lastWallNormal;
         public float    lastWallDetachTime;
+        public float wallReorientDuration = 0.2f;
         
         [Tooltip("Tiempo máx. para sostener el estado cuando se pierde el hit entre dos paredes (s)")]
         public float wallSeamHold = 0.12f;
@@ -203,7 +202,17 @@ namespace Player.Scripts.MovementFSM.MVC
             rb = GetComponent<Rigidbody>();
             _stair = GetComponent<StairStepper>();
             Scanner = GetComponent<ParkourScanner>();
+            
+            if (!cinemachineBrain)
+            {
+                cinemachineBrain = GetComponentInChildren<CinemachineBrain>();
 
+                if (!cinemachineBrain && UnityEngine.Camera.main)
+                {
+                    cinemachineBrain = UnityEngine.Camera.main.GetComponent<CinemachineBrain>();
+                }
+            }
+            
             _interactor.OnInteractPerformed += HandleInteractPerformed;
             _interactor.OnInteractableFocusEnter += HandleFocusEnter;
             _interactor.OnInteractableFocusExit += HandleFocusExit;

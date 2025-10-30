@@ -1,4 +1,6 @@
+using DG.Tweening;
 using Player.Scripts.MovementFSM.MVC;
+using Unity.Cinemachine;
 using UnityEngine;
 
 namespace Player.Scripts.MovementFSM
@@ -18,7 +20,8 @@ namespace Player.Scripts.MovementFSM
         private Vector3 _lastWallPoint;
         private Vector3 _smoothNormal;
         private float _seamHoldTimer;
-
+        private Tween _reorientTween;
+        private string _originalPanTiltInputName;
 
         public S_Wallrun(FSM fsm, Model model)
         {
@@ -43,6 +46,10 @@ namespace Player.Scripts.MovementFSM
             _timer = _model.maxWallRunTime;
             _exiting = false;
             _enterTime = Time.time;
+
+            _reorientTween?.Kill();
+            AdjustCameraOnEnter();
+            ClampInitialWallrunSpeed();
         }
 
 
@@ -76,8 +83,16 @@ namespace Player.Scripts.MovementFSM
             }
             else
             {
+                Vector3 oldNormal = _wallNormal;
+
                 ReadProbe(p);
                 _lastWallPoint = p.wallRunWallPoint;
+
+                if (Vector3.Dot(oldNormal, _wallNormal) < 0.707f)
+                {
+                    _fsm.ChangeState(FSM.States.Air);
+                    return;
+                }
             }
 
             if (!_exiting)
@@ -121,13 +136,19 @@ namespace Player.Scripts.MovementFSM
 
         public void OnExit()
         {
+            _reorientTween?.Kill();
+            if (Time.time > _model.wallJustJumpedUntil)
+            {
+                float until = Time.time + _model.wallPostJumpNoRegrab;
+                _model.blockWallrunUntil = until;
+            }
+
             _model.lastWallDetachTime = Time.time;
             _model.WallrunEndEvent();
         }
 
         public void OnLateUpdate()
         {
-            throw new System.NotImplementedException();
         }
 
         private void ReadProbe(in ParkourProbe p)
@@ -185,8 +206,7 @@ namespace Player.Scripts.MovementFSM
             Vector3 wishDir = (camR * _model.xAxis + camF * _model.zAxis);
             if (wishDir.sqrMagnitude > 1e-4f) wishDir.Normalize();
 
-            float inputAlong = Vector3.Dot(wishDir, wallForward);
-            bool pushingForward = inputAlong > _model.wallInputThreshold;
+            bool pushingForward = _model.zAxis > _model.wallInputThreshold;
 
             float curAlong = Vector3.Dot(vHoriz, wallForward);
             float targetAlong = pushingForward ? _model.wallRunMaxSpeed : Mathf.Max(_model.wallCruiseSpeed, curAlong);
@@ -211,12 +231,10 @@ namespace Player.Scripts.MovementFSM
                 _rb.AddForce(Vector3.up * (_model.gravityCounterForce * blend), ForceMode.Force);
 
             // Vertical
-            bool upwards = _model.runningKeyPressed;
-            bool downwards = Input.GetKey(_model.crouchKey);
+            bool downwards = !_model.runningKeyPressed;
             float vy = _rb.velocity.y;
 
-            if (upwards) vy = Mathf.MoveTowards(vy, _model.wallClimbSpeed, 12f * Time.fixedDeltaTime);
-            else if (downwards) vy = Mathf.MoveTowards(vy, -_model.wallDescendSpeed, 12f * Time.fixedDeltaTime);
+            if (downwards) vy = Mathf.MoveTowards(vy, -_model.wallDescendSpeed, 12f * Time.fixedDeltaTime);
             else if (!pushingForward) vy = Mathf.MoveTowards(vy, -_model.wallGlideDownSpeed, 8f * Time.fixedDeltaTime);
             else vy = Mathf.MoveTowards(vy, 0f, 8f * Time.fixedDeltaTime);
 
@@ -238,10 +256,10 @@ namespace Player.Scripts.MovementFSM
 
             // Lockouts post salto
             float until = Time.time + _model.wallPostJumpNoRegrab;
-            _model.blockWallrunUntil   = until;            // bloqueo general
-            _model.wallJustJumpedUntil = until;            // flag “acabo de saltar”
-            _model.wallSeamDisableUntil = until;           // seam-hold OFF el mismo lapso
-            _model.lastWallDetachTime  = Time.time;
+            _model.blockWallrunUntil = until; // bloqueo general
+            _model.wallJustJumpedUntil = until; // flag “acabo de saltar”
+            _model.wallSeamDisableUntil = until; // seam-hold OFF el mismo lapso
+            _model.lastWallDetachTime = Time.time;
 
             // Impulso: limpiar componente hacia la pared y vel.Y
             Vector3 v = _rb.velocity;
@@ -255,5 +273,78 @@ namespace Player.Scripts.MovementFSM
             _rb.AddForce(velChange, ForceMode.VelocityChange);
         }
 
+        private void AdjustCameraOnEnter()
+        {
+            // --- 1. Calcular Target Yaw (como antes) ---
+            Vector3 wallForward = Vector3.Cross(_wallNormal, Vector3.up);
+            Vector3 playerLookDirection = new Vector3(_orient.forward.x, 0f, _orient.forward.z).normalized;
+            if (playerLookDirection.sqrMagnitude < 0.1f)
+            {
+                playerLookDirection = new Vector3(_rb.velocity.x, 0f, _rb.velocity.z).normalized;
+            }
+
+            if (playerLookDirection.sqrMagnitude > 0.1f && Vector3.Dot(playerLookDirection, wallForward) < 0f)
+            {
+                wallForward = -wallForward;
+            }
+
+            float targetYaw = Quaternion.LookRotation(wallForward, Vector3.up).eulerAngles.y;
+
+            // --- 2. Obtener PanTilt (como antes) ---
+            if (!_model.cinemachineBrain) return;
+            var vcam = _model.cinemachineBrain.ActiveVirtualCamera as CinemachineCamera;
+            if (!vcam) return;
+            var panTilt = vcam.GetCinemachineComponent(CinemachineCore.Stage.Aim) as CinemachinePanTilt;
+            if (!panTilt) return;
+
+            // --- 3. Iniciar el TWEEN con DOTween ---
+
+            // Guardar el valor actual del Yaw y el nombre del input
+            float startYaw = panTilt.PanAxis.Value;
+
+            // Variable para el tween (0 a 1)
+            float percent = 0f;
+
+            _reorientTween = DOTween.To(
+                    () => percent, // Getter: ¿Qué valor animamos?
+                    (x) => percent = x, // Setter: Actualiza nuestro 'percent'
+                    1f, // Valor final (100%)
+                    _model.wallReorientDuration) // Duración
+                .SetEase(Ease.OutCubic) // Suavizado
+                .OnUpdate(() =>
+                {
+                    // En cada frame, calculamos el ángulo con LerpAngle (seguro para 360°)
+                    float currentYaw = Mathf.LerpAngle(startYaw, targetYaw, percent);
+                    panTilt.PanAxis.Value = currentYaw;
+                })
+                .OnComplete(() =>
+                {
+                    _reorientTween = null;
+                })
+                .OnKill(() =>
+                {
+                    _reorientTween = null;
+                });
+        }
+        
+        private void ClampInitialWallrunSpeed()
+        {
+            Vector3 vHoriz = new Vector3(_rb.velocity.x, 0f, _rb.velocity.z);
+    
+            float vVert = _rb.velocity.y;
+
+            Vector3 wallForward = Vector3.Cross(_wallNormal, Vector3.up);
+
+            if (vHoriz.sqrMagnitude > 0.1f && Vector3.Dot(vHoriz, wallForward) < 0f)
+            {
+                wallForward = -wallForward;
+            }
+
+            float speedAlongWall = Vector3.Dot(vHoriz, wallForward);
+
+            float clampedSpeedAlong = Mathf.Clamp(speedAlongWall, 0f, _model.wallRunMaxSpeed);
+            
+            _rb.velocity = (wallForward * clampedSpeedAlong) + (Vector3.up * vVert);
+        }
     }
 }
