@@ -188,7 +188,7 @@ namespace Player.Scripts.MovementFSM
 
                 if (Grounded != _prevGrounded)
                 {
-                    OnGroundedChanged(Grounded, GroundHit);
+                 //   OnGroundedChanged(Grounded, GroundHit);
                     _prevGrounded = Grounded;
 
                     if (Grounded)
