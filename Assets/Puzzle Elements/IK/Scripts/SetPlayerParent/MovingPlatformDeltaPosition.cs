@@ -40,12 +40,6 @@ public class MovingPlatformDeltaPosition : MonoBehaviour
             DeltaPosition = currentPos - _lastPos;
             DeltaRotation = currentRot * Quaternion.Inverse(_lastRot);
 
-            if (firstFrame)
-            {
-                DeltaPosition *= 6f;
-                firstFrame = false;
-            }
-
             _lastPos = currentPos;
             _lastRot = currentRot;
         }

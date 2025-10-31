@@ -7,7 +7,6 @@ public class TrainSystem : MonoBehaviour
 {
     [Header("Container")]
     public HedronContainer container;
-
     [Header("Elevator (Rigidbody)")]
     public Rigidbody elevatorRb;
     public Transform elevatorWP1;
@@ -26,13 +25,14 @@ public class TrainSystem : MonoBehaviour
 
     public enum TrainPathMode { Loop, PingPong }
 
-    [Header("Train (Rigidbody + Waypoints)")]
-    public Rigidbody trainRb;
+    [Header("Train (Transform + Waypoints)")]
+    [Tooltip("Referencia al GameObject del tren que se moverá por Transform.")]
+    public GameObject train; // <-- ahora movemos por Transform (train.transform.position)
     public List<Transform> trainWaypoints = new List<Transform>();
     public Transform departure;
     public float trainSpeed = 4f;
     public float trainArriveThreshold = 0.03f;
-    public float changeRbTrainDistance = 2f;
+    public float changeRbTrainDistance = 2f; // legado, no usado ya que no hay RB en el tren
     [Tooltip("Tiempo de espera en el extremo. En Loop también se usa antes del teletransporte al primero.")]
     public float trainTeleportWaitSeconds = 2f;
     [Tooltip("Loop = salta del último al primero; PingPong = va y vuelve sin teletransportar.")]
@@ -83,7 +83,6 @@ public class TrainSystem : MonoBehaviour
         ResolveHeights();
         HookContainer(true);
         PrepareSystems();
-
     }
 
     void OnEnable()
@@ -193,15 +192,15 @@ public class TrainSystem : MonoBehaviour
         }
         else barrState = BarricadeState.Idle;
 
-        // Train
+        // Train (Transform)
         if (ValidateTrainSetup())
         {
             trainFirstIdx = 0;
             trainLastIdx = trainWaypoints.Count - 1;
             trainDepIdx = trainWaypoints.IndexOf(departure);
 
-            if (resetPositions && !IsNear(trainRb.position, trainWaypoints[trainDepIdx].position, trainArriveThreshold))
-                TeleportBodyTo(trainRb, trainWaypoints[trainDepIdx].position);
+            if (resetPositions && !IsNear(train.transform.position, trainWaypoints[trainDepIdx].position, trainArriveThreshold))
+                TeleportTransformTo(train.transform, trainWaypoints[trainDepIdx].position);
 
             trainState = TrainState.IdleAtDeparture;
             trainRunRequested = false;
@@ -210,7 +209,7 @@ public class TrainSystem : MonoBehaviour
         }
         else trainState = TrainState.IdleAtDeparture;
     }
-
+    //
     private void ResolveHeights()
     {
         if (elevatorWP1 != null && elevatorWP2 != null)
@@ -236,7 +235,7 @@ public class TrainSystem : MonoBehaviour
 
     private bool ValidateTrainSetup()
     {
-        if (trainRb == null) return false;
+        if (train == null) return false; // <-- ahora validamos el GameObject del tren
         if (trainWaypoints == null || trainWaypoints.Count < 2) return false;
         if (departure == null) return false;
         int dep = trainWaypoints.IndexOf(departure);
@@ -373,18 +372,20 @@ public class TrainSystem : MonoBehaviour
         onTrainStarted?.Invoke();
     }
 
-    // Train (Loop / PingPong)
+    // Train (Transform + Loop / PingPong)
     private void TickTrain()
     {
         if (!trainConfigured) return;
+
+        Transform trainT = train.transform;
 
         switch (trainState)
         {
             case TrainState.IdleAtDeparture:
                 {
                     Vector3 depPos = trainWaypoints[trainDepIdx].position;
-                    if (!IsNear(trainRb.position, depPos, trainArriveThreshold))
-                        TeleportBodyTo(trainRb, depPos);
+                    if (!IsNear(trainT.position, depPos, trainArriveThreshold))
+                        TeleportTransformTo(trainT, depPos);
 
                     if (trainRunRequested)
                     {
@@ -398,21 +399,8 @@ public class TrainSystem : MonoBehaviour
             case TrainState.Running:
                 {
                     Vector3 target = trainWaypoints[trainCurrentIdx].position;
-                    if (Vector3.Distance(trainRb.position, target) < changeRbTrainDistance)
-                    {
-                        trainRb.interpolation = RigidbodyInterpolation.Interpolate;
-                        trainRb.collisionDetectionMode = CollisionDetectionMode.Discrete;
-                    }
-                    else
-                    {
-                        if (trainRb.interpolation == RigidbodyInterpolation.Interpolate)
-                        {
-                            trainRb.interpolation = RigidbodyInterpolation.None;
-                            trainRb.collisionDetectionMode = CollisionDetectionMode.Discrete;
-                        }
-                    }
-                    bool reached = MoveBodyLinear(trainRb, target, trainSpeed, trainArriveThreshold);
 
+                    bool reached = MoveTransformLinear(trainT, target, trainSpeed, trainArriveThreshold);
                     if (!reached) break;
 
                     if (trainHaltAtDeparture && trainCurrentIdx == trainDepIdx)
@@ -465,7 +453,7 @@ public class TrainSystem : MonoBehaviour
 
                     if (trainPauseDoTeleport)
                     {
-                        TeleportBodyTo(trainRb, trainWaypoints[trainFirstIdx].position);
+                        TeleportTransformTo(trainT, trainWaypoints[trainFirstIdx].position);
                     }
 
                     trainCurrentIdx = trainPauseNextIdx;
@@ -492,7 +480,7 @@ public class TrainSystem : MonoBehaviour
         return Mathf.Clamp(next, 0, (trainWaypoints.Count - 1));
     }
 
-    // Helpers
+    // Helpers: Rigidbody linear (ascensor/barricada)
     private bool MoveBodyLinear(Rigidbody rb, Vector3 targetPos, float speed, float arriveThreshold)
     {
         Vector3 toTarget = targetPos - rb.position;
@@ -507,22 +495,39 @@ public class TrainSystem : MonoBehaviour
         float step = s * Time.fixedDeltaTime;
         Vector3 dir = (dist > 1e-5f) ? (toTarget / dist) : Vector3.zero;
         Vector3 next = (step >= dist) ? targetPos : rb.position + dir * step;
-
-        rb.MovePosition(next);
+        rb.MovePosition(next); // <-- corregido (antes afectaba transform del script)
         return false;
+    }
+
+    // Helpers: Transform linear (tren)
+    private bool MoveTransformLinear(Transform t, Vector3 targetPos, float speed, float arriveThreshold)
+    {
+        Vector3 toTarget = targetPos - t.position;
+        float dist = toTarget.magnitude;
+        //float s = Mathf.Max(0f, speed);
+        //float step = s * Time.fixedDeltaTime;
+        //Vector3 dir = (dist > 1e-5f) ? (toTarget / dist) : Vector3.zero;
+        //Vector3 next = (step >= dist) ? targetPos : t.position + dir * step;
+        //t.position = next;
+
+        if (dist > arriveThreshold)
+        {
+            Vector3 step = toTarget.normalized * speed * Time.fixedDeltaTime;
+            t.position += step;
+
+            return false;
+        }
+        else return true;
+      
     }
 
     private static bool IsNear(Vector3 a, Vector3 b, float eps) =>
         (a - b).sqrMagnitude <= eps * eps;
 
-    private void TeleportBodyTo(Rigidbody rb, Vector3 pos)
+    private void TeleportTransformTo(Transform t, Vector3 pos)
     {
-        if (rb == null) return;
-#if UNITY_2022_1_OR_NEWER
-        rb.position = pos;
-#else
-        rb.MovePosition(pos);
-#endif
+        if (t == null) return;
+        t.position = pos;
     }
 
 #if UNITY_EDITOR
