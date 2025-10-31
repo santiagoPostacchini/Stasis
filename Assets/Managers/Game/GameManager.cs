@@ -9,7 +9,7 @@ namespace Managers.Game
         public Transform player;
         public float A;
         public static GameManager Instance { get; private set; }
-
+        [SerializeField] private LinearCheckpointSystem _checkpoint;
 
         private void Awake()
         {
@@ -27,6 +27,8 @@ namespace Managers.Game
 
         public void PlayerDeath()
         {
+            Debug.Log("Perdi");
+            player.transform.position = _checkpoint.CurrentCheckpointPos();
             OnDeathPlayer?.Invoke();
         }
     }

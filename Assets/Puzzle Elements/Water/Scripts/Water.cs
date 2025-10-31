@@ -11,16 +11,17 @@ namespace Puzzle_Elements.Water.Scripts
     {
 
         public UnityEvent OnFallInWater;
+        Model player;
 
         [SerializeField] private LinearCheckpointSystem _checkpoint;
         private void OnTriggerEnter(Collider other)
         {
-            Model player = other.GetComponent<Model>();
+            player = other.GetComponent<Model>();
             if(player != null)
             {
                 
                 OnFallInWater?.Invoke();
-                StartCoroutine(waitDeath(player));
+                player.transform.position = _checkpoint.CurrentCheckpointPos();
                 Rigidbody rb = player.GetComponent<Rigidbody>();
                 if(rb != null)
                 {
@@ -41,11 +42,11 @@ namespace Puzzle_Elements.Water.Scripts
         }
         private void OnCollisionEnter(Collision collision)
         {
-            Model player = collision.gameObject.GetComponent<Model>();
+            player = collision.gameObject.GetComponent<Model>();
             if (player != null)
             {
                 OnFallInWater?.Invoke();
-                StartCoroutine(waitDeath(player));
+                player.transform.position = _checkpoint.CurrentCheckpointPos();
                 Rigidbody rb = player.GetComponent<Rigidbody>();
                 if (rb != null)
                 {
@@ -65,9 +66,8 @@ namespace Puzzle_Elements.Water.Scripts
                 }
             }
         }
-        IEnumerator waitDeath(Model player)
+        public void PlayerDeath()
         {
-            yield return new WaitForSeconds(0.3f);
             player.transform.position = _checkpoint.CurrentCheckpointPos();
         }
 
