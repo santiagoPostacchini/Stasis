@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+[DefaultExecutionOrder(-200)]
 public class MovingPlatformDeltaPosition : MonoBehaviour
 {
     public Vector3 DeltaPosition { get; private set; }
@@ -10,19 +11,57 @@ public class MovingPlatformDeltaPosition : MonoBehaviour
     private Vector3 _lastPos;
     private Quaternion _lastRot;
 
+    private bool firstFrame = true;
+
+
+
+    public Rigidbody otherRb;
+    private Vector3 _otherLastPosition;
+   [SerializeField] private bool _otherIsMoving = true;
+
     private void Awake()
     {
         _lastPos = transform.position;
         _lastRot = transform.rotation;
+
+
+
+        if (otherRb != null)
+            _otherLastPosition = otherRb.position;
     }
 
-    // Usamos LateUpdate para capturar el delta real de este frame
     private void FixedUpdate()
     {
-        DeltaPosition = transform.position - _lastPos;
-        DeltaRotation = transform.rotation * Quaternion.Inverse(_lastRot);
+        if (_otherIsMoving)
+        {
+            Vector3 currentPos = transform.position;
+            Quaternion currentRot = transform.rotation;
 
-        _lastPos = transform.position;
-        _lastRot = transform.rotation;
+            DeltaPosition = currentPos - _lastPos;
+            DeltaRotation = currentRot * Quaternion.Inverse(_lastRot);
+
+            if (firstFrame)
+            {
+                DeltaPosition *= 6f;
+                firstFrame = false;
+            }
+
+            _lastPos = currentPos;
+            _lastRot = currentRot;
+        }
+       
+
+
+
+
+
+        // --- Delta del OTRO rigidbody ---
+        if (otherRb != null)
+        {
+            Vector3 deltaOther = otherRb.position - _otherLastPosition;
+            _otherIsMoving = deltaOther.sqrMagnitude > 0.01f;
+
+            _otherLastPosition = otherRb.position;
+        }
     }
 }

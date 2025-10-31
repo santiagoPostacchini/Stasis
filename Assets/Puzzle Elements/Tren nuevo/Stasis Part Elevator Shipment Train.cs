@@ -3,9 +3,9 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class StasisPartElevatorShipmentTrain : MonoBehaviour,IStasis
+public class StasisPartElevatorShipmentTrain : MonoBehaviour, IStasis
 {
-    [SerializeField]private ElevatorShipmentTrain _elevatorShipmentTrain;
+    [SerializeField] private ElevatorShipmentTrain _elevatorShipmentTrain;
     public bool IsFreezed => isFreezed;
     public bool isFreezed = false;
     public StasisEffect StasisEffect => throw new System.NotImplementedException();
@@ -14,7 +14,10 @@ public class StasisPartElevatorShipmentTrain : MonoBehaviour,IStasis
     {
         _elevatorShipmentTrain = GetComponentInParent<ElevatorShipmentTrain>();
     }
-
+    private void Update()
+    {
+        _elevatorShipmentTrain.isMoving = !IsFreezed && _elevatorShipmentTrain.canMove;
+    }
     public void StatisEffectActivate()
     {
         if (isFreezed)

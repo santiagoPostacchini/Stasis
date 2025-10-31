@@ -1,3 +1,4 @@
+using Managers.Game;
 using Player.Scripts.MovementFSM.MVC;
 using UnityEngine;
 
@@ -40,17 +41,16 @@ public class ElevatorSticky_AnimatorDriven : MonoBehaviour
 
     // Internos
     private Collider _platformCol;
-    private Rigidbody _playerRb;
+    [SerializeField] private Rigidbody _playerRb;
     private Collider _playerCol;
 
     private float _lastY;
     private float _yVel; // m/s
     private float _stateTimer;
     private float _lastDetectTime;
-
-    private enum MoveState { Idle, Moving }
-    private MoveState _state = MoveState.Idle;
-
+    [SerializeField] private float verticalVelocity;
+    [SerializeField] private float smoothAmount = 0.1f;
+    private ElevatorShipmentTrain _elevatorShipmentTrain;
     // Buffer Overlap (evita GC)
     private readonly Collider[] _hits = new Collider[8];
 
@@ -60,96 +60,66 @@ public class ElevatorSticky_AnimatorDriven : MonoBehaviour
         if (_platformCol && _platformCol.isTrigger) _platformCol.isTrigger = false;
 
         _lastY = transform.position.y;
-        ApplyState(MoveState.Idle, force: true);
+        //ApplyState(MoveState.Idle, force: true);
+        _elevatorShipmentTrain = GetComponentInParent<ElevatorShipmentTrain>();
     }
-
-    void Update()
+   
+    void FixedUpdate()
     {
         float dt = Time.fixedDeltaTime;
 
         // 1) Medir velocidad vertical (m/s) del frame de física
         float y = transform.position.y;
-        _yVel = (y - _lastY) / Mathf.Max(dt, 0.00001f);
+        _yVel = (y - _lastY) / Mathf.Max(dt, 0.001f);
         _lastY = y;
 
         // 2) FSM con histéresis por tiempo (enter/exit)
         bool movingNow = Mathf.Abs(_yVel) >= ySpeedThreshold;
         _stateTimer += dt;
 
-        switch (_state)
-        {
-            case MoveState.Idle:
-                if (movingNow && _stateTimer >= minMoveEnterTime)
-                    ApplyState(MoveState.Moving);
-                break;
 
-            case MoveState.Moving:
-                if (!movingNow && _stateTimer >= minMoveExitTime)
-                    ApplyState(MoveState.Idle);
-                break;
+
+        bool detected = TryDetectPlayer(out Rigidbody hitRb, out Model hitModel, out Collider hitCol);
+        if (detected && _elevatorShipmentTrain.isMoving)
+        {
+            if (_playerRb != hitRb)
+            {
+                _playerRb = hitRb;
+                _playerCol = hitCol != null ? hitCol : hitRb.GetComponentInChildren<Collider>();
+            }
+            debugModel = hitModel;
         }
 
-        // 3) Enganche / arrastre vertical cuando está Moving
-        if (_state == MoveState.Moving)
+
+
+        bool coyoteHold = (Time.time - _lastDetectTime) <= keepWhileMovingCoyote;
+
+        if ((_playerRb != null && _playerCol != null) && _elevatorShipmentTrain.isMoving)
         {
-            bool detected = TryDetectPlayer(out Rigidbody hitRb, out Model hitModel, out Collider hitCol);
+            Vector3 p = GameManager.Instance.player.position;
+            _playerRb.useGravity = false;
+            Debug.Log("MOVIENDO");
 
-            if (detected)
-            {
-                _lastDetectTime = Time.time;
+            float targetY = t.position.y + hoverOffset;
+            Vector3 newPos = _playerRb.position;
+            newPos.y = Mathf.SmoothDamp(newPos.y, targetY, ref verticalVelocity, smoothAmount);
+            _playerRb.MovePosition(newPos);
 
-                if (_playerRb != hitRb)
-                {
-                    _playerRb = hitRb;
-                    _playerCol = hitCol != null ? hitCol : hitRb.GetComponentInChildren<Collider>();
-                }
-                debugModel = hitModel;
-            }
-
-            bool coyoteHold = (Time.time - _lastDetectTime) <= keepWhileMovingCoyote;
-
-            if ((_playerRb != null && _playerCol != null))
-            {
-                Debug.Log("_playerRb " + _playerRb);
-                Debug.Log("_playerCol " + _playerCol);
-                ApplyState(MoveState.Moving);
-                // No tocar isKinematic del player; solo apagar gravedad mientras lo arrastramos
-                _playerRb.useGravity = false;
-                _playerRb.isKinematic = true;
-               // Vector3 movement = new Vector3(hitModel.transform.position.x, t.position.y, hitModel.transform.position.z);
-                _playerRb.MovePosition(t.position);
-            }
-            else
-            {
-                // Perdimos al player por mucho: liberamos
-                ReleasePlayerIfAny();
-            }
         }
         else
         {
-            // Idle: suelta al player y deja que se mueva normal
-
+            // Perdimos al player por mucho: liberamos
             ReleasePlayerIfAny();
         }
     }
 
-    void ApplyState(MoveState s, bool force = false)
-    {
-        if (_state == s && !force) return;
-        _state = s;
-        _stateTimer = 0f;
-
-        bool moving = (s == MoveState.Moving);
-        if (_smallCollider) _smallCollider.enabled = moving;
-        if (_bigCollider) _bigCollider.enabled = !moving;
-    }
-
+    //
     void ReleasePlayerIfAny()
     {
         if (_playerRb != null)
         {
             // Fallback conservador
-            
+
             _playerRb.isKinematic = false;
             _playerRb.useGravity = true;
             _playerRb.velocity = Vector3.zero;

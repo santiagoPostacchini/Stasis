@@ -3,11 +3,12 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class ElevatorShipmentTrain : MonoBehaviour,IStasis
+public class ElevatorShipmentTrain : MonoBehaviour, IStasis
 {
     [SerializeField] private Animator _anim;
     private float _timePaused;
-
+    public bool isMoving = false;
+    [HideInInspector] public bool canMove = false;
     [SerializeField] private List<Renderer> rends = new List<Renderer>();
     public bool IsFreezed => _isFreezed;
     private bool _isFreezed = false;
@@ -23,11 +24,15 @@ public class ElevatorShipmentTrain : MonoBehaviour,IStasis
     }
     public void ActivateElevatorShipment()
     {
+
         _anim.SetBool("On", true);
+        canMove = true;
     }
     public void DesactivateElevatorShipment()
     {
+
         _anim.SetBool("On", false);
+        canMove = false;
     }
     void FreezeObject()
     {
@@ -43,7 +48,7 @@ public class ElevatorShipmentTrain : MonoBehaviour,IStasis
                 item.isFreezed = true;
             }
         }
-       
+
     }
 
     void UnFreezeObject()
@@ -59,7 +64,7 @@ public class ElevatorShipmentTrain : MonoBehaviour,IStasis
                 item.isFreezed = false;
             }
         }
-       
+
     }
 
     public void StatisEffectActivate()

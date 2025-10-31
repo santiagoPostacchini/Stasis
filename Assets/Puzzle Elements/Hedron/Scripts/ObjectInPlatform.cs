@@ -1,7 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-
+[DefaultExecutionOrder(-100)]
 [RequireComponent(typeof(Rigidbody))]
 public class ObjectInPlatform : MonoBehaviour
 {
@@ -183,20 +183,17 @@ public class ObjectInPlatform : MonoBehaviour
         // --- ARRASTRE: mientras _platform != null ---
         if (_platform != null)
         {
+            TrainSystem trainSystem = GetComponent<TrainSystem>();
+            if(trainSystem != null)
+            {
+                if (trainSystem.trainSpeed == 0) return;
+            }
             Vector3 platformDeltaPos = Vector3.ClampMagnitude(
                 _platform.DeltaPosition,
                 maxSnapSpeed * Time.fixedDeltaTime
             );
 
-            Vector3 rotatedPos = transform.position;
-            if (applyPlatformRotation && _platform != null) // (rotar solo si hay plataforma activa)
-            {
-                rotatedPos = _platform.DeltaRotation *
-                             (transform.position - _lastHitPoint) + _lastHitPoint;
-            }
-
-            Vector3 rotationDelta = rotatedPos - transform.position;
-            Vector3 totalDelta = platformDeltaPos + rotationDelta;
+            Vector3 totalDelta = platformDeltaPos;
 
             if (totalDelta.sqrMagnitude > 0f)
             {
