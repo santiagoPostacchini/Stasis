@@ -14,7 +14,7 @@ public static class HierarchyTagHighlighter
         { "Player", (new Color(1f, 0f, 0f, 0.4f), new Color(0.85f, 0.95f, 1.00f, 1f)) },
         { "Conteiner", (new Color(0f, 1f, 0f, 0.4f), new Color(1.00f, 0.85f, 0.85f, 1f)) },
         { "Manager", (new Color(1f, 1f, 0f, 0.3f),       new Color(1f, 1f, 0.6f, 1f)) },
-        { "Level", (new Color(0f, 1f, 0f, 0.4f), new Color(1.00f, 0.85f, 0.85f, 1f)) },
+        { "Level", (new Color(0f, 0f, 1f, 0.4f), new Color(1.00f, 0.85f, 0.85f, 1f)) },
         //{ "UI", (new Color(0.20f, 1.00f, 0.70f, 0.12f), new Color(0.85f, 1.00f, 0.95f, 1f)) },
         //{ "Props", (new Color(1.00f, 0.85f, 0.20f, 0.10f), new Color(0.20f, 0.20f, 0.20f, 1f)) },
         // { "TuTag", (new Color(...),                 new Color(...)) },
