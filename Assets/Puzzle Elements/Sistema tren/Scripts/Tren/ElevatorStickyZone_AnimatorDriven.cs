@@ -80,7 +80,7 @@ public class ElevatorSticky_AnimatorDriven : MonoBehaviour
 
 
         bool detected = TryDetectPlayer(out Rigidbody hitRb, out Model hitModel, out Collider hitCol);
-        if (detected && _elevatorShipmentTrain.isMoving)
+        if (detected && _elevatorShipmentTrain.canMove)
         {
             if (_playerRb != hitRb)
             {
@@ -94,7 +94,7 @@ public class ElevatorSticky_AnimatorDriven : MonoBehaviour
 
         bool coyoteHold = (Time.time - _lastDetectTime) <= keepWhileMovingCoyote;
 
-        if ((_playerRb != null && _playerCol != null) && _elevatorShipmentTrain.isMoving)
+        if ((_playerRb != null && _playerCol != null) && _elevatorShipmentTrain.canMove)
         {
             Vector3 p = GameManager.Instance.player.position;
             _playerRb.useGravity = false;

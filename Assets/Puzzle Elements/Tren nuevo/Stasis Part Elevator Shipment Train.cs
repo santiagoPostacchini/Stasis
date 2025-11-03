@@ -14,10 +14,7 @@ public class StasisPartElevatorShipmentTrain : MonoBehaviour, IStasis
     {
         _elevatorShipmentTrain = GetComponentInParent<ElevatorShipmentTrain>();
     }
-    private void Update()
-    {
-        _elevatorShipmentTrain.isMoving = !IsFreezed && _elevatorShipmentTrain.canMove;
-    }
+    
     public void StatisEffectActivate()
     {
         if (isFreezed)

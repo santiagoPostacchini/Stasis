@@ -7,31 +7,38 @@ public class ElevatorShipmentTrain : MonoBehaviour, IStasis
 {
     [SerializeField] private Animator _anim;
     private float _timePaused;
-    public bool isMoving = false;
-    [HideInInspector] public bool canMove = false;
+    public bool canMove = false;
     [SerializeField] private List<Renderer> rends = new List<Renderer>();
     public bool IsFreezed => _isFreezed;
     private bool _isFreezed = false;
     public StasisEffect StasisEffect { get; private set; }
 
+    private PistonVisualAuto _visual;
+    private KinematicPiston _piston;
+
     private List<StasisPartElevatorShipmentTrain> list = new List<StasisPartElevatorShipmentTrain>();
     // Start is called before the first frame update
+    private void Awake()
+    {
+        _visual = GetComponent<PistonVisualAuto>();
+        _piston = GetComponentInChildren<KinematicPiston>();
+    }
     void Start()
     {
-        _anim = GetComponent<Animator>();
+        //_anim = GetComponent<Animator>();
         StasisEffect = new StasisEffect(null, rends.ToArray());
         list.AddRange(GetComponentsInChildren<StasisPartElevatorShipmentTrain>());
     }
     public void ActivateElevatorShipment()
     {
 
-        _anim.SetBool("On", true);
+        // _anim.SetBool("On", true);
         canMove = true;
     }
     public void DesactivateElevatorShipment()
     {
 
-        _anim.SetBool("On", false);
+        // _anim.SetBool("On", false);
         canMove = false;
     }
     void FreezeObject()
@@ -39,9 +46,10 @@ public class ElevatorShipmentTrain : MonoBehaviour, IStasis
         if (!_isFreezed)
         {
             _isFreezed = true;
-            AnimatorStateInfo info = _anim.GetCurrentAnimatorStateInfo(0);
-            _timePaused = info.normalizedTime;
-            _anim.speed = 0f;
+            _piston.stasear();
+            //AnimatorStateInfo info = _anim.GetCurrentAnimatorStateInfo(0);
+            //_timePaused = info.normalizedTime;
+            //_anim.speed = 0f;
             StasisEffect.StasisEffectStart();
             foreach (var item in list)
             {
@@ -56,8 +64,9 @@ public class ElevatorShipmentTrain : MonoBehaviour, IStasis
         if (_isFreezed)
         {
             _isFreezed = false;
-            _anim.speed = 1f;
-            _anim.Play(_anim.GetCurrentAnimatorStateInfo(0).fullPathHash, 0, _timePaused);
+            _piston.Desestasear();
+            //_anim.speed = 1f;
+            //_anim.Play(_anim.GetCurrentAnimatorStateInfo(0).fullPathHash, 0, _timePaused);
             StasisEffect.StasisEffectStop();
             foreach (var item in list)
             {
