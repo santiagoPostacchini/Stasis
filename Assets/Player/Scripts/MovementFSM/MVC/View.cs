@@ -1,6 +1,4 @@
-using Player.Scripts.IK;
 using UnityEngine;
-using static Player.Scripts.IK.HandIkFsm;
 
 namespace Player.Scripts.MovementFSM.MVC
 {
@@ -18,10 +16,6 @@ namespace Player.Scripts.MovementFSM.MVC
         [SerializeField] private Animator animator;
         [SerializeField] private FirstPersonCameraEffects playerCamEffects;
         [SerializeField] private VisualYawFollower visualYawFollower;
-
-        [Header("Ik")]
-        [SerializeField] private HandIkFsm handsIkFsm;
-        [SerializeField] private FeetIkfsm feetIkFsm;
         
         [Header("Refs Filtro")]
         [SerializeField] private Rigidbody rb;
@@ -154,19 +148,17 @@ namespace Player.Scripts.MovementFSM.MVC
             }
             else
             {
-                // No forzamos 'air' del Animator aún; sólo registramos el momento y altura de salida
+                // No forzamos 'air' del Animator aún; solo registramos el momento y altura de salida
                 _leftGroundTime = Time.time;
                 _leftGroundY = rb ? rb.position.y : 0f;
 
-                // Mantengo compatibilidad con tu contador si lo usás externamente
+                // Mantengo compatibilidad con tu contador si lo usas externamente
                 _airElapsed = Mathf.Max(_airElapsed, airTime);
             }
-            feetIkFsm.TryGround();
         }
 
         public void OnJumpEvent()
         {
-            // Esto es un salto real => queremos Air inmediato en Animator
             _forceAirUntilTime = Time.time + 0.10f;
             _animGrounded = false;
             animator.SetBool(IsGrounded, false);
@@ -185,13 +177,11 @@ namespace Player.Scripts.MovementFSM.MVC
             animator.CrossFade("Player_Arm_Vault", 0.1f);
             animator.applyRootMotion = false;
             if (playerCamEffects) playerCamEffects.VaultStart();
-            handsIkFsm.ForceState(HandState.Vault);
         }
 
         public void OnVaultEndEvent()      
         { 
             if (playerCamEffects) playerCamEffects.VaultEnd();
-            handsIkFsm.ForceState(HandState.Idle);
         }
         public void OnClimbStartEvent()
         {
@@ -206,10 +196,9 @@ namespace Player.Scripts.MovementFSM.MVC
             animator.CrossFade(dir > 0 ? "Player_Leg_Wallrun_Left" : "Player_Leg_Wallrun_Right", 0f);
             animator.CrossFade(dir > 0 ? "Player_Arm_Wallrun_Left" : "Player_Arm_Wallrun_Right", 0f);
             if (playerCamEffects) playerCamEffects.WallrunStart(dir);
-            handsIkFsm.ForceState(HandState.Wallrun);
         }
 
-        public void OnWallrunEndEvent()    { if (playerCamEffects) playerCamEffects.WallrunEnd(); handsIkFsm.ForceState(HandState.Idle); }
+        public void OnWallrunEndEvent()    { if (playerCamEffects) playerCamEffects.WallrunEnd(); }
         public void OnDamageEvent()        { }
         public void OnDeathEvent()         { }
         public void OnGrabEvent()          { }

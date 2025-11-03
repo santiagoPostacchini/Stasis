@@ -36,7 +36,6 @@ namespace Player.Scripts.MovementFSM.MVC
         public event Action OnInteract = delegate { };
         
         IController _controller;
-        private StasisGun _stasisGun;
         private PlayerInteractor _interactor;
         private StairStepper _stair;
         internal ParkourScanner Scanner;
@@ -199,7 +198,6 @@ namespace Player.Scripts.MovementFSM.MVC
         private void Start()
         {
             _controller = new Controller(this, GetComponent<View>());
-            _stasisGun = GetComponentInChildren<StasisGun>();
             _interactor = GetComponentInChildren<PlayerInteractor>();
             rb = GetComponent<Rigidbody>();
             _stair = GetComponent<StairStepper>();

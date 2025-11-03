@@ -15,7 +15,7 @@ namespace Player.Scripts.MovementFSM
         public float maxStepUp = 0.35f;
 
         [Tooltip("Altura mínima que consideramos 'step' (m). Permite microescalones reales.")]
-        public float minStepUp = 0.005f; // NUEVO (antes 0.02f implícito)
+        public float minStepUp = 0.005f;
 
         [Tooltip("Caída suave máxima (m).")]
         public float maxStepDown = 0.55f;

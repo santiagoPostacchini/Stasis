@@ -119,12 +119,10 @@ namespace Player.Scripts
             }
             else
             {
-                // Fallback: rotación local del pivot en Z (como tenías)
                 var e = effectsPivot.localEulerAngles;
                 effectsPivot.localRotation = Quaternion.Euler(e.x, e.y, _rollCurrent);
             }
 
-            // --- FOV (base cacheado + extras) ---
             if (enableFovKick)
             {
                 float want = _baseFovLive + _extraFovRuntime;
@@ -133,7 +131,6 @@ namespace Player.Scripts
                 ApplyFovImmediate(_fovCurrent);
             }
 
-            // --- Bob / Shake (sólo posición) ---
             Vector3 pos = _bobLocalOrigin;
             if (enableHeadbob && bobAmount > 0f)
             {

@@ -123,7 +123,11 @@ namespace Player.Scripts.MovementFSM
             float h = Mathf.Max(0.01f, _model.jumpHeight);
             float jumpVel = Mathf.Sqrt(2f * Mathf.Abs(g) * h);
 
-            _model.rb.velocity = new Vector3(_model.rb.velocity.x, jumpVel, _model.rb.velocity.z);
+            var vel = _model.rb.velocity;
+            vel.y = 0f;
+            _model.rb.velocity = vel;
+    
+            _model.rb.AddForce(Vector3.up * jumpVel, ForceMode.VelocityChange);
 
             _airTime = 0f;
         }

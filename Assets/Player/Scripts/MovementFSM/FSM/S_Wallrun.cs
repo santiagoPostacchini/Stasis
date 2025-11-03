@@ -230,13 +230,9 @@ namespace Player.Scripts.MovementFSM
             if (_model.wallUseGravity)
                 _rb.AddForce(Vector3.up * (_model.gravityCounterForce * blend), ForceMode.Force);
 
-            // Vertical
-            bool downwards = !_model.runningKeyPressed;
             float vy = _rb.velocity.y;
 
-            if (downwards) vy = Mathf.MoveTowards(vy, -_model.wallDescendSpeed, 12f * Time.fixedDeltaTime);
-            else if (!pushingForward) vy = Mathf.MoveTowards(vy, -_model.wallGlideDownSpeed, 8f * Time.fixedDeltaTime);
-            else vy = Mathf.MoveTowards(vy, 0f, 8f * Time.fixedDeltaTime);
+            vy = !pushingForward ? Mathf.MoveTowards(vy, -_model.wallGlideDownSpeed, 8f * Time.fixedDeltaTime) : Mathf.MoveTowards(vy, 0f, 8f * Time.fixedDeltaTime);
 
             _rb.velocity = new Vector3(vHoriz.x + addAlong.x, vy, vHoriz.z + addAlong.z);
 
@@ -261,15 +257,13 @@ namespace Player.Scripts.MovementFSM
             _model.wallSeamDisableUntil = until; // seam-hold OFF el mismo lapso
             _model.lastWallDetachTime = Time.time;
 
-            // Impulso: limpiar componente hacia la pared y vel.Y
             Vector3 v = _rb.velocity;
             float into = Vector3.Dot(v, -_wallNormal);
             if (into > 0f) v -= _wallNormal * into;
             v.y = 0f;
             _rb.velocity = v;
 
-            Vector3 velChange = Vector3.up * _model.wallJumpUpForce
-                                + _wallNormal * _model.wallJumpSideForce;
+            Vector3 velChange = Vector3.up * _model.wallJumpUpForce + _wallNormal * _model.wallJumpSideForce;
             _rb.AddForce(velChange, ForceMode.VelocityChange);
         }
 

@@ -6777,8 +6777,6 @@ GameObject:
   - component: {fileID: 7450713307908960934}
   - component: {fileID: 3708308717764851789}
   - component: {fileID: 5674219836433596531}
-  - component: {fileID: 6074944931361645003}
-  - component: {fileID: 4727722040912528019}
   m_Layer: 9
   m_Name: Player
   m_TagString: Player
@@ -6928,8 +6926,8 @@ MonoBehaviour:
   deceleration: 30
   jumpHeight: 2
   isRunningRuntime: 0
-  coyoteTime: 0.12
-  jumpBufferTime: 0.5
+  coyoteTime: 0.2
+  jumpBufferTime: 0.2
   zeroYVelocityWhenGrounded: 1
   slideFromSlopeDeg: 45
   snapMaxStepPerFixed: 0.2
@@ -7103,7 +7101,7 @@ MonoBehaviour:
   drawGizmos: 1
   groundSnapDistance: 0.08
   fallProbeVelocityMul: 0.035
-  groundEnterStability: 0.05
+  groundEnterStability: 0
   groundExitStability: 0
 --- !u!114 &3708308717764851789
 MonoBehaviour:
@@ -7120,8 +7118,6 @@ MonoBehaviour:
   animator: {fileID: 0}
   playerCamEffects: {fileID: 7897226680629307198}
   visualYawFollower: {fileID: 4372359012068585155}
-  handsIkFsm: {fileID: 4727722040912528019}
-  feetIkFsm: {fileID: 6074944931361645003}
   rb: {fileID: 184731228571617352}
   stepper: {fileID: 6232095795751100479}
   deepFallDelay: 2
@@ -7162,76 +7158,6 @@ MonoBehaviour:
   maxEdgeHitDistance: 0.12
   edgeNormalYTolerance: 0.1
   _platform: {fileID: 0}
---- !u!114 &6074944931361645003
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5403309902725592585}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 47c2d8d5beb0c9d4abfebf5ec887e635, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  model: {fileID: 2122600739204704095}
-  scanner: {fileID: 7450713307908960934}
-  leftLegIK: {fileID: 8678241549188516118}
-  rightLegIK: {fileID: 5596810225487290341}
-  leftFootTarget: {fileID: 1886275506374379548}
-  rightFootTarget: {fileID: 6689235363602059439}
-  leftFootBone: {fileID: 3404453812625497753}
-  rightFootBone: {fileID: 6317389883001688803}
-  groundMask:
-    serializedVersion: 2
-    m_Bits: 128
-  castDownDist: 0.8
-  targetUpOffset: 0.02
-  targetLerp: 22
-  targetRotLerpDegPerSec: 1080
-  weightLerp: 12
-  groundedWeight: 1
---- !u!114 &4727722040912528019
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5403309902725592585}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: dbce9eb7798243d4f84b1865fe31df0d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  model: {fileID: 2122600739204704095}
-  scanner: {fileID: 7450713307908960934}
-  leftArmIK: {fileID: 2415246652153819434}
-  rightArmIK: {fileID: 969635144534276250}
-  leftHandTarget: {fileID: 9080591124875688459}
-  rightHandTarget: {fileID: 9139345704757035402}
-  weightLerp: 10
-  targetLerp: 18
-  targetRotLerpDegPerSec: 1080
-  palmRotationOffsetEuler: {x: 0, y: 0, z: 0}
-  leanDepth: 0.07
-  leanSide: 0.18
-  leanUp: 0.05
-  leanWeight: 1
-  wrDepth: 0.05
-  wrSide: 0.22
-  wrUp: 0.1
-  wrWeight: 0.45
-  vaultSide: 0.22
-  vaultForward: 0.06
-  vaultUp: 0.02
-  vaultWeight: 1
-  climbEdgeDepth: 0.04
-  climbSide: 0.2
-  climbUp: 0.02
-  climbWeight: 1
-  autoFrontLeanWhenClimbProbe: 1
-  frontLeanMaxSpeed: 0.15
-  frontLeanCooldown: 0.15
 --- !u!1 &5515829067873652139
 GameObject:
   m_ObjectHideFlags: 0

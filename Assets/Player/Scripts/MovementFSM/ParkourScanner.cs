@@ -81,7 +81,6 @@ namespace Player.Scripts.MovementFSM
             [Tooltip("Si true, también considera environmentMask como 'caminar' (filtra por pendiente).")]
             public bool useEnvAsGround = true;
 
-            // ===== Ground Notify (extra) =====
             [Header("Ground Notify (extra)")]
             [Tooltip("Si true, re-notifica OnGroundedChanged(true, hit) estando en suelo.")]
             public bool continuousGroundNotify = true;
@@ -156,6 +155,12 @@ namespace Player.Scripts.MovementFSM
             [Tooltip("Empuje extra fuera de la pared para el check de cabeza.")]
             public float wallHeadClearPush = 0.12f;
 
+            [Tooltip("Ancho mínimo de la superficie para ser considerada 'wallrunnable' (m). 0 para desactivar.")]
+            public float wallMinWidth = 0.4f;
+
+            [Tooltip("Distancia para el re-check de la anchura (m).")]
+            public float wallWidthCheckDist = 0.15f;
+
             private RaycastHit _lastWallHit;
             private float _lastWallTime = -999f;
 
@@ -188,7 +193,7 @@ namespace Player.Scripts.MovementFSM
 
                 if (Grounded != _prevGrounded)
                 {
-                 //   OnGroundedChanged(Grounded, GroundHit);
+                    //   OnGroundedChanged(Grounded, GroundHit);
                     _prevGrounded = Grounded;
 
                     if (Grounded)
@@ -269,7 +274,7 @@ namespace Player.Scripts.MovementFSM
 
             [Header("Grounding Stability")]
             [Tooltip("Tiempo que debe sostenerse el contacto antes de reportar Grounded=true.")]
-            public float groundEnterStability = 0.05f; // 50 ms va bien (0.04–0.07)
+            public float groundEnterStability;
 
             [Tooltip("Retraso al soltar suelo. 0 para salida inmediata.")]
             public float groundExitStability;
@@ -681,7 +686,7 @@ namespace Player.Scripts.MovementFSM
                             Vector3 stand = topHit.point + inward * (r + clearanceSkin) +
                                             Vector3.up * (r + clearanceSkin);
 
-                            // 7) Clearance real del capsule en destino
+                            // 7) Clearance real de la cápsula en destino
                             if (HasClearanceCapsule(stand, h - 2f * r))
                             {
                                 climbStand = stand;
@@ -784,7 +789,15 @@ namespace Player.Scripts.MovementFSM
                         hit = refine;
                 }
 
-                if (!hit.collider || !hit.collider.CompareTag(tagWallrun)) return false;
+                if (!hit.collider) return false;
+
+                if (!HasMinimumWallWidth(hit))
+                {
+                    if (drawGizmos) Debug.DrawLine(hit.point, hit.point + Vector3.up * 1.5f, Color.red, 0.1f);
+                    return false;
+                }
+
+                if (!hit.collider.CompareTag(tagWallrun)) return false;
 
                 // 3) Validar casi vertical
                 float upDot = Mathf.Abs(Vector3.Dot(hit.normal.normalized, Vector3.up));
@@ -901,6 +914,61 @@ namespace Player.Scripts.MovementFSM
                 Vector3 bottom = center - Vector3.up * half;
 
                 return !Physics.CheckCapsule(top, bottom, r, environmentMask, QueryTriggerInteraction.Ignore);
+            }
+
+            private bool HasMinimumWallWidth(RaycastHit hit)
+            {
+                // Si el ancho mínimo es 0, saltamos el chequeo
+                if (wallMinWidth <= 0f) return true;
+
+                Vector3 wallNormal = hit.normal;
+                Vector3 wallForward = Vector3.Cross(wallNormal, Vector3.up).normalized;
+
+                // --- CORRECCIÓN: El origen debe estar FUERA de la pared ---
+                // Usamos + wallNormal (hacia afuera) en lugar de - wallNormal (hacia adentro)
+                Vector3 checkOriginBase = hit.point + wallNormal * wallWidthCheckDist;
+
+                // Punto a la derecha (relativo al avance)
+                Vector3 rightOrigin = checkOriginBase + wallForward * (wallMinWidth * 0.5f);
+
+                // Punto a la izquierda (relativo al avance)
+                Vector3 leftOrigin = checkOriginBase - wallForward * (wallMinWidth * 0.5f);
+
+                // Distancia de casteo (un poco más que la distancia de origen)
+                float castDist = wallWidthCheckDist + 0.05f;
+
+                // Casteamos de vuelta hacia la pared (dirección -wallNormal)
+                bool gotRight = Physics.Raycast(rightOrigin, -wallNormal, out var rightHit, castDist, environmentMask,
+                    QueryTriggerInteraction.Ignore);
+                bool gotLeft = Physics.Raycast(leftOrigin, -wallNormal, out var leftHit, castDist, environmentMask,
+                    QueryTriggerInteraction.Ignore);
+
+                // ----- DEBUG VISUAL -----
+                if (drawGizmos)
+                {
+                    Color rightColor = gotRight ? Color.green : Color.red;
+                    Color leftColor = gotLeft ? Color.green : Color.red;
+
+                    // Dibuja los orígenes (una pequeña línea vertical)
+                    Debug.DrawLine(rightOrigin, rightOrigin + Vector3.up * 0.1f, rightColor, 0.1f);
+                    Debug.DrawLine(leftOrigin, leftOrigin + Vector3.up * 0.1f, leftColor, 0.1f);
+
+                    // Dibuja los rayos
+                    Debug.DrawRay(rightOrigin, -wallNormal * castDist, rightColor, 0.1f);
+                    Debug.DrawRay(leftOrigin, -wallNormal * castDist, leftColor, 0.1f);
+                }
+                // ----- FIN DEBUG -----
+
+                // Si ambos golpean Y sus normales son similares a la pared original, la superficie es ancha.
+                if (gotRight && gotLeft &&
+                    Vector3.Dot(rightHit.normal, wallNormal) > 0.9f &&
+                    Vector3.Dot(leftHit.normal, wallNormal) > 0.9f)
+                {
+                    return true;
+                }
+
+                // Si uno de los dos falla, es un borde fino
+                return false;
             }
 
             void OnDrawGizmosSelected()
