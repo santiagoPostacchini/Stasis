@@ -7,7 +7,6 @@ public class PlataformaMovil : MonoBehaviour
 {
     [Tooltip("Tiempo de gracia para enganchar otra plataforma antes de desparentar.")]
     [SerializeField] private float unparentDelay = 0.5f;
-
     private void OnTriggerEnter(Collider other)
     {
         if (other.GetComponent<Model>() != null)
@@ -21,8 +20,7 @@ public class PlataformaMovil : MonoBehaviour
     {
         if (other.GetComponent<Model>() != null)
         {
-            // Desparentar diferido: solo si después del delay
-            // el padre sigue siendo ESTA plataforma.
+            // Desparentar diferido: solo si después del
             StartCoroutine(UnparentAfterDelay(other.transform, unparentDelay));
         }
     }

@@ -68,17 +68,14 @@ public class KinematicPiston : MonoBehaviour
 
     public void StartMove()
     {
-        _rb.isKinematic = true;
         if (_distanceTotal > 0.001f) _phase = Phase.Accel;
     }
     public void StopMove()
     {
-        _rb.isKinematic = false;
         _phase = Phase.Idle;
     }
     public void Desestasear()
     {
-        _rb.isKinematic = true;
         _phase = _lastPhase;
         
     }
@@ -87,13 +84,20 @@ public class KinematicPiston : MonoBehaviour
     {
         if (_elevatorShipmentTrain == null || _elevatorShipmentTrain.IsFreezed)
         {
-            _rb.isKinematic = true;
             _lastPhase = _phase;
             _phase = Phase.Idle;
             
             return;
         }
         
+    }
+    public void ActivateKinematic()
+    {
+        _rb.isKinematic = true;
+    }
+    public void DesactivateKinematic()
+    {
+        _rb.isKinematic = false;
     }
     void FixedUpdate()
     {

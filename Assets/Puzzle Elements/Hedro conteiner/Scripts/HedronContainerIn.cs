@@ -123,6 +123,7 @@ public class HedronContainerIn : MonoBehaviour, IInteractable
     void Update()
     {
         // Se elimina el Lerp brusco en Update; ahora se usa AttractAndDock coroutine.
+        if (!canOpenPanel && panel.activeSelf) panel.SetActive(false);
     }
 
     // ==== NUEVO FLUJO DE ATRACCIÓN ====
@@ -331,7 +332,7 @@ public class HedronContainerIn : MonoBehaviour, IInteractable
         Vector3 startPos = target.position;
         Vector3 targetPos = startPos + target.forward * 2f;
 
-        BoxCollider _boxHedro = target.GetComponent<BoxCollider>();
+        MeshCollider _boxHedro = target.GetComponent<MeshCollider>();
         while (Vector3.Distance(target.position, targetPos) > 0.01f)
         {
             target.position = Vector3.MoveTowards(target.position, targetPos, 6 * Time.deltaTime);
@@ -558,16 +559,25 @@ public class HedronContainerIn : MonoBehaviour, IInteractable
             _leftMat.DisableKeyword("_EMISSION");
         }
     }
-
+    private bool canOpenPanel = true;
     private void ActivatePanel()
     {
         StartCoroutine(WaitShowPanel());
     }
-
+    public void ClosePanelByTren()
+    {
+        canOpenPanel = false;
+        StartCoroutine(waitClosePanel());
+    }
+    IEnumerator waitClosePanel()
+    {
+        yield return new WaitForSeconds(5f);
+        canOpenPanel = true;
+    }
     IEnumerator WaitShowPanel()
     {
         yield return new WaitForSeconds(panelShowDelay);
-        if (panel != null) panel.SetActive(true);
+        if (panel != null && canOpenPanel) panel.SetActive(true);
         if (E != null)
         {
             E.gameObject.SetActive(true);
