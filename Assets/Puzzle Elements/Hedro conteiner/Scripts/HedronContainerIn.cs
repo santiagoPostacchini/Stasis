@@ -329,14 +329,26 @@ public class HedronContainerIn : MonoBehaviour, IInteractable
         _box.transform.rotation = pos.transform.rotation;
 
         Vector3 startPos = target.position;
-        Vector3 targetPos = startPos + target.forward * 3f;
+        Vector3 targetPos = startPos + target.forward * 2f;
 
+        BoxCollider _boxHedro = target.GetComponent<BoxCollider>();
         while (Vector3.Distance(target.position, targetPos) > 0.01f)
         {
-            target.position = Vector3.MoveTowards(target.position, targetPos, 3 * Time.deltaTime);
+            target.position = Vector3.MoveTowards(target.position, targetPos, 6 * Time.deltaTime);
+            if(_boxHedro != null)
+            {
+                if (_boxHedro.enabled)
+                {
+                    _boxHedro.enabled = false;
+                }
+            }
             yield return null;
         }
-
+        if(_boxHedro != null)
+        {
+            _boxHedro.enabled = true;
+        }
+      
         target.position = targetPos; // asegurar posición final exacta
     }
 
