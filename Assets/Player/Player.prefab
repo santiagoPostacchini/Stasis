@@ -6930,9 +6930,7 @@ MonoBehaviour:
   isRunningRuntime: 0
   coyoteTime: 0.2
   jumpBufferTime: 0.2
-  zeroYVelocityWhenGrounded: 1
   slideFromSlopeDeg: 45
-  snapMaxStepPerFixed: 0.2
   airEnteredFromGround: 0
   airMaxSpeed: 6
   airAcceleration: 12
@@ -6947,11 +6945,13 @@ MonoBehaviour:
   blockVaultUntil: -999
   isClimbingState: 0
   isMantlingState: 0
+  isAtLedge: 0
   climbWallPoint: {x: 0, y: 0, z: 0}
   climbWallNormal: {x: 0, y: 0, z: 0}
   mantleLedgePoint: {x: 0, y: 0, z: 0}
-  isAtLedge: 0
-  climbRegrabCooldown: 0.25
+  didClimbJump: 0
+  climbRegrabCooldown: 0.1
+  climbDynoRegrabCooldown: 0.1
   climbLeapUpForce: 10
   climbLeapSideForce: 2
   blockClimbUntil: -999
@@ -6976,9 +6976,6 @@ MonoBehaviour:
   blockWallrunUntil: -999
   groundedIgnoreAfterJump: 0.08
   groundedIgnoreUntil: -999
-  wallRunForce: 25
-  wallClimbSpeed: 3.5
-  wallDescendSpeed: 3.5
   maxWallRunTime: 1.5
   exitWallTime: 0.3
   wallJumpUpForce: 7.5

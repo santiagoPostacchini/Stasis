@@ -29,7 +29,7 @@ public class PistonVisualAuto : MonoBehaviour
     }
     void FixedUpdate()
     {
-        if (!baseAnchor || !platformTopAnchor || !rodTube || _elevatorShipmentTrain.IsFreezed) return;
+        if (!baseAnchor || !platformTopAnchor || !rodTube || _elevatorShipmentTrain.IsFreezed || !_elevatorShipmentTrain.canMove) return;
 
         Vector3 a = baseAnchor.position;
         Vector3 b = platformTopAnchor.position;

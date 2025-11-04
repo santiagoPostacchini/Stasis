@@ -1,3 +1,4 @@
+using Managers.Game;
 using System.Collections.Generic;
 using UnityEngine;
 #if UNITY_AI_NAVIGATION || ENABLE_NAVMESH
@@ -9,7 +10,7 @@ public class TeleportHotkeys : MonoBehaviour
     [Header("Puntos de teletransporte (máx. usados por hotkeys: 9)")]
     [SerializeField] private List<Transform> teleportPoints = new List<Transform>(9);
 
-    [Header("Jugador a teletransportar")]
+    [Header("Jugador a teletransportar (fallback si no hay GameManager)")]
     [SerializeField] private GameObject player;
 
     [Header("Opciones")]
@@ -21,7 +22,8 @@ public class TeleportHotkeys : MonoBehaviour
 
     void Update()
     {
-        if (player == null || teleportPoints == null || teleportPoints.Count == 0) return;
+        var p = ResolvePlayer();
+        if (p == null || teleportPoints == null || teleportPoints.Count == 0) return;
 
         int maxKey = Mathf.Min(teleportPoints.Count, 9);
         for (int d = 1; d <= maxKey; d++)
@@ -43,33 +45,60 @@ public class TeleportHotkeys : MonoBehaviour
         return Input.GetKeyDown(alpha) || Input.GetKeyDown(keypad);
     }
 
+    /// <summary>
+    /// Resuelve el jugador: primero intenta GameManager.Instance.player; si no existe, usa el serializado.
+    /// </summary>
+    private GameObject ResolvePlayer()
+    {
+        // Si tenés tu propio GameManager en otro namespace, ajustá este acceso
+        var gm = (object)GameManager.Instance != null ? GameManager.Instance : null;
+        if (gm != null && GameManager.Instance.player != null)
+            return GameManager.Instance.player.gameObject;
+
+        return player;
+    }
+
+    /// <summary>
+    /// Si el player tiene padre, lo des-parentea preservando la posición/rotación mundial.
+    /// </summary>
+    private void EnsureNotChild(GameObject p)
+    {
+        if (p != null && p.transform.parent != null)
+        {
+            p.transform.SetParent(null, true); // true = preserva espacio mundo
+        }
+    }
+
     private void TeleportTo(Transform target)
     {
-        if (player == null || target == null) return;
+        var p = ResolvePlayer();
+        if (p == null || target == null) return;
+
+        // Asegurar que no esté parentado a nada antes de moverlo
+        EnsureNotChild(p);
 
         Vector3 destPos = target.position + Vector3.up * upOffset;
-        Quaternion destRot = matchRotation ? target.rotation : player.transform.rotation;
+        Quaternion destRot = matchRotation ? target.rotation : p.transform.rotation;
 
-        // 1) NavMeshAgent (si existe) -> usar Warp para evitar conflictos con el navmesh
+        // 1) NavMeshAgent -> Warp
 #if UNITY_AI_NAVIGATION || ENABLE_NAVMESH
-        var agent = player.GetComponent<NavMeshAgent>();
+        var agent = p.GetComponent<NavMeshAgent>();
         if (agent != null && agent.enabled)
         {
-            // Detener y warpear
             agent.isStopped = true;
             agent.Warp(destPos);
-            player.transform.rotation = destRot;
+            p.transform.rotation = destRot;
             Physics.SyncTransforms();
             return;
         }
 #endif
 
         // 2) CharacterController -> deshabilitar, mover, re-habilitar
-        var cc = player.GetComponent<CharacterController>();
+        var cc = p.GetComponent<CharacterController>();
         if (cc != null)
         {
             cc.enabled = false;
-            player.transform.SetPositionAndRotation(destPos, destRot);
+            p.transform.SetPositionAndRotation(destPos, destRot);
             Physics.SyncTransforms();
             cc.enabled = true;
             // Nudge para actualizar suelo
@@ -78,7 +107,7 @@ public class TeleportHotkeys : MonoBehaviour
         }
 
         // 3) Rigidbody -> pausar física un instante
-        var rb = player.GetComponent<Rigidbody>();
+        var rb = p.GetComponent<Rigidbody>();
         if (rb != null)
         {
             bool wasKinematic = rb.isKinematic;
@@ -86,7 +115,7 @@ public class TeleportHotkeys : MonoBehaviour
             rb.velocity = Vector3.zero;
             rb.angularVelocity = Vector3.zero;
 
-            player.transform.SetPositionAndRotation(destPos, destRot);
+            p.transform.SetPositionAndRotation(destPos, destRot);
             Physics.SyncTransforms();
 
             rb.isKinematic = wasKinematic;
@@ -94,7 +123,7 @@ public class TeleportHotkeys : MonoBehaviour
         }
 
         // 4) Transform “a pelo”
-        player.transform.SetPositionAndRotation(destPos, destRot);
+        p.transform.SetPositionAndRotation(destPos, destRot);
         Physics.SyncTransforms();
     }
 
