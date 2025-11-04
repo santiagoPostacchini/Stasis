@@ -1,3 +1,5 @@
+using Managers.Game;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
@@ -25,7 +27,7 @@ public class TrainSystem : MonoBehaviour
     public float barricadeSpeed = 2.5f;
     public float barricadeArriveThreshold = 0.02f;
 
-    public enum TrainPathMode { Loop, PingPong }
+    public enum TrainPathMode { Loop, PingPong, Once } // <-- NUEVO
 
     [Header("Train (Rigidbody kinematic + Waypoints)")]
     [Tooltip("Rigidbody del tren (debe estar en Kinematic = true).")]
@@ -36,7 +38,7 @@ public class TrainSystem : MonoBehaviour
     public float trainArriveThreshold = 0.03f;
     [Tooltip("Tiempo de espera en el extremo. En Loop también se usa antes del teletransporte al primero.")]
     public float trainTeleportWaitSeconds = 2f;
-    [Tooltip("Loop = salta del último al primero; PingPong = va y vuelve sin teletransportar.")]
+    [Tooltip("Loop = salta del último al primero; PingPong = va y vuelve sin teletransportar; Once = va del [0] al [1] y se queda.")]
     public TrainPathMode trainPathMode = TrainPathMode.Loop;
 
     private Transform initialPoint;
@@ -68,7 +70,7 @@ public class TrainSystem : MonoBehaviour
     private bool barrConfigured;
     private bool barricadeForceDown;
 
-    // --- Tren (Loop / PingPong) ---
+    // --- Tren (Loop / PingPong / Once) ---
     private bool trainConfigured;
     private int trainFirstIdx;
     private int trainLastIdx;
@@ -76,19 +78,22 @@ public class TrainSystem : MonoBehaviour
     private int trainCurrentIdx;
     private int trainDir = +1; // +1 adelante, -1 atrás
     private float trainWaitUntil;
-    private enum TrainState { IdleAtDeparture, Running, PauseAtEnd }
+    private enum TrainState { IdleAtDeparture, Running, PauseAtEnd, HoldAtEnd } // <-- NUEVO estado
     private TrainState trainState = TrainState.IdleAtDeparture;
     private int trainPauseNextIdx;
     private bool trainPauseDoTeleport;
 
-
-
+    public UnityEvent eventsPlayerDeath;
 
     void Awake()
     {
         ResolveHeights();
         HookContainer(true);
         PrepareSystems();
+    }
+    private void Start()
+    {
+        GameManager.Instance.OnDeathPlayer += TeleportTrainToStart;
     }
 
     void OnEnable()
@@ -139,6 +144,46 @@ public class TrainSystem : MonoBehaviour
         systemEnabled = false;
     }
 
+    /// <summary>
+    /// Teletransporta el tren al trainWaypoints[0] y resetea su estado a IdleAtDeparture.
+    /// Útil si el jugador cayó y querés reiniciar el recorrido.
+    /// </summary>
+    public void TeleportTrainToStart()
+    {
+        if (!trainConfigured || trainWaypoints.Count == 0 || trainRb == null) return;
+
+        // Siempre al índice 0 para el "start" del sistema
+        TeleportRbTo(trainRb, trainWaypoints[0].position);
+
+        // Reset de estado coherente con cualquier modo
+        trainRunRequested = false;
+        trainHaltAtDeparture = false;
+        trainDir = +1;
+
+        // Para ONCE forzamos la salida desde [0] hacia [1]
+        if (trainPathMode == TrainPathMode.Once)
+        {
+            trainFirstIdx = 0;
+            trainLastIdx = Mathf.Min(1, trainWaypoints.Count - 1);
+            trainDepIdx = 0;
+            trainCurrentIdx = 1; // próximo objetivo cuando se dispare la marcha
+        }
+        else
+        {
+            // Para Loop/PingPong mantenemos el departure configurado
+            trainDepIdx = Mathf.Clamp(trainWaypoints.IndexOf(departure), 0, trainWaypoints.Count - 1);
+            trainCurrentIdx = NextIndexFrom(trainDepIdx, +1);
+        }
+
+        trainState = TrainState.IdleAtDeparture;
+
+        eventsPlayerDeath?.Invoke();
+    }
+    IEnumerator OpenHedronConteiners() 
+    {
+        yield return new WaitForSeconds(3f);
+
+    }
     void FixedUpdate()
     {
         elevConfigured = IsElevatorConfigured();
@@ -201,17 +246,35 @@ public class TrainSystem : MonoBehaviour
         // Train (Rigidbody Kinematic)
         if (ValidateTrainSetup())
         {
+            // Índices por defecto
             trainFirstIdx = 0;
             trainLastIdx = trainWaypoints.Count - 1;
-            trainDepIdx = trainWaypoints.IndexOf(departure);
 
-            if (resetPositions && !IsNear(trainRb.position, trainWaypoints[trainDepIdx].position, trainArriveThreshold))
-                TeleportRbTo(trainRb, trainWaypoints[trainDepIdx].position);
+            if (trainPathMode == TrainPathMode.Once)
+            {
+                // Para ONCE, definimos explícitamente 0 -> 1
+                trainDepIdx = 0;
+                trainLastIdx = Mathf.Max(1, trainLastIdx); // asegurar que al menos haya 1
+                if (resetPositions && !IsNear(trainRb.position, trainWaypoints[0].position, trainArriveThreshold))
+                    TeleportRbTo(trainRb, trainWaypoints[0].position);
 
-            trainState = TrainState.IdleAtDeparture;
-            trainRunRequested = false;
-            trainDir = +1;
-            trainCurrentIdx = NextIndexFrom(trainDepIdx, +1);
+                trainState = TrainState.IdleAtDeparture;
+                trainRunRequested = false;
+                trainDir = +1;
+                trainCurrentIdx = 1; // siguiente objetivo será el [1]
+            }
+            else
+            {
+                // Loop / PingPong conservan departure asignado
+                trainDepIdx = trainWaypoints.IndexOf(departure);
+                if (resetPositions && !IsNear(trainRb.position, trainWaypoints[trainDepIdx].position, trainArriveThreshold))
+                    TeleportRbTo(trainRb, trainWaypoints[trainDepIdx].position);
+
+                trainState = TrainState.IdleAtDeparture;
+                trainRunRequested = false;
+                trainDir = +1;
+                trainCurrentIdx = NextIndexFrom(trainDepIdx, +1);
+            }
         }
         else trainState = TrainState.IdleAtDeparture;
     }
@@ -244,10 +307,13 @@ public class TrainSystem : MonoBehaviour
         if (trainRb == null) return false; // <-- requerimos el Rigidbody del tren
         if (!trainRb.isKinematic)
         {
-            // No forzamos aquí, pero recomendamos en el editor
             // Debug.LogWarning("[TrainSystem] trainRb debe ser Kinematic = true.", this);
         }
         if (trainWaypoints == null || trainWaypoints.Count < 2) return false;
+
+        // Para ONCE no exigimos 'departure' (forzamos [0])
+        if (trainPathMode == TrainPathMode.Once) return true;
+
         if (departure == null) return false;
         int dep = trainWaypoints.IndexOf(departure);
         return dep >= 0 && dep < trainWaypoints.Count;
@@ -383,7 +449,7 @@ public class TrainSystem : MonoBehaviour
         onTrainStarted?.Invoke();
     }
 
-    // Train (Rigidbody Kinematic + Loop / PingPong)
+    // Train (Rigidbody Kinematic + Loop / PingPong / Once)
     private void TickTrain()
     {
         if (!trainConfigured) return;
@@ -392,14 +458,17 @@ public class TrainSystem : MonoBehaviour
         {
             case TrainState.IdleAtDeparture:
                 {
-                    Vector3 depPos = trainWaypoints[trainDepIdx].position;
+                    // Para ONCE, la "salida" es siempre [0]
+                    int depIndex = (trainPathMode == TrainPathMode.Once) ? 0 : trainDepIdx;
+                    Vector3 depPos = trainWaypoints[depIndex].position;
+
                     if (!IsNear(trainRb.position, depPos, trainArriveThreshold))
                         TeleportRbTo(trainRb, depPos);
 
                     if (trainRunRequested)
                     {
                         trainDir = +1;
-                        trainCurrentIdx = NextIndexFrom(trainDepIdx, trainDir);
+                        trainCurrentIdx = (trainPathMode == TrainPathMode.Once) ? 1 : NextIndexFrom(depIndex, trainDir);
                         trainState = TrainState.Running;
                     }
                     break;
@@ -412,7 +481,8 @@ public class TrainSystem : MonoBehaviour
                     bool reached = MoveKinematicLinear(trainRb, target, trainSpeed, trainArriveThreshold);
                     if (!reached) break;
 
-                    if (trainHaltAtDeparture && trainCurrentIdx == trainDepIdx)
+                    // Si nos piden frenar al llegar a departure (solo aplica Loop/PingPong)
+                    if (trainHaltAtDeparture && trainCurrentIdx == trainDepIdx && trainPathMode != TrainPathMode.Once)
                     {
                         trainRunRequested = false;
                         onTrainStoppedAtDeparture?.Invoke();
@@ -421,7 +491,13 @@ public class TrainSystem : MonoBehaviour
                         break;
                     }
 
-                    if (trainPathMode == TrainPathMode.Loop)
+                    if (trainPathMode == TrainPathMode.Once)
+                    {
+                        // Llegamos a [1] -> quedarnos ahí
+                        trainRunRequested = false;
+                        trainState = TrainState.HoldAtEnd; // se queda detenido en el objetivo
+                    }
+                    else if (trainPathMode == TrainPathMode.Loop)
                     {
                         int next = trainCurrentIdx + 1;
                         if (next > trainLastIdx)
@@ -480,6 +556,10 @@ public class TrainSystem : MonoBehaviour
                     }
                     break;
                 }
+
+            case TrainState.HoldAtEnd:
+                // Nos quedamos aquí sin hacer nada (modo Once al final)
+                break;
         }
     }
 
