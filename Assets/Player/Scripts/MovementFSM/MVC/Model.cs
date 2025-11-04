@@ -1,10 +1,8 @@
 using System;
 using Audio.Scripts;
-using DG.Tweening;
 using Player.FullBody_Scripts.MovementFSM;
 using Player.Scripts.Interactor;
 using Player.Scripts.MovementFSM.Player.Scripts.MovementFSM;
-using Player.Stasis;
 using Unity.Cinemachine;
 using UnityEngine;
 
@@ -22,7 +20,7 @@ namespace Player.Scripts.MovementFSM.MVC
         public event Action OnCrouchEnd = delegate { };
         public event Action OnVaultStart = delegate { };
         public event Action OnVaultEnd = delegate { };
-        public event Action OnClimbStart = delegate { };
+        public event Action<Vector3> OnClimbStart = delegate { };
         public event Action OnClimbEnd = delegate { };
         public event Action OnSlideStart = delegate { };
         public event Action OnSlideEnd = delegate { };
@@ -65,7 +63,6 @@ namespace Player.Scripts.MovementFSM.MVC
 
         [Header("<color=green>Movement Settings</color>")]
         public float walkingSpeed = 4f;
-
         public float runningSpeed = 8f;
         public float acceleration = 20f;
         public float deceleration = 30f;
@@ -76,15 +73,8 @@ namespace Player.Scripts.MovementFSM.MVC
         [Header("Jump Assist")] public float coyoteTime = 0.12f;
         public float jumpBufferTime = 0.12f;
 
-        [Header("Ground Stick / Snap")]
-        [Tooltip("Si true, al estar grounded se fuerza vel.Y=0 (previene creep y caída por bordes).")]
-        public bool zeroYVelocityWhenGrounded = true;
-
         [Range(0f, 80f), Tooltip("Desde qué pendiente permitimos deslizar y NO forzamos vel.Y=0.")]
         public float slideFromSlopeDeg = 30f;
-
-        [Tooltip("Límite por FixedUpdate para el snap vertical (evita teleports).")]
-        public float snapMaxStepPerFixed = 0.20f;
 
         [Header("Air Control")] public bool airEnteredFromGround;
         public float airMaxSpeed = 6f;
@@ -101,7 +91,22 @@ namespace Player.Scripts.MovementFSM.MVC
         [Header("Vault")] public float vaultRegrabCooldown = 0.25f;
         [HideInInspector] public float blockVaultUntil = -999f;
 
-        [Header("Climb")] public float climbRegrabCooldown = 0.25f;
+        [Header("Climb")]
+        [HideInInspector] public bool isClimbingState;
+        [HideInInspector] public bool isMantlingState;
+        [HideInInspector] public bool isAtLedge;
+        [HideInInspector] public Vector3 climbWallPoint;
+        [HideInInspector] public Vector3 climbWallNormal;
+        [HideInInspector] public Vector3 mantleLedgePoint;
+        [HideInInspector] public bool didClimbJump;
+        
+        public float climbRegrabCooldown = 0.25f;
+        [Tooltip("Cooldown MUY CORTO para el re-agarre en el 'salto de trepada' (dyno).")]
+        public float climbDynoRegrabCooldown = 0.1f;
+        [Tooltip("Fuerza vertical para el 'salto de trepada' (dyno).")]
+        public float climbLeapUpForce = 10f; 
+        [Tooltip("Fuerza para separarse de la pared en el 'salto de trepada' (dyno).")]
+        public float climbLeapSideForce = 3f;
         [HideInInspector] public float blockClimbUntil = -999f;
 
         [Header("Wallrun")] public float wallRunMaxSpeed = 8.0f;
@@ -131,15 +136,6 @@ namespace Player.Scripts.MovementFSM.MVC
 
         [Header("Jump/Ground Timing Guards")] public float groundedIgnoreAfterJump = 0.08f;
         [HideInInspector] public float groundedIgnoreUntil = -999f;
-
-        [Tooltip("Fuerza hacia adelante a lo largo de la pared.")]
-        public float wallRunForce = 25f;
-
-        [Tooltip("Vel. vertical aplicada al mantener Shift (subir).")]
-        public float wallClimbSpeed = 3.5f;
-
-        [Tooltip("Vel. vertical aplicada al mantener Ctrl (bajar).")]
-        public float wallDescendSpeed = 3.5f;
 
         [Tooltip("Tiempo máximo en pared (s).")]
         public float maxWallRunTime = 1.5f;
@@ -286,7 +282,7 @@ namespace Player.Scripts.MovementFSM.MVC
         public void WallrunStartEvent(int dir) => OnWallrunStart?.Invoke(dir);
         public void WallrunEndEvent() => OnWallrunEnd?.Invoke();
         
-        public void ClimbStartEvent() => OnClimbStart?.Invoke();
+        public void ClimbStartEvent(Vector3 forward) => OnClimbStart?.Invoke(forward);
         
         public void ClimbEndEvent() => OnClimbEnd?.Invoke();
 

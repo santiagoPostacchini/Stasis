@@ -36,24 +36,25 @@ namespace Player.Scripts.MovementFSM
             TryConsumeCoyoteOrBuffer();
 
             var p = _model.probe;
-            
-            if (p.action == ParkourAction.Climb &&
-                (_model.zAxis > 0.1f || _model.jumpDownThisFrame))
+
+            if (Time.time >= _model.blockWallrunUntil && Time.time >= _model.blockClimbUntil)
             {
-                _model.ClearJumpBuffer();
-                _fsm.ChangeState(FSM.States.Climb);
-                return;
-            }
-            
-            bool wantsWall = (p.action == ParkourAction.WallrunLeft || p.action == ParkourAction.WallrunRight);
-            if (wantsWall && Time.time >= _model.blockWallrunUntil)
-            {
-                _model.ClearJumpBuffer();
-                _fsm.ChangeState(FSM.States.Wallrun);
-                return;
+                if (p.action == ParkourAction.Climb && _model.zAxis > 0.1f)
+                {
+                    _model.ClearJumpBuffer();
+                    _fsm.ChangeState(FSM.States.Climb);
+                    return;
+                }
+
+                bool wantsWall = (p.action == ParkourAction.WallrunLeft || p.action == ParkourAction.WallrunRight);
+                if (wantsWall)
+                {
+                    _model.ClearJumpBuffer();
+                    _fsm.ChangeState(FSM.States.Wallrun);
+                    return;
+                }
             }
 
-            
             if (_model.IsGroundedNow())
             {
                 if (_airTime < _model.minAirTime) return;

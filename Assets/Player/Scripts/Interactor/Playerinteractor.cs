@@ -119,7 +119,10 @@ namespace Player.Scripts.Interactor
             _rotationSmoothQuat = objectGrabPointTransform ? objectGrabPointTransform.rotation : Quaternion.identity;
             _view = GetComponentInParent<View>();
             OnGrabItem += _view.OnGrabEvent;
-            GameManager.Instance.OnDeathPlayer += TryDropOnDeath;
+            if (GameManager.Instance)
+            {
+                GameManager.Instance.OnDeathPlayer += TryDropOnDeath;
+            }
 
             // Elegimos palma por defecto: derecha si existe, si no izquierda, si no backTransform
             _currentPalm = rightPalmTransform ?? leftPalmTransform ?? objectGrabPointBackTransform;

@@ -17,42 +17,33 @@ namespace Player.Scripts.MovementFSM
         bool _hasFront;
         RaycastHit _frontHit;
 
-        Vector3 _wallNormal; // normal real de la pared (puede tener Y)
-        Vector3 _planarNormal; // normal proyectada en XZ (para adherencia)
+        private Vector3 _wallNormal;
+        Vector3 _planarNormal;
         Vector3 _lastHitPoint;
 
-        // -----------------------------
-        // Parámetros
-        // -----------------------------
 
-        // Detección base
         readonly float _climbDetectLength = 0.9f;
         readonly float _climbSphereRadius = 0.35f;
-        [Range(0, 85)] readonly float _climbMaxLookAngle = 80f; // mirar a los costados sin caerse
+        [Range(0, 85)] readonly float _climbMaxLookAngle = 180f;
         [Range(0, 89)] readonly float _climbMinWallSlopeDeg = 70f;
 
-        // Velocidades objetivo (m/s)
         readonly float _upSpeed = 3.2f;
         readonly float _downSpeed = 3.0f;
         readonly float _slideSpeed = 0.01f;
 
-        // Control vertical por aceleración
-        readonly float _maxUpAccel = 30f; // m/s^2
+        readonly float _maxUpAccel = 30f;
         readonly float _maxDownAccel = 30f;
 
-        // Adherencia a la pared (control PD solo en XZ)
-        readonly float _standOff = 0.18f; // separación desde la pared
-        readonly float _stickKp = 90f; // resorte (probar 60–140)
-        readonly float _stickKd = 12f; // amortiguación (probar 8–20)
-        readonly float _maxStickAccel = 80f; // clamp de aceleración de adherencia
+        readonly float _standOff = 0.18f;
+        readonly float _stickKp = 90f;
+        readonly float _stickKd = 12f;
+        readonly float _maxStickAccel = 80f;
 
-        // Cancelación de velocidad "hacia adentro" (no empujes la pared)
         readonly float _intoCancelMaxAccel = 120f;
 
-        // Ledge / auto-mantle
-        readonly float _mantleSpeed = 4.6f; // m/s del “pop” de subida
-        readonly float _mantleAssistAccel = 24f; // empuje adicional durante el pop
-        readonly float _mantleAssistTime = 0.22f; // s
+        readonly float _mantleSpeed = 4.6f;
+        readonly float _mantleAssistAccel = 24f;
+        readonly float _mantleAssistTime = 0.22f;
 
         readonly float _maxOutSpeedBeforeMantle = 1.6f;
         readonly float _maxMantleSpeed = 5.0f;
@@ -63,10 +54,8 @@ namespace Player.Scripts.MovementFSM
         private float _enterTime;
         private Vector3 _entryVelocity;
 
-        // Debug
         readonly bool _drawGizmos = false;
 
-        // Estado interno de mantle
         bool _mantling;
         float _mantleUntil;
         Vector3 _mantleDirCached;
@@ -92,28 +81,46 @@ namespace Player.Scripts.MovementFSM
             _m.canMove = false;
             _rb.useGravity = false;
             _enterTime = Time.time;
-            _entryVelocity = _rb.velocity; // Guardar velocidad de entrada
+            _entryVelocity = _rb.velocity;
+            
+            _m.isClimbingState = true;
+            _m.isMantlingState = false;
+            _m.isAtLedge = false;
+            _m.didClimbJump = false;
 
-            _m.ClimbStartEvent();
-
-            // 1. Detección inicial
             WallCheck(true);
 
-            // 2. Si detectamos pared, reposicionamos
             if (_hasFront)
             {
-                // Cancelar SOLO la velocidad "hacia adentro" de la pared
                 float vInto = Vector3.Dot(_rb.velocity, -_planarNormal);
                 if (vInto > 0f)
                 {
                     _rb.AddForce(_planarNormal * vInto, ForceMode.VelocityChange);
                 }
             }
+            
+            Vector3 forward = -_planarNormal;
+            
+            _m.ClimbStartEvent(forward);
+            
         }
         
+        // EN: S_Climb.cs
+
         public void OnUpdate()
         {
+            if (_m.jumpDownThisFrame)
+            {
+                ClimbJump(); 
+                return;
+            }
+            
             WallCheck(false);
+            if (!_hasFront && !_mantling)
+            {
+                _m.isClimbingState = false;
+            }
+            
             if (!_hasFront && !_mantling)
             {
                 ExitToNext();
@@ -121,7 +128,6 @@ namespace Player.Scripts.MovementFSM
         }
 
 
-        // ReSharper disable Unity.PerformanceAnalysis
         public void OnFixedUpdate()
         {
             if (!_climbing) return;
@@ -152,7 +158,6 @@ namespace Player.Scripts.MovementFSM
                 if (_rb.position.y >= _mantleStandPoint.y - 0.02f && distPlan < 0.12f)
                     _rb.AddForce(Vector3.down * 1.5f, ForceMode.VelocityChange);
 
-                // salir en cuanto apoyás
                 if (_m.IsGroundedNow())
                 {
                     ExitToNext();
@@ -163,11 +168,9 @@ namespace Player.Scripts.MovementFSM
             
             if (!_hasFront) return;
             
-            if (_m.jumpDownThisFrame)
-            {
-                ClimbJump();
-                return;
-            }
+            _m.isClimbingState = true;
+            _m.climbWallPoint = _lastHitPoint;
+            _m.climbWallNormal = _planarNormal;
             
             float blend = EnterBlend01();
             
@@ -175,20 +178,48 @@ namespace Player.Scripts.MovementFSM
             bool wantUp = (inputZ > 0.1f);
             bool wantDown = (inputZ < -0.1f);
             
-            if (wantUp)
+            bool ledgeFound = false;
+            Vector3 foundLedgePoint = Vector3.zero;
+
+            var p = _scan.Probe;
+            if (p.action == ParkourAction.Climb && p.climbStandPoint != Vector3.zero)
             {
-                var p = _scan.Probe;
-                if (p.action == ParkourAction.Climb && p.climbStandPoint != Vector3.zero)
+                ledgeFound = true;
+                foundLedgePoint = p.climbLedgePoint;
+                
+                if (wantUp)
                 {
-                    StartMantleFromStand(p.climbStandPoint);
+                    StartMantleFromStand(p.climbStandPoint, p.climbLedgePoint);
                     return;
                 }
-                if (TryGetLedgeLocal(out var ledge, out var stand))
+            }
+            else if (TryGetLedgeLocal(out var ledge, out var stand))
+            {
+                ledgeFound = true;
+                foundLedgePoint = ledge;
+
+                if (wantUp)
                 {
-                    StartMantleFromStand(stand);
+                    StartMantleFromStand(stand, ledge);
                     return;
                 }
-            } else if (wantDown && _m.IsGroundedNow())
+            }
+            
+            if (ledgeFound)
+            {
+                _m.isAtLedge = true;
+                _m.isClimbingState = false;
+                _m.mantleLedgePoint = foundLedgePoint;
+                
+                _rb.velocity = new Vector3(_rb.velocity.x, 0, _rb.velocity.z); 
+                
+                return; 
+            }
+            
+            _m.isAtLedge = false;
+            _m.isClimbingState = true;
+            
+            if (wantDown && _m.IsGroundedNow())
             {
                 ExitToNext();
                 return;
@@ -210,17 +241,13 @@ namespace Player.Scripts.MovementFSM
             Vector3 vEntryHorizontal = Vector3.ProjectOnPlane(_entryVelocity, Vector3.up);
             if (vEntryHorizontal.sqrMagnitude > 1e-4f)
             {
-                // Velocidad horizontal actual
                 Vector3 vHorizontal = Vector3.ProjectOnPlane(_rb.velocity, Vector3.up);
 
-                // Objetivo: pasar de la velocidad horizontal de entrada a CERO
                 Vector3 vTargetHorizontal = Vector3.Lerp(vEntryHorizontal, Vector3.zero, blend);
         
-                // Calculamos la fuerza necesaria para alcanzar ese objetivo
                 Vector3 dvHorizontal = vTargetHorizontal - vHorizontal;
-                Vector3 aHorizontal = dvHorizontal / Time.fixedDeltaTime; // F = m*a, a = dv/dt
+                Vector3 aHorizontal = dvHorizontal / Time.fixedDeltaTime;
 
-                // Aplicamos la fuerza de amortiguación
                 _rb.AddForce(aHorizontal, ForceMode.Acceleration);
             }
 
@@ -231,14 +258,9 @@ namespace Player.Scripts.MovementFSM
                 _rb.AddForce(_planarNormal * aCancel, ForceMode.Acceleration);
             }
 
-            // -----------------------------
-            // 3) Adherencia PD para mantener standOff en XZ
-            // -----------------------------
-            // Posición deseada: sobre el último punto impactado, separado _standOff por la normal planar
             Vector3 pos = _rb.position;
             Vector3 target = _lastHitPoint + _planarNormal * _standOff;
 
-            // Error SOLO en XZ (no tocamos Y aquí)
             Vector3 delta = target - pos;
             delta.y = 0f;
             float errAlongN = Vector3.Dot(delta, _planarNormal);
@@ -248,27 +270,7 @@ namespace Player.Scripts.MovementFSM
             aStick = Mathf.Clamp(aStick, -_maxStickAccel, _maxStickAccel);
             _rb.AddForce(_planarNormal * (aStick * blend), ForceMode.Acceleration);
         }
-
-        void ClimbJump()
-        {
-            _m.blockClimbUntil = Time.time + _m.climbRegrabCooldown;
-            _m.lastWallDetachTime = Time.time;
-
-            // Impulso (arriba + “hacia afuera”)
-            Vector3 impulse = Vector3.up * _m.wallJumpUpForce + _wallNormal * _m.wallJumpSideForce;
-
-            // Cancelar velocidad hacia adentro sin tocar velocity directamente (usamos VelocityChange)
-            float vInto = Vector3.Dot(_rb.velocity, -_planarNormal);
-            if (vInto > 0f) _rb.AddForce(_planarNormal * vInto, ForceMode.VelocityChange);
-
-            // Limpieza componente vertical acumulada
-            float vy = Vector3.Dot(_rb.velocity, Vector3.up);
-            if (vy > 0f) _rb.AddForce(Vector3.down * Mathf.Min(vy, 2f), ForceMode.VelocityChange);
-
-            _rb.AddForce(impulse, ForceMode.Impulse);
-            ExitToNext();
-        }
-
+        
         public void OnExit()
         {
             _climbing = false;
@@ -276,14 +278,80 @@ namespace Player.Scripts.MovementFSM
             _m.canMove = true;
             _rb.useGravity = true;
             _rb.drag = _prevDrag;
+            
+            _m.isClimbingState = false;
+            _m.isMantlingState = false;
+            _m.isAtLedge = false;
 
             _m.blockClimbUntil = Time.time + _m.climbRegrabCooldown;
             _m.ClimbEndEvent();
         }
 
+        void ClimbJump()
+        {
+            _m.lastWallDetachTime = Time.time;
+            _m.didClimbJump = true;
+            
+            Vector3 camForward = _orient.forward;
+            
+            Vector3 lookDirH = camForward;
+            lookDirH.y = 0f;
+
+            if (lookDirH.sqrMagnitude < 0.001f)
+            {
+                lookDirH = _planarNormal; 
+            }
+            else
+            {
+                lookDirH.Normalize();
+            }
+            
+            float lookPitch = camForward.y;
+
+            Vector3 velChange;
+
+            float upThreshold = 0.5f;
+            float downThreshold = -0.5f;
+
+            if (lookPitch > upThreshold)
+            {
+                velChange = Vector3.up * _m.climbLeapUpForce + _planarNormal * _m.climbLeapSideForce;
+                
+                _m.blockClimbUntil = Time.time + _m.climbDynoRegrabCooldown;
+            }
+            else if (lookPitch < downThreshold)
+            {
+                velChange = Vector3.up * _m.wallJumpUpForce + _planarNormal * _m.wallJumpSideForce;
+                
+                _m.blockClimbUntil = Time.time + _m.climbRegrabCooldown;
+            }
+            else
+            {
+                Vector3 awayForce = _planarNormal * _m.climbLeapSideForce;
+                Vector3 fwdForce = lookDirH * _m.wallJumpSideForce;
+                
+                velChange = Vector3.up * _m.wallJumpUpForce + awayForce + fwdForce;
+                
+                _m.blockClimbUntil = Time.time + _m.climbRegrabCooldown;
+            }
+
+            Vector3 vCleaned = _rb.velocity;
+            float vInto = Vector3.Dot(vCleaned, -_planarNormal);
+            if (vInto > 0f)
+            {
+                vCleaned += _planarNormal * vInto; 
+            }
+            vCleaned.y = 0f;
+            _rb.velocity = vCleaned;
+
+            _rb.AddForce(velChange, ForceMode.VelocityChange); 
+
+            ExitToNext();
+        }
 
         public void OnLateUpdate()
         {
+            
         }
 
         bool TryGetLedgeLocal(out Vector3 ledgePoint, out Vector3 standPoint)
@@ -339,15 +407,19 @@ namespace Player.Scripts.MovementFSM
             return Mathf.Clamp01((Time.time - _enterTime) / Mathf.Max(0.01f, 0.2f));
         }
         
-        void StartMantleFromStand(Vector3 standP)
+        void StartMantleFromStand(Vector3 standP, Vector3 ledgeP)
         {
             _mantling = true;
             _mantleStandPoint = standP;
+            
+            _m.isClimbingState = false;
+            _m.isMantlingState = true;
+            _m.isAtLedge = false;
+            _m.mantleLedgePoint = ledgeP;
+            _m.climbWallNormal = _planarNormal;
 
-            // gravedad ON para que el arco no “flote”
             _rb.useGravity = true;
 
-            // neutralizar horizontal al iniciar el pop
             Vector3 vPlanar = Vector3.ProjectOnPlane(_rb.velocity, Vector3.up);
             if (vPlanar.sqrMagnitude > 1e-6f)
                 _rb.AddForce(-vPlanar, ForceMode.VelocityChange);
@@ -441,35 +513,6 @@ namespace Player.Scripts.MovementFSM
                     }
                 }
             }
-        }
-
-        void StartMantleFromProbe(Vector3 standP)
-        {
-            _mantling = true;
-
-            // activar gravedad para que el arco no flote
-            _rb.useGravity = true;
-
-            // 1) cap de velocidad saliente antes del pop (sobre normal de pared)
-            float vOut = Vector3.Dot(_rb.velocity, _planarNormal);
-            if (vOut > _maxOutSpeedBeforeMantle)
-                _rb.AddForce(-_planarNormal * (vOut - _maxOutSpeedBeforeMantle), ForceMode.VelocityChange);
-
-            // 2) dirección del pop: hacia el punto de stand + algo de “up”
-            Vector3 toStand = (standP - _rb.position);
-            Vector3 planToStand = Vector3.ProjectOnPlane(toStand, Vector3.up);
-            Vector3 dir = (planToStand.normalized * 0.7f + Vector3.up * 0.9f).normalized;
-            _mantleDirCached = dir;
-
-            // 3) impulso principal (Δv ≈ _mantleSpeed)
-            _rb.AddForce(dir * (_rb.mass * _mantleSpeed), ForceMode.Impulse);
-
-            // 4) drag temporal para amortiguar (se restaura en OnExit)
-            _prevDrag = _rb.drag;
-            _rb.drag = _prevDrag + _mantleDragAdd;
-
-            // 5) asistencia breve
-            _mantleUntil = Time.time + _mantleAssistTime;
         }
 
         void ExitToNext()

@@ -1,4 +1,6 @@
+using DG.Tweening;
 using UnityEngine;
+using UnityEngine.Animations.Rigging;
 
 namespace Player.Scripts.MovementFSM.MVC
 {
@@ -16,6 +18,7 @@ namespace Player.Scripts.MovementFSM.MVC
         [SerializeField] private Animator animator;
         [SerializeField] private FirstPersonCameraEffects playerCamEffects;
         [SerializeField] private VisualYawFollower visualYawFollower;
+        [SerializeField] private MultiParentConstraint spineConstraint;
         
         [Header("Refs Filtro")]
         [SerializeField] private Rigidbody rb;
@@ -37,14 +40,19 @@ namespace Player.Scripts.MovementFSM.MVC
         [SerializeField] private float landAnimMinFallDistance = 0.15f;
         [Tooltip("Velocidad vertical mínima al impactar para permitir 'Land' visible.")]
         [SerializeField] private float landAnimMinImpactSpeed = 1.0f;
-
+        
+        [Header("Climb IK")]
+        [SerializeField] private ProceduralClimbIK climbIKHandler;
+        [SerializeField] private TwoBoneIKConstraint leftHandIkRig;
+        [SerializeField] private TwoBoneIKConstraint rightHandIkRig;
+        [SerializeField] private float ikFadeDuration = 0.2f;
+        
         [SerializeField] private float animLerpSpeed = 8f;
         private bool _isRun, _isStopping, _canInteract;
 
         private bool _worldGrounded;
         private bool _animGrounded = true;
 
-        // Timers/mediciones para el filtro
         private float _leftGroundTime;
         private float _leftGroundY;
         private float _forceAirUntilTime;
@@ -60,7 +68,6 @@ namespace Player.Scripts.MovementFSM.MVC
 
         private void Update()
         {
-            // ---- movimiento (igual que antes) ----
             float targetMax = _isRun ? 1f : 0.5f;
             float targetAnimX = Mathf.Clamp(_xAxis, -1f, 1f) * targetMax;
             float targetAnimZ = Mathf.Clamp(_zAxis, -1f, 1f) * targetMax;
@@ -168,7 +175,9 @@ namespace Player.Scripts.MovementFSM.MVC
         }
 
         public void OnShootEvent()         { }
+        
         public void OnCrouchStartEvent()   { }
+        
         public void OnCrouchEndEvent()     { }
 
         public void OnVaultStartEvent()
@@ -183,27 +192,75 @@ namespace Player.Scripts.MovementFSM.MVC
         { 
             if (playerCamEffects) playerCamEffects.VaultEnd();
         }
-        public void OnClimbStartEvent()
+        
+        public void OnClimbStartEvent(Vector3 forward)
         {
-            if (visualYawFollower) visualYawFollower.followEnabled = false;
+            Transform visualRoot = visualYawFollower.transform;
+            if (visualRoot)
+            {
+                if (forward.sqrMagnitude < 0.001f) forward = -transform.forward;
+                    
+                Quaternion targetRotation = Quaternion.LookRotation(forward, Vector3.up);
+                visualRoot.rotation = targetRotation;
+            }
+            
+            if (visualYawFollower) visualYawFollower.enabled = false;
+            if (spineConstraint) spineConstraint.weight = 0f;
+            
+            if (climbIKHandler) climbIKHandler.enabled = true;
+            if (leftHandIkRig) leftHandIkRig.DOKill();
+            if (rightHandIkRig) rightHandIkRig.DOKill();
+
+            if (leftHandIkRig) DOTween.To(() => leftHandIkRig.weight, x => leftHandIkRig.weight = x, 1f, ikFadeDuration);
+            if (rightHandIkRig) DOTween.To(() => rightHandIkRig.weight, x => rightHandIkRig.weight = x, 1f, ikFadeDuration);
+            
+            animator.CrossFade("Player_Leg_Climb", 0.05f);
+            animator.CrossFade("Player_Arm_Climb", 0.05f);
+            
+            if (playerCamEffects) playerCamEffects.ClimbStart();
         }
-        public void OnClimbEndEvent()      { if (visualYawFollower) visualYawFollower.followEnabled = true; }
+
+        public void OnClimbEndEvent()
+        {
+            if (visualYawFollower) visualYawFollower.enabled = true;
+            if (spineConstraint) spineConstraint.weight = 0.75f;
+            
+            if (leftHandIkRig) leftHandIkRig.DOKill();
+            if (rightHandIkRig) rightHandIkRig.DOKill();
+            
+            if (leftHandIkRig) DOTween.To(() => leftHandIkRig.weight, x => leftHandIkRig.weight = x, 0f, ikFadeDuration);
+            if (rightHandIkRig) DOTween.To(() => rightHandIkRig.weight, x => rightHandIkRig.weight = x, 0f, ikFadeDuration)
+                .OnComplete(() => {
+                    if (climbIKHandler) climbIKHandler.enabled = false;
+                });
+            
+            
+            if (playerCamEffects) playerCamEffects.ClimbEnd();
+        }
+        
         public void OnSlideStartEvent()    { }
+        
         public void OnSlideEndEvent()      { }
 
         public void OnWallrunStartEvent(int dir)
         {
-            animator.CrossFade(dir > 0 ? "Player_Leg_Wallrun_Left" : "Player_Leg_Wallrun_Right", 0f);
-            animator.CrossFade(dir > 0 ? "Player_Arm_Wallrun_Left" : "Player_Arm_Wallrun_Right", 0f);
+            animator.CrossFade(dir < 0 ? "Player_Leg_Wallrun_Left" : "Player_Leg_Wallrun_Right", 0.1f);
+            animator.CrossFade(dir < 0 ? "Player_Arm_Wallrun_Left" : "Player_Arm_Wallrun_Right", 0.1f);
             if (playerCamEffects) playerCamEffects.WallrunStart(dir);
         }
 
         public void OnWallrunEndEvent()    { if (playerCamEffects) playerCamEffects.WallrunEnd(); }
+        
         public void OnDamageEvent()        { }
+        
         public void OnDeathEvent()         { }
+        
         public void OnGrabEvent()          { }
+        
         public void OnTurnYaw(int dir)     { animator.CrossFade(dir < 0 ? TurnLeftHash : TurnRightHash, 0.1f); }
+        
         public void OnDropEvent()          { }
+        
         public void OnThrowEvent()         { }
 
         public void OnCanInteractEnterEvent()

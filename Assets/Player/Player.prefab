@@ -2163,7 +2163,7 @@ MonoBehaviour:
     LookAtTarget: {fileID: 0}
     CustomLookAtTarget: 0
   Lens:
-    FieldOfView: 90
+    FieldOfView: 100
     OrthographicSize: 5
     NearClipPlane: 0.01
     FarClipPlane: 500
@@ -2872,7 +2872,7 @@ Camera:
     height: 1
   near clip plane: 0.01
   far clip plane: 500
-  field of view: 90
+  field of view: 100
   orthographic: 0
   orthographic size: 5
   m_Depth: -1
@@ -2961,6 +2961,7 @@ MonoBehaviour:
   wallrunFovAdd: 4
   vaultFovAdd: 3
   runFovAdd: 10
+  climbFovAdd: 10
   fovInSpeed: 60
   fovOutSpeed: 40
   wallrunTilt: 14
@@ -6194,7 +6195,7 @@ MonoBehaviour:
     m_Target: {fileID: 9080591124875688459}
     m_Hint: {fileID: 0}
     m_TargetPositionWeight: 1
-    m_TargetRotationWeight: 0
+    m_TargetRotationWeight: 1
     m_HintWeight: 1
     m_MaintainTargetPositionOffset: 1
     m_MaintainTargetRotationOffset: 1
@@ -6673,7 +6674,7 @@ MonoBehaviour:
     m_Target: {fileID: 9139345704757035402}
     m_Hint: {fileID: 0}
     m_TargetPositionWeight: 1
-    m_TargetRotationWeight: 0
+    m_TargetRotationWeight: 1
     m_HintWeight: 1
     m_MaintainTargetPositionOffset: 1
     m_MaintainTargetRotationOffset: 1
@@ -6776,6 +6777,7 @@ GameObject:
   - component: {fileID: 6232095795751100479}
   - component: {fileID: 7450713307908960934}
   - component: {fileID: 3708308717764851789}
+  - component: {fileID: 2238090570637613019}
   - component: {fileID: 5674219836433596531}
   m_Layer: 9
   m_Name: Player
@@ -6943,7 +6945,15 @@ MonoBehaviour:
   lastLandingTime: -999
   vaultRegrabCooldown: 0.4
   blockVaultUntil: -999
+  isClimbingState: 0
+  isMantlingState: 0
+  climbWallPoint: {x: 0, y: 0, z: 0}
+  climbWallNormal: {x: 0, y: 0, z: 0}
+  mantleLedgePoint: {x: 0, y: 0, z: 0}
+  isAtLedge: 0
   climbRegrabCooldown: 0.25
+  climbLeapUpForce: 10
+  climbLeapSideForce: 2
   blockClimbUntil: -999
   wallRunMaxSpeed: 8
   wallRunAccel: 30
@@ -7097,6 +7107,8 @@ MonoBehaviour:
   wallFrontAcquireDistance: 1.1
   wallSideSphereRadiusMul: 0.8
   wallHeadClearPush: 0.12
+  wallMinWidth: 0.4
+  wallWidthCheckDist: 0.15
   requireAirForWallrun: 1
   drawGizmos: 1
   groundSnapDistance: 0.08
@@ -7118,6 +7130,7 @@ MonoBehaviour:
   animator: {fileID: 0}
   playerCamEffects: {fileID: 7897226680629307198}
   visualYawFollower: {fileID: 4372359012068585155}
+  spineConstraint: {fileID: 2481821063242773696}
   rb: {fileID: 184731228571617352}
   stepper: {fileID: 6232095795751100479}
   deepFallDelay: 2
@@ -7126,7 +7139,36 @@ MonoBehaviour:
   landAnimMinAirTime: 0.12
   landAnimMinFallDistance: 0.15
   landAnimMinImpactSpeed: 1
+  climbIKHandler: {fileID: 2238090570637613019}
+  leftHandIkRig: {fileID: 2415246652153819434}
+  rightHandIkRig: {fileID: 969635144534276250}
+  ikFadeDuration: 0.2
   animLerpSpeed: 8
+--- !u!114 &2238090570637613019
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5403309902725592585}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f1df7520e798021478d397b4e918c0d1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  model: {fileID: 2122600739204704095}
+  rHandTarget: {fileID: 9139345704757035402}
+  lHandTarget: {fileID: 9080591124875688459}
+  cycleSpeed: 2.5
+  stepHeight: 0.7
+  shoulderWidth: 0.55
+  handCycleWidth: 0.15
+  shoulderHeightOffset: 1.8
+  raycastSearchDistance: 0.3
+  handOffsetFromWall: 0.04
+  positionLerpSpeed: 35
+  rotationLerpSpeed: 35
+  mantleHandYOffset: -0.1
 --- !u!114 &5674219836433596531
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -8260,7 +8302,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8935e03361a14ec4b8edc872f76bc822, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_Weight: 0
+  m_Weight: 0.25
   m_Data:
     m_ConstrainedObject: {fileID: 2018779311882528537}
     m_SourceObjects:
@@ -8662,7 +8704,7 @@ GameObject:
   - component: {fileID: 1433381814251542654}
   - component: {fileID: 7980720543713124371}
   m_Layer: 17
-  m_Name: Player
+  m_Name: Player_Bones
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

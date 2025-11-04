@@ -17,6 +17,7 @@ namespace Player.Scripts
         public float wallrunFovAdd = 4f;
         public float vaultFovAdd   = 3f;
         public float runFovAdd     = 6f;
+        public float climbFovAdd     = 30f;
         public float fovInSpeed    = 8f;
         public float fovOutSpeed   = 6f;
 
@@ -173,9 +174,16 @@ namespace Player.Scripts
         }
         public void VaultEnd()
         {
-            if (!vaultAsPulse) _rollTarget = 0f;
-            if (useCinemachineDutch) ApplyDutch(0f);
             AddFov(-Mathf.Abs(vaultFovAdd));
+        }
+        
+        public void ClimbStart()
+        {
+            AddFov(+Mathf.Abs(climbFovAdd));
+        }
+        public void ClimbEnd()
+        {
+            AddFov(-Mathf.Abs(climbFovAdd));
         }
 
         public void OnRunStart() => AddFov(+Mathf.Abs(runFovAdd));
