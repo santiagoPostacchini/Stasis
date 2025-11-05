@@ -174,6 +174,8 @@ namespace Player.Stasis
             Vector3 targetPoint = gotHit 
                                   ? hit.point 
                                   : ray.origin + ray.direction * Mathf.Min(25f, maxDistance * 0.2f);
+            
+            Debug.Log(hit.collider.gameObject.name);
 
             if (gotHit)
             {

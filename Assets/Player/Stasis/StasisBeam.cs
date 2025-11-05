@@ -74,7 +74,7 @@ namespace Player.Stasis
             {
                 float step = beamSpeed * Time.deltaTime;
 
-                if (Physics.Raycast(transform.position, direction, out var info, step))
+                if (Physics.Raycast(transform.position, direction, out var info, step, LayerMask.GetMask("Ground", "Wall", "Physics Objects")))
                 {
                     transform.position = info.point;
                     break;
