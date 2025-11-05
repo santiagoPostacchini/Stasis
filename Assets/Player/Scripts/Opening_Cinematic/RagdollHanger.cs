@@ -27,6 +27,10 @@ public class RagdollHanger : MonoBehaviour
     [Tooltip("Arrastrá acá el Rigidbody que querés activar cuando se suelte el ragdoll")]
     public Rigidbody rigidbodyToActivate;
 
+    [Header("Animator Settings")]
+    [Tooltip("Animator al que se le activará el bool 'Release' al soltar el ragdoll")]
+    public Animator animatorToTrigger;
+
     private ConfigurableJoint joint;
     public bool hasReleased = false;        // Para evitar que se suelte más de una vez
     private float timer = 0f;
@@ -121,6 +125,12 @@ public class RagdollHanger : MonoBehaviour
         {
             rigidbodyToActivate.isKinematic = false;
             rigidbodyToActivate.WakeUp();
+        }
+
+        // 🔹 Activa el bool "Release" en el Animator
+        if (animatorToTrigger != null)
+        {
+            animatorToTrigger.SetBool("Release", true);
         }
 
         // Inicia el contador para activar el fade
