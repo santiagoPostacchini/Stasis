@@ -126,6 +126,7 @@ namespace Player.Scripts.MovementFSM.MVC
         public Vector3  lastWallNormal;
         public float    lastWallDetachTime;
         public float wallReorientDuration = 0.2f;
+        public float wallCameraLerpSpeed = 10f;
         
         [Tooltip("Tiempo máx. para sostener el estado cuando se pierde el hit entre dos paredes (s)")]
         public float wallSeamHold = 0.12f;

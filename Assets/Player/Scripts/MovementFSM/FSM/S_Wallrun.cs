@@ -149,6 +149,12 @@ namespace Player.Scripts.MovementFSM
 
         public void OnLateUpdate()
         {
+            if (_reorientTween != null)
+            {
+                return;
+            }
+
+            AdjustCameraOnUpdate();
         }
 
         private void ReadProbe(in ParkourProbe p)
@@ -232,7 +238,9 @@ namespace Player.Scripts.MovementFSM
 
             float vy = _rb.velocity.y;
 
-            vy = !pushingForward ? Mathf.MoveTowards(vy, -_model.wallGlideDownSpeed, 8f * Time.fixedDeltaTime) : Mathf.MoveTowards(vy, 0f, 8f * Time.fixedDeltaTime);
+            vy = !pushingForward
+                ? Mathf.MoveTowards(vy, -_model.wallGlideDownSpeed, 8f * Time.fixedDeltaTime)
+                : Mathf.MoveTowards(vy, 0f, 8f * Time.fixedDeltaTime);
 
             _rb.velocity = new Vector3(vHoriz.x + addAlong.x, vy, vHoriz.z + addAlong.z);
 
@@ -269,7 +277,6 @@ namespace Player.Scripts.MovementFSM
 
         private void AdjustCameraOnEnter()
         {
-            // --- 1. Calcular Target Yaw (como antes) ---
             Vector3 wallForward = Vector3.Cross(_wallNormal, Vector3.up);
             Vector3 playerLookDirection = new Vector3(_orient.forward.x, 0f, _orient.forward.z).normalized;
             if (playerLookDirection.sqrMagnitude < 0.1f)
@@ -284,30 +291,25 @@ namespace Player.Scripts.MovementFSM
 
             float targetYaw = Quaternion.LookRotation(wallForward, Vector3.up).eulerAngles.y;
 
-            // --- 2. Obtener PanTilt (como antes) ---
             if (!_model.cinemachineBrain) return;
             var vcam = _model.cinemachineBrain.ActiveVirtualCamera as CinemachineCamera;
             if (!vcam) return;
             var panTilt = vcam.GetCinemachineComponent(CinemachineCore.Stage.Aim) as CinemachinePanTilt;
             if (!panTilt) return;
 
-            // --- 3. Iniciar el TWEEN con DOTween ---
-
-            // Guardar el valor actual del Yaw y el nombre del input
             float startYaw = panTilt.PanAxis.Value;
-
-            // Variable para el tween (0 a 1)
             float percent = 0f;
 
+            _reorientTween?.Kill();
+
             _reorientTween = DOTween.To(
-                    () => percent, // Getter: ¿Qué valor animamos?
-                    (x) => percent = x, // Setter: Actualiza nuestro 'percent'
-                    1f, // Valor final (100%)
-                    _model.wallReorientDuration) // Duración
-                .SetEase(Ease.OutCubic) // Suavizado
+                    () => percent,
+                    (x) => percent = x,
+                    1f,
+                    _model.wallReorientDuration)
+                .SetEase(Ease.OutCubic)
                 .OnUpdate(() =>
                 {
-                    // En cada frame, calculamos el ángulo con LerpAngle (seguro para 360°)
                     float currentYaw = Mathf.LerpAngle(startYaw, targetYaw, percent);
                     panTilt.PanAxis.Value = currentYaw;
                 })
@@ -320,11 +322,45 @@ namespace Player.Scripts.MovementFSM
                     _reorientTween = null;
                 });
         }
-        
+
+        private void AdjustCameraOnUpdate()
+        {
+            if (!_model.cinemachineBrain) return;
+            var vcam = _model.cinemachineBrain.ActiveVirtualCamera as CinemachineCamera;
+            if (!vcam) return;
+            var panTilt = vcam.GetCinemachineComponent(CinemachineCore.Stage.Aim) as CinemachinePanTilt;
+            if (!panTilt) return;
+
+
+            Vector3 n = (_smoothNormal == Vector3.zero) ? _wallNormal : _smoothNormal;
+            if (n.sqrMagnitude < 0.1f) return;
+
+            Vector3 wallForward = Vector3.Cross(n, Vector3.up);
+
+            Vector3 playerLookDirection = new Vector3(_orient.forward.x, 0f, _orient.forward.z).normalized;
+            if (playerLookDirection.sqrMagnitude < 0.1f)
+            {
+                playerLookDirection = new Vector3(_rb.velocity.x, 0f, _rb.velocity.z).normalized;
+            }
+
+            if (playerLookDirection.sqrMagnitude > 0.1f && Vector3.Dot(playerLookDirection, wallForward) < 0f)
+            {
+                wallForward = -wallForward;
+            }
+
+            float targetYaw = Quaternion.LookRotation(wallForward, Vector3.up).eulerAngles.y;
+
+            float currentYaw = panTilt.PanAxis.Value;
+
+            float blend = 1f - Mathf.Exp(-_model.wallCameraLerpSpeed * Time.deltaTime);
+
+            panTilt.PanAxis.Value = Mathf.LerpAngle(currentYaw, targetYaw, blend);
+        }
+
         private void ClampInitialWallrunSpeed()
         {
             Vector3 vHoriz = new Vector3(_rb.velocity.x, 0f, _rb.velocity.z);
-    
+
             float vVert = _rb.velocity.y;
 
             Vector3 wallForward = Vector3.Cross(_wallNormal, Vector3.up);
@@ -337,7 +373,7 @@ namespace Player.Scripts.MovementFSM
             float speedAlongWall = Vector3.Dot(vHoriz, wallForward);
 
             float clampedSpeedAlong = Mathf.Clamp(speedAlongWall, 0f, _model.wallRunMaxSpeed);
-            
+
             _rb.velocity = (wallForward * clampedSpeedAlong) + (Vector3.up * vVert);
         }
     }
