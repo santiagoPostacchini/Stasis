@@ -149,8 +149,6 @@ namespace Player.Scripts
             effectsPivot.localPosition = pos;
         }
 
-        // ==== API externa ====
-        // Nota: si tu scanner pasa wallSide como -1 izquierda / +1 derecha, usá este mapeo:
         public void WallrunStart(int wallSide)
         {
             wallSide = Mathf.Clamp(wallSide, -1, +1);
@@ -174,6 +172,7 @@ namespace Player.Scripts
         }
         public void VaultEnd()
         {
+            _rollTarget = 0f;
             AddFov(-Mathf.Abs(vaultFovAdd));
         }
         

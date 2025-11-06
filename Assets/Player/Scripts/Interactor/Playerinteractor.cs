@@ -26,11 +26,11 @@ namespace Player.Scripts.Interactor
         private bool _isHoldingThrow;
 
         [SerializeField] private float throwForce = 10f;
-        [SerializeField] private Transform objectGrabPointTransform; // solo para smoothing interno si querés
+        [SerializeField] private Transform objectGrabPointTransform;
         [SerializeField] private Transform objectGrabPointBackTransform;
 
         [Header("Release Target")] [SerializeField]
-        private float releaseAimWindow = 0.20f; // tiempo en que ese objeto es ‘target’ directo de stasis
+        private float releaseAimWindow = 0.20f;
 
         private PhysicsBox _releasingTarget;
         private float _releaseAimUntil = -999f;
@@ -86,12 +86,10 @@ namespace Player.Scripts.Interactor
         private GameObject _currentFocused;
         private float _lastFocusHitDistance = Mathf.Infinity;
 
-        // Debounce
         private GameObject _pendingEnterTarget;
         private float _pendingEnterSince = -999f;
         private float _lostSince = -999f;
 
-        // =================== Hands ===================
         [Header("Hand Hold")] [Tooltip("Palma izquierda (UP = normal de la palma).")] [SerializeField]
         private Transform leftPalmTransform;
 
@@ -124,12 +122,10 @@ namespace Player.Scripts.Interactor
                 GameManager.Instance.OnDeathPlayer += TryDropOnDeath;
             }
 
-            // Elegimos palma por defecto: derecha si existe, si no izquierda, si no backTransform
             _currentPalm = rightPalmTransform ?? leftPalmTransform ?? objectGrabPointBackTransform;
             if (!_currentPalm)
                 Debug.LogWarning("[PlayerInteractor] No hay palms asignadas. Asigná left/rightPalmTransform.");
 
-            // Suscripción a wallrun
             _model = GetComponentInParent<Model>();
             if (_model) _model.OnWallrunStart += HandleWallrunStart;
 
@@ -236,7 +232,6 @@ namespace Player.Scripts.Interactor
             }
         }
 
-        // -------------------- FOCUS + HISTÉRESIS --------------------
         private void UpdateInteractableFocus()
         {
             var best = GetBestInteractable(out float dist, out float angleDeg);
@@ -305,16 +300,14 @@ namespace Player.Scripts.Interactor
             }
         }
 
-        // 1) Agregá este helper (puede ir cerca de tus otros privados)
         private struct TargetHit
         {
-            public GameObject go; // GameObject "representativo" para foco/LoS
-            public IInteractable interactable; // Nulo si es grabbable
-            public PhysicsBox box; // Nulo si es interactuable
+            public GameObject Go;
+            public IInteractable Interactable;
+            public PhysicsBox Box;
         }
 
-// Busca un IInteractable o PhysicsBox partiendo del collider golpeado,
-// subiendo a padres, luego a hijos y finalmente al árbol completo (incluye inactivos).
+        // ReSharper disable Unity.PerformanceAnalysis
         private bool TryResolveTarget(Transform fromHit, out TargetHit target)
         {
             target = default;
@@ -328,40 +321,35 @@ namespace Player.Scripts.Interactor
             {
                 var root = fromHit.root;
                 var all = root.GetComponentsInChildren<IInteractable>(true); // incluye inactivos
-                if (all != null && all.Length > 0) ia = all[0];
+                if (all is { Length: > 0 }) ia = all[0];
             }
 
             if (ia != null)
             {
                 var iaComp = (Component)ia;
-                target.go = iaComp.gameObject; // usamos el GO real que porta el interactuable
-                target.interactable = ia;
+                target.Go = iaComp.gameObject;
+                target.Interactable = ia;
                 return true;
             }
 
-            // --- 2) Grabbable (PhysicsBox) con la misma lógica
             PhysicsBox pb =
                 fromHit.GetComponentInParent<PhysicsBox>() ??
                 fromHit.GetComponentInChildren<PhysicsBox>();
 
-            if (pb == null)
+            if (!pb)
             {
                 var root = fromHit.root;
                 var all = root.GetComponentsInChildren<PhysicsBox>(true);
-                if (all != null && all.Length > 0) pb = all[0];
+                if (all is { Length: > 0 }) pb = all[0];
             }
 
-            if (pb != null)
-            {
-                target.go = pb.gameObject;
-                target.box = pb;
-                return true;
-            }
+            if (!pb) return false;
+            target.Go = pb.gameObject;
+            target.Box = pb;
+            return true;
 
-            return false;
         }
 
-        // 2) Reemplazá tu método GetBestInteractable(...) por este:
         private GameObject GetBestInteractable(out float distance, out float angleDeg)
         {
             Vector3 origin = transform.position + transform.forward * castStartOffset;
@@ -380,7 +368,7 @@ namespace Player.Scripts.Interactor
                 {
                     distance = rh.distance;
                     angleDeg = 0f;
-                    return tg.go;
+                    return tg.Go;
                 }
             }
 
@@ -397,7 +385,7 @@ namespace Player.Scripts.Interactor
             {
                 if (!TryResolveTarget(h.collider.transform, out var tg)) continue;
 
-                Vector3 targetPos = ClosestPointOrCenter(tg.go, origin);
+                Vector3 targetPos = ClosestPointOrCenter(tg.Go, origin);
                 Vector3 to = targetPos - origin;
                 float d = to.magnitude;
                 if (d <= 0.0001f) continue;
@@ -405,9 +393,9 @@ namespace Player.Scripts.Interactor
                 float ang = Vector3.Angle(dir, to.normalized);
                 if (ang > maxAngle) continue;
 
-                if (d < bestDist && HasLineOfSight(tg.go))
+                if (d < bestDist && HasLineOfSight(tg.Go))
                 {
-                    best = tg.go;
+                    best = tg.Go;
                     bestDist = d;
                     bestAngle = ang;
                 }
@@ -451,14 +439,15 @@ namespace Player.Scripts.Interactor
             StartCoroutine(WaitGrab(hitObject));
         }
 
+        // ReSharper disable Unity.PerformanceAnalysis
         private IEnumerator WaitGrab(GameObject hitObject)
         {
             yield return new WaitForSeconds(0.2f);
             if (!hitObject) yield break;
 
-            var root = hitObject.transform.root.gameObject;
+            PhysicsBox physicsObject = hitObject.GetComponentInParent<PhysicsBox>();
 
-            if (root && root.TryGetComponent(out PhysicsBox physicsObject))
+            if (physicsObject)
             {
                 var ownerRb = GetComponentInParent<Model>()?.rb;
 
@@ -467,12 +456,12 @@ namespace Player.Scripts.Interactor
                 physicsObject.BeginHoldSmooth(_currentPalm, palmHeight, pickupApproachTime);
 
                 _objectGrabbable = physicsObject;
-                EventManager.TriggerEvent("Grab", gameObject);
             }
         }
-        public void TryDropOnDeath()
+
+        private void TryDropOnDeath()
         {
-            if (_objectGrabbable == null) return;
+            if (!_objectGrabbable) return;
 
             TryDropObject();
         }

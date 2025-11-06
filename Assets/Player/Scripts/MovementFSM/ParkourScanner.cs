@@ -36,13 +36,11 @@ namespace Player.Scripts.MovementFSM
         public Collider vaultObstacle;
         public Vector3 vaultForward;
         public bool vaultLandOnSameCollider;
-
-        // CLIMB
+        
         public Vector3 climbLedgePoint;
         public Vector3 climbStandPoint;
         public float climbHeight;
 
-        // WALLRUN
         public Vector3 wallRunWallPoint;
         public Vector3 wallRunNormal;
         public int wallSide;
@@ -76,7 +74,6 @@ namespace Player.Scripts.MovementFSM
             public float groundCheckDistance = 0.2f;
             [Range(0f, 80f)] public float maxGroundSlopeDeg = 55f;
 
-            // NUEVO — máscara unificada para caminar (ground + environment)
             [Header("Grounding (Masks)")]
             [Tooltip("Si true, también considera environmentMask como 'caminar' (filtra por pendiente).")]
             public bool useEnvAsGround = true;
@@ -193,7 +190,6 @@ namespace Player.Scripts.MovementFSM
 
                 if (Grounded != _prevGrounded)
                 {
-                    //   OnGroundedChanged(Grounded, GroundHit);
                     _prevGrounded = Grounded;
 
                     if (Grounded)
@@ -303,13 +299,11 @@ namespace Player.Scripts.MovementFSM
                 float slope = Vector3.Angle(hit.normal, Vector3.up);
                 if (slope > maxGroundSlopeDeg) return false;
 
-                // Debe estar “debajo” razonablemente cerca
                 float dy = (transform.position.y) - hit.point.y;
-                if (dy < -0.05f) return false; // golpe por arriba (techo) no es suelo
+                if (dy < -0.05f) return false;
                 return true;
             }
 
-            // NUEVO — fallback cuando estás MUY pegado a una pared: rayitos desde arriba en cruz
             bool TryRayRingGround(float extraByFall, out RaycastHit best)
             {
                 best = default;
@@ -323,7 +317,6 @@ namespace Player.Scripts.MovementFSM
 
                 foreach (var o in offs)
                 {
-                    // empezar desde encima del pie para no castear desde "dentro"
                     Vector3 baseFoot = bottom + Vector3.up * (r + 0.02f);
                     Vector3 from = baseFoot + o * ring + Vector3.up * (maxDist * 0.5f);
 
@@ -344,7 +337,6 @@ namespace Player.Scripts.MovementFSM
 
             void UpdateGrounding()
             {
-                // 1) Medimos "raw" sin histéresis
                 bool raw = false;
                 RaycastHit rawHit = default;
                 float rawSlope = 0f;
@@ -364,7 +356,6 @@ namespace Player.Scripts.MovementFSM
 
                 float castDist = Mathf.Max(groundCheckDistance, groundSnapDistance) + extraByFall + 0.02f;
 
-                // USAR MÁSCARA WALKABLE
                 if (Physics.SphereCast(sphereOrigin, r, Vector3.down, out var hitS, castDist, WalkableGroundMask,
                         QueryTriggerInteraction.Ignore)
                     && IsValidGroundHit(hitS))
@@ -395,7 +386,6 @@ namespace Player.Scripts.MovementFSM
                     }
                 }
 
-                // NUEVO — fallback con ray ring si los casts fallan pegado a pared
                 if (!raw)
                 {
                     if (TryRayRingGround(extraByFall, out var ringHit))
@@ -411,7 +401,6 @@ namespace Player.Scripts.MovementFSM
                     }
                 }
 
-                // 2) Histéresis temporal (igual que tenías)
                 if (raw != _rawGrounded)
                 {
                     _rawGrounded = raw;
@@ -423,11 +412,10 @@ namespace Player.Scripts.MovementFSM
                     }
                 }
 
-                bool want = Grounded; // estado estable actual
+                bool want = Grounded;
 
                 if (_rawGrounded)
                 {
-                    // Para entrar a true, exigir estabilidad temporal
                     if (!Grounded && (Time.time - _rawChangeTime) >= groundEnterStability)
                     {
                         want = true;
@@ -436,14 +424,12 @@ namespace Player.Scripts.MovementFSM
                     }
                     else if (Grounded)
                     {
-                        // ya estamos en true: refrescamos datos
                         GroundHit = _rawHit;
                         GroundSlopeDeg = _rawSlope;
                     }
                 }
                 else
                 {
-                    // Salida a false (con opcional groundExitStability)
                     if (Grounded && (Time.time - _rawChangeTime) >= groundExitStability)
                     {
                         want = false;
@@ -462,7 +448,6 @@ namespace Player.Scripts.MovementFSM
             bool TryDetectVault(out ParkourProbe result)
             {
                 result = ParkourProbe.None;
-
                 var m = GetComponent<Model>();
                 bool runHeld = m && m.runningKeyPressed;
                 if (!runHeld)
@@ -477,17 +462,16 @@ namespace Player.Scripts.MovementFSM
 
                 float r = Radius;
                 float h = Height;
+
                 Vector3 pos = transform.position;
                 Vector3 fwd = GetPlanarForward();
-
-                float chestY = Mathf.Clamp(h * 0.55f, 0.8f, 1.1f);
-                Vector3 chestOrigin = pos + Vector3.up * chestY;
+                float chest = Mathf.Clamp(h * 0.55f, 0.8f, 1.1f);
+                Vector3 chestOrigin = pos + Vector3.up * chest;
 
                 if (!Physics.Raycast(chestOrigin, fwd, out var hitFront, forwardCheckDistance, environmentMask,
                         QueryTriggerInteraction.Ignore))
                     return false;
 
-                // <<< NUEVO: exige Tag "Vault" en el frente >>>
                 if (!hitFront.collider || !hitFront.collider.CompareTag(tagVault))
                 {
                     return false;
@@ -505,76 +489,97 @@ namespace Player.Scripts.MovementFSM
                 Vector3 topProbeStart = new Vector3(hitFront.point.x, topY + 0.02f, hitFront.point.z);
                 if (!Physics.Raycast(topProbeStart, Vector3.down, out var topHit, 1f, environmentMask | groundMask,
                         QueryTriggerInteraction.Ignore))
+                {
                     return false;
+                }
 
                 Vector3 topPoint = topHit.point + Vector3.up * clearanceSkin;
-
                 Vector3 midXZ = new Vector3(topPoint.x, topPoint.y, topPoint.z) + fwd * Mathf.Max(r * 0.6f, 0.2f);
                 midXZ.y = topPoint.y;
+                
+                // --- INICIO DE CORRECCIÓN 1: Bug de 'vaultTopClearance' ---
+                // Tu código original lo comprobaba pero no hacía 'return'.
+                // Lo movemos aquí: si no hay espacio arriba, no hay vault.
+                Vector3 topClearanceCheckOrigin = topPoint + Vector3.up * 0.01f;
+                if (Physics.Raycast(topClearanceCheckOrigin, Vector3.up, vaultTopClearance, environmentMask, QueryTriggerInteraction.Ignore))
+                {
+                    if (drawGizmos) Debug.DrawLine(topClearanceCheckOrigin, topClearanceCheckOrigin + Vector3.up * vaultTopClearance, Color.red, 0.1f);
+                    return false; // No hay espacio, no se puede saltar
+                }
+                if (drawGizmos) Debug.DrawLine(topClearanceCheckOrigin, topClearanceCheckOrigin + Vector3.up * vaultTopClearance, Color.green, 0.1f);
+                // --- FIN DE CORRECCIÓN 1 ---
 
                 float minF = Mathf.Max(vaultMinForward, r * 1.2f);
                 float maxF = Mathf.Max(minF + 0.3f, vaultMaxForward);
                 LayerMask maskTop = environmentMask | groundMask;
 
                 Vector3 land = Vector3.zero;
-                bool foundLand = false, foundSameTop = false, thickTopLikely = false;
+                bool foundLand = false;
+                bool foundSameTop = false;
 
-                // MISMA TAPA
-                for (float f = 0.05f; f <= maxF + 0.0001f; f += 0.1f)
+                Vector3 capsuleCenterOffset = (capsule ? capsule.center : Vector3.up * (h / 2f));
+
+                for (float f = minF; f <= maxF + 0.0001f; f += 0.1f)
                 {
                     Vector3 over = topPoint + fwd * f + Vector3.up * 0.05f;
                     if (Physics.Raycast(over, Vector3.down, out var downHit, vaultDownCast, maskTop,
                             QueryTriggerInteraction.Ignore))
                     {
-                        if (downHit.collider == hitFront.collider)
+                        if (downHit.collider != hitFront.collider)
                         {
-                            Vector3 stand = downHit.point + Vector3.up * (r + clearanceSkin);
+                            Vector3 stand = downHit.point + capsuleCenterOffset;
                             if (HasClearanceCapsule(stand, h - r * 2f))
                             {
-                                land = stand;
-                                foundLand = foundSameTop = true;
+                                land = downHit.point;
+                                foundLand = true;
+                                foundSameTop = false;
                                 break;
                             }
                         }
                     }
                 }
 
-                // OTRO LADO
                 if (!foundLand)
                 {
-                    for (float f = minF; f <= maxF + 0.0001f; f += 0.1f)
+                    for (float f = 0.05f; f <= minF + 0.0001f; f += 0.1f) 
                     {
                         Vector3 over = topPoint + fwd * f + Vector3.up * 0.05f;
                         if (Physics.Raycast(over, Vector3.down, out var downHit, vaultDownCast, maskTop,
                                 QueryTriggerInteraction.Ignore))
                         {
-                            Vector3 stand = downHit.point + Vector3.up * (r + clearanceSkin);
-                            if (HasClearanceCapsule(stand, h - r * 2f))
+                            if (downHit.collider == hitFront.collider)
                             {
-                                land = stand;
-                                foundLand = true;
-                                break;
+                                Vector3 stand = downHit.point + capsuleCenterOffset;
+                                if (HasClearanceCapsule(stand, h - r * 2f))
+                                {
+                                    land = downHit.point;
+                                    foundLand = true;
+                                    foundSameTop = true;
+                                    break;
+                                }
                             }
                         }
                     }
                 }
 
-                // ¿tapa gruesa?
+                if (!foundLand)
                 {
                     Vector3 overMax = topPoint + fwd * (maxF + 0.05f) + Vector3.up * 0.2f;
                     if (Physics.Raycast(overMax, Vector3.down, out var dTopMax, vaultDownCast, environmentMask,
                             QueryTriggerInteraction.Ignore))
-                        thickTopLikely = (dTopMax.collider == hitFront.collider);
+                    {
+                        if (dTopMax.collider == hitFront.collider)
+                        {
+                            land = topPoint;
+                            foundLand = true;
+                            foundSameTop = true;
+                        }
+                    }
                 }
-                if (!foundLand && thickTopLikely)
-                {
-                    land = topPoint + Vector3.up * (r + clearanceSkin);
-                    foundLand = foundSameTop = true;
-                }
-
+                
                 if (!foundLand) return false;
 
-                Vector3 start = rb ? rb.position : transform.position;
+                var start = rb ? rb.position : transform.position;
                 Vector3 vaultFwd = GetPlanarForward();
                 if (vaultFwd.sqrMagnitude > 0f) vaultFwd.Normalize();
 
@@ -906,9 +911,9 @@ namespace Player.Scripts.MovementFSM
 
             bool HasClearanceCapsule(Vector3 center, float heightSegment)
             {
-                float r = Radius - clearanceSkin * 0.5f;
-                float h = Mathf.Max(r * 2f + 0.01f, heightSegment);
-                float half = h * 0.5f - r;
+                float r = Radius - clearanceSkin * 0.5f; 
+                float hSeg = Mathf.Max(0.01f, heightSegment); 
+                float half = hSeg * 0.5f;
 
                 Vector3 top = center + Vector3.up * half;
                 Vector3 bottom = center - Vector3.up * half;

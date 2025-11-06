@@ -98,7 +98,7 @@ namespace Player.Scripts.MovementFSM
             throw new System.NotImplementedException();
         }
 
-        private void OnJumpPressed()
+        private void OnJumpPressed(bool a)
         {
             _model.BufferJumpNow();
         }

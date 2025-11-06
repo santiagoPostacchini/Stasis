@@ -12,7 +12,7 @@ namespace Player.Scripts.MovementFSM.MVC
     {
         public event Action<bool, float> OnGroundedChanged = delegate { };
         public event Action<float, float> OnMove = delegate { };
-        public event Action OnJump = delegate { };
+        public event Action<bool> OnJump = delegate { };
         public event Action OnShoot = delegate { };
         public event Action<bool> OnStop = delegate { };
         public event Action<bool> OnRun = delegate { };
@@ -266,7 +266,7 @@ namespace Player.Scripts.MovementFSM.MVC
         public void UpdateRunKey(bool pressed) => runningKeyPressed = pressed;
 
         // ReSharper disable Unity.PerformanceAnalysis
-        public void JumpInput() => OnJump?.Invoke();
+        public void JumpInput() => OnJump?.Invoke(jumpDownThisFrame);
 
         // ReSharper disable Unity.PerformanceAnalysis
         public void ShootInput() => OnShoot?.Invoke();
@@ -307,7 +307,6 @@ namespace Player.Scripts.MovementFSM.MVC
         {
             if (!grounded)
             {
-                // acaba de dejar el suelo
                 GroundChangedEvent(false, 0f);
                 lastLeftGroundTime = Time.time;
                 airEnteredFromGround = true;
@@ -317,7 +316,6 @@ namespace Player.Scripts.MovementFSM.MVC
 
             if (Time.time < groundedIgnoreUntil)
             {
-                // si decidís “ignorar” este grounded, reportá como no-grounded con el tiempo transcurrido
                 GroundChangedEvent(false, Time.time - lastLeftGroundTime);
                 return;
             }
@@ -329,12 +327,10 @@ namespace Player.Scripts.MovementFSM.MVC
                 lastLandingTime = Time.time;
                 return;
             }
-
-            // landed
+            
             float airTime = Time.time - lastLeftGroundTime;
             GroundChangedEvent(true, airTime);
 
-            // (tu lógica existente de landing debajo se mantiene igual)
             float at = airTime;
             bool minAirOk  = at >= minAirTime;
             bool impactOk  = lastFallSpeed <= landVelThreshold;

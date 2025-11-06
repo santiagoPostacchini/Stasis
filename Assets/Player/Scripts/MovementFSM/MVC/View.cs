@@ -130,7 +130,6 @@ namespace Player.Scripts.MovementFSM.MVC
             _worldGrounded = grounded;
             if (grounded)
             {
-                // Vamos a decidir si mostramos anim de land o no
                 float totalAir = Time.time - _leftGroundTime;
                 float fallDist = _leftGroundY - (rb ? rb.position.y : 0f);
                 float impactSpeed = rb ? Mathf.Abs(rb.velocity.y) : 0f;
@@ -148,7 +147,10 @@ namespace Player.Scripts.MovementFSM.MVC
                 if (!showLand)
                 {
                     animator.CrossFade("Player_Leg_Movement", 0.05f);
-                    animator.CrossFade("Player_Arm_Movement", 0.05f);
+                    if (!_canInteract)
+                    {
+                        animator.CrossFade("Player_Arm_Movement", 0.05f);
+                    }
                 }
 
                 _airElapsed = 0f;
@@ -164,8 +166,9 @@ namespace Player.Scripts.MovementFSM.MVC
             }
         }
 
-        public void OnJumpEvent()
+        public void OnJumpEvent(bool jumpThisFrame)
         {
+            if (!jumpThisFrame) return;
             _forceAirUntilTime = Time.time + 0.10f;
             _animGrounded = false;
             animator.SetBool(IsGrounded, false);

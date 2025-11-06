@@ -116,24 +116,23 @@ namespace Player.Scripts.MovementFSM
             Vector3 posNow  = Bezier2(_p0, _p1, _p2, sNow);
             Vector3 posNext = Bezier2(_p0, _p1, _p2, sNext);
 
-            // --------- NUEVO: TOP-HUG PRE-RELEASE ----------
-            if (_t <= TopHugEnd)
+            if (_stepUpMode) 
             {
-                // mezcla progresiva hacia el cap de Y
-                float k = Smooth01(_t / TopHugEnd);
-                float yCap = _yTopCap;
+                if (_t <= TopHugEnd)
+                {
+                    float k = Smooth01(_t / TopHugEnd);
+                    float yCap = _yTopCap;
 
-                float yNowClamped  = Mathf.Min(posNow.y,  yCap);
-                float yNextClamped = Mathf.Min(posNext.y, yCap);
+                    float yNowClamped  = Mathf.Min(posNow.y,  yCap);
+                    float yNextClamped = Mathf.Min(posNext.y, yCap);
 
-                posNow.y  = Mathf.Lerp(posNow.y,  yNowClamped,  Mathf.Pow(k, TopHugBlendPower));
-                posNext.y = Mathf.Lerp(posNext.y, yNextClamped, Mathf.Pow(k, TopHugBlendPower));
+                    posNow.y  = Mathf.Lerp(posNow.y,  yNowClamped,  Mathf.Pow(k, TopHugBlendPower));
+                    posNext.y = Mathf.Lerp(posNext.y, yNextClamped, Mathf.Pow(k, TopHugBlendPower));
+                }
             }
-            // -----------------------------------------------
 
             Vector3 velDesired = (posNext - posNow) / dt;
 
-            // release desde 0.60
             float gain = 1f;
             if (_t >= ReleaseBlendStart)
             {
@@ -213,7 +212,7 @@ namespace Player.Scripts.MovementFSM
                         ? new Vector3(p.vaultForward.x, 0f, p.vaultForward.z).normalized
                         : (_m.transform.forward - Vector3.Project(_m.transform.forward, Vector3.up)).normalized;
 
-                float minY = _yTopCap; // ya incluye radio + clearance + extra
+                float minY = p.vaultTopPoint.y;
                 _p2 = p.vaultTopPoint + insetDir * StepUpInset;
                 _p2.y = Mathf.Max(_p2.y, minY);
             }

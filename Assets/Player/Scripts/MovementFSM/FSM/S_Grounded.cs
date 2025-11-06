@@ -226,7 +226,7 @@ namespace Player.Scripts.MovementFSM
             _model.UpdateStopping(_isStopping);
         }
 
-        private void OnJumpPressed()
+        private void OnJumpPressed(bool b)
         {
             _model.BufferJumpNow();
             if (!_model.canMove) return;
