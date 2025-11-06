@@ -167,7 +167,7 @@ namespace Player.Stasis
             Ray ray = GetForwardRay(camHolder,20);
 
             bool gotHit = Physics.SphereCast(ray, radiusStasis, out RaycastHit hit, maxDistance, mask,
-                                 QueryTriggerInteraction.Collide)
+                                 QueryTriggerInteraction.Ignore)
                           || Physics.Raycast(ray, out hit, maxDistance, mask, QueryTriggerInteraction.Ignore);
 
             bool stasisHit = false;
