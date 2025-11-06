@@ -21,6 +21,7 @@ public class PlataformaMovil : MonoBehaviour
         if (other.GetComponent<Model>() != null)
         {
             // Desparentar diferido: solo si después del
+            other.transform.SetParent(null, true);
             StartCoroutine(UnparentAfterDelay(other.transform, unparentDelay));
         }
     }
