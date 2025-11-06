@@ -257,6 +257,8 @@ namespace Player.Scripts.MovementFSM
             _model.airEnteredFromGround = false;
 
             _fsm.ChangeState(FSM.States.Air);
+            
+            _model.JumpSucceed();
         }
 
         private void ApplyGroundStickAndSnap()

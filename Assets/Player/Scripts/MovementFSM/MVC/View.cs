@@ -157,18 +157,15 @@ namespace Player.Scripts.MovementFSM.MVC
             }
             else
             {
-                // No forzamos 'air' del Animator aún; solo registramos el momento y altura de salida
                 _leftGroundTime = Time.time;
                 _leftGroundY = rb ? rb.position.y : 0f;
 
-                // Mantengo compatibilidad con tu contador si lo usas externamente
                 _airElapsed = Mathf.Max(_airElapsed, airTime);
             }
         }
 
-        public void OnJumpEvent(bool jumpThisFrame)
+        public void OnJumpEvent()
         {
-            if (!jumpThisFrame) return;
             _forceAirUntilTime = Time.time + 0.10f;
             _animGrounded = false;
             animator.SetBool(IsGrounded, false);

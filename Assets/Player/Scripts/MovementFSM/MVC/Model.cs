@@ -13,6 +13,7 @@ namespace Player.Scripts.MovementFSM.MVC
         public event Action<bool, float> OnGroundedChanged = delegate { };
         public event Action<float, float> OnMove = delegate { };
         public event Action<bool> OnJump = delegate { };
+        public event Action OnJumpSucceeded = delegate { };
         public event Action OnShoot = delegate { };
         public event Action<bool> OnStop = delegate { };
         public event Action<bool> OnRun = delegate { };
@@ -180,16 +181,6 @@ namespace Player.Scripts.MovementFSM.MVC
 
         [HideInInspector] public bool jumpDownThisFrame;
 
-        public bool HasJumpBuffered() => (Time.time - lastJumpPressedTime) <= jumpBufferTime;
-
-        public void BufferJumpNow() => lastJumpPressedTime = Time.time;
-
-        public bool HasJumpBufferedAfterLeftGround()
-            => lastJumpPressedTime >= (lastLeftGroundTime + 0.0001f);
-
-        public void ClearJumpBuffer() => lastJumpPressedTime = -999f;
-
-        public void RegisterJumpDownThisFrame() => jumpDownThisFrame = true;
 
         private void Start()
         {
@@ -268,6 +259,18 @@ namespace Player.Scripts.MovementFSM.MVC
         // ReSharper disable Unity.PerformanceAnalysis
         public void JumpInput() => OnJump?.Invoke(jumpDownThisFrame);
 
+        public void JumpSucceed() => OnJumpSucceeded?.Invoke();
+
+        public bool HasJumpBuffered() => (Time.time - lastJumpPressedTime) <= jumpBufferTime;
+
+        public void BufferJumpNow() => lastJumpPressedTime = Time.time;
+
+        public bool HasJumpBufferedAfterLeftGround()
+            => lastJumpPressedTime >= (lastLeftGroundTime + 0.0001f);
+
+        public void ClearJumpBuffer() => lastJumpPressedTime = -999f;
+
+        public void RegisterJumpDownThisFrame() => jumpDownThisFrame = true;
         // ReSharper disable Unity.PerformanceAnalysis
         public void ShootInput() => OnShoot?.Invoke();
 

@@ -15,7 +15,7 @@ namespace Player.Scripts.MovementFSM
             _view = view;
             
             _model.OnGroundedChanged += _view.GroundedChangedEvent;
-            _model.OnJump += _view.OnJumpEvent;
+            _model.OnJumpSucceeded += _view.OnJumpEvent;
             _model.OnShoot += _view.OnShootEvent;
             _model.OnMove += _view.OnMove;
             _model.OnRun += _view.OnRun;
