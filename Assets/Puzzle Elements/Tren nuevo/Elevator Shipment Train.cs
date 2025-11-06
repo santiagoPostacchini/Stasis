@@ -5,8 +5,6 @@ using UnityEngine;
 
 public class ElevatorShipmentTrain : MonoBehaviour, IStasis
 {
-    [SerializeField] private Animator _anim;
-    private float _timePaused;
     public bool canMove = false;
     [SerializeField] private List<Renderer> rends = new List<Renderer>();
     public bool IsFreezed => _isFreezed;
@@ -25,6 +23,7 @@ public class ElevatorShipmentTrain : MonoBehaviour, IStasis
     }
     void Start()
     {
+        canMove = true;
         //_anim = GetComponent<Animator>();
         StasisEffect = new StasisEffect(null, rends.ToArray());
         list.AddRange(GetComponentsInChildren<StasisPartElevatorShipmentTrain>());
