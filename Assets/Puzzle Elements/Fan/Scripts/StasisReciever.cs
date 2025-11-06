@@ -1,3 +1,4 @@
+using Managers.Game;
 using Player.Stasis;
 using UnityEngine;
 
@@ -13,17 +14,22 @@ namespace Puzzle_Elements.Fan.Scripts
         {
             _col = GetComponent<Collider>();
         }
-
+        private void Update()
+        {
+            if (Vector3.Distance(transform.position, GameManager.Instance.player.transform.position) < 10)
+            {
+                _col.isTrigger = true;
+            }
+            else _col.isTrigger = false;
+        }
         public void StatisEffectActivate()
         {
             StasisObjToActivate.GetComponent<IStasis>().StatisEffectActivate();
-            _col.isTrigger = true;
         }
 
         public void StatisEffectDeactivate()
         {
             StasisObjToActivate.GetComponent<IStasis>().StatisEffectDeactivate();
-            _col.isTrigger = false;
         }
 
     }

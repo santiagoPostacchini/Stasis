@@ -94,6 +94,7 @@ namespace Puzzle_Elements.Fan.Scripts
 
         private void FixedUpdate()
         {
+          
             if (_isRunning && !_isStasis)
             {
                 Quaternion deltaRotation = Quaternion.Euler(ejeRotacion * (velocidadRotacion * Time.fixedDeltaTime));
