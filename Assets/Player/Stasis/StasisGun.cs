@@ -175,8 +175,7 @@ namespace Player.Stasis
                                   ? hit.point 
                                   : ray.origin + ray.direction * Mathf.Min(25f, maxDistance * 0.2f);
             
-            Debug.Log(hit.collider.gameObject.name);
-
+            
             if (gotHit)
             {
                 var go = hit.collider.gameObject;
