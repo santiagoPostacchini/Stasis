@@ -22,7 +22,7 @@ public class PlataformaMovil : MonoBehaviour
         {
             // Desparentar diferido: solo si después del
             other.transform.SetParent(null, true);
-            StartCoroutine(UnparentAfterDelay(other.transform, unparentDelay));
+          //  StartCoroutine(UnparentAfterDelay(other.transform, unparentDelay));
         }
     }
 
