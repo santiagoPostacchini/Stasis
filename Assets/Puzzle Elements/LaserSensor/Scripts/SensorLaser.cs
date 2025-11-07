@@ -1,3 +1,4 @@
+using Player.Scripts.MovementFSM.MVC;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -13,11 +14,11 @@ public class SensorLaser : MonoBehaviour
     [Tooltip("Eventos que se llaman cuando el laser detecta al Player")]
     public UnityEvent OnIntruderDetected;
 
-
+    private bool _detectPlayer = false;
     private bool alreadyEventInit = false;
     private void Update()
     {
-        if (PlayerConfirm() && !alreadyEventInit)
+        if (PlayerConfirmByTrigger() && !alreadyEventInit)
         {
             OnIntruderDetected?.Invoke();
             alreadyEventInit = true;
@@ -25,7 +26,7 @@ public class SensorLaser : MonoBehaviour
         }
         if (alreadyEventInit)
         {
-            if (!PlayerConfirm()) alreadyEventInit = false;
+            if (!PlayerConfirmByTrigger()) alreadyEventInit = false;
         }
     }
     public void CanShootLasers(bool a)
@@ -42,29 +43,50 @@ public class SensorLaser : MonoBehaviour
     //    canInvokeEvent = true;
     //}
     
-    bool PlayerConfirm()
-    {
-        foreach (var item in lasers)
-        {
-            if (item.canInvokeEvent)
-            {
-                if (item.intruderConfirm)
-                {
-                    foreach (var item2 in lasers)
-                    {
-                        if (!item2.intruderConfirm)
-                            item2.otherDetectIntruder = true;
-                    }
-                    return true;
-                }
-            }
+    //bool PlayerConfirm()
+    //{
+    //    foreach (var item in lasers)
+    //    {
+    //        if (item.canInvokeEvent)
+    //        {
+    //            if (item.intruderConfirm)
+    //            {
+    //                foreach (var item2 in lasers)
+    //                {
+    //                    if (!item2.intruderConfirm)
+    //                        item2.otherDetectIntruder = true;
+    //                }
+    //                return true;
+    //            }
+    //        }
            
             
-        }
-        foreach (var item in lasers)
+    //    }
+    //    foreach (var item in lasers)
+    //    {
+    //        item.otherDetectIntruder = false;
+    //    }
+    //    return false;
+    //}
+    bool PlayerConfirmByTrigger()
+    {
+        return _detectPlayer;
+    }
+    private void OnTriggerEnter(Collider other)
+    {
+        Model player = other.GetComponent<Model>();
+        if(player != null)
         {
-            item.otherDetectIntruder = false;
+            Debug.Log("Player intruso");
+            _detectPlayer = true;
         }
-        return false;
+    }
+    private void OnTriggerExit(Collider other)
+    {
+        Model player = other.GetComponent<Model>();
+        if (player != null)
+        {
+            _detectPlayer = false;
+        }
     }
 }

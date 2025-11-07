@@ -26,6 +26,7 @@ namespace Puzzle_Elements.Door.Scripts
         private Coroutine _currentSequence;
 
         public bool autoClose = true;
+        public bool autoOpen = false;
         public bool playerCanOpen;
         public float autoCloseDelay = 1f;
 
@@ -43,6 +44,11 @@ namespace Puzzle_Elements.Door.Scripts
 
             var col = GetComponent<Collider>();
             col.isTrigger = true;
+
+            if (autoOpen)
+            {
+                OpenDoor();
+            }
         }
 
         public void ToggleDoor()
