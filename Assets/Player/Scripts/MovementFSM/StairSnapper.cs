@@ -1,3 +1,4 @@
+using Player.Scripts.MovementFSM.MVC;
 using UnityEngine;
 
 namespace Player.Scripts.MovementFSM
@@ -9,6 +10,7 @@ namespace Player.Scripts.MovementFSM
         [Header("Mask & Refs")] public LayerMask walkableMask;
         public Rigidbody rb;
         public CapsuleCollider capsule;
+        private Model _model;
 
         [Header("Step geometry")]
         [Tooltip("Altura máxima escalón (m).")]
@@ -94,9 +96,6 @@ namespace Player.Scripts.MovementFSM
         float _t0, _t1, _y0, _y1;
         Vector3 _riserNormal, _moveDirAtStart;
 
-        bool _snapActive;
-        float _snapEndTime, _snapTargetY;
-
         void Reset()
         {
             rb = GetComponent<Rigidbody>();
@@ -109,36 +108,48 @@ namespace Player.Scripts.MovementFSM
         {
             if (!rb) rb = GetComponent<Rigidbody>();
             if (!capsule) capsule = GetComponent<CapsuleCollider>();
+            if (!_model) _model = GetComponent<Model>();
         }
 
         void FixedUpdate()
         {
+            
+            
+            
+            if (_model && _model.jumpDownThisFrame)
+            {
+                return; 
+            }
+            
             if (_stepping) { ContinueStep(); return; }
-            if (_snapActive) DoSnapDownSmooth();
-
-            // Dirección robusta para probes
+            
+            bool hasInput = false;
+            if (_model)
+            {
+                hasInput = new Vector2(_model.rawX, _model.rawZ).magnitude > _model.moveThreshold;
+            }
+            if (!hasInput)
+            {
+                return; 
+            }
+            
             Vector3 hv = rb.velocity; hv.y = 0f;
             float speed = hv.magnitude;
             Vector3 basisDir = Vector3.ProjectOnPlane(transform.forward, Vector3.up).normalized;
             Vector3 moveDir = speed > probeUseVelMin ? hv / Mathf.Max(speed, 1e-5f) : basisDir;
 
-            // 1) riser (cara vertical) en frente/±45°
             if (TryRiserBlock(moveDir, speed, out var topY, out var riserN))
             { BeginStep(moveDir, riserN, topY); return; }
-
-            // 1b) cresta de rampa tratada como escalón
+            
             if (TryRampCrestAsStep(moveDir, out topY, out riserN))
             { BeginStep(moveDir, riserN, topY); return; }
 
-            // 2) ledge suspendido (tapa flotante)
             if (enableLedgeProbe && TryLedgeBlock(moveDir, speed, out topY, out riserN))
-            { BeginStep(moveDir, riserN, topY); return; }
-
-            // 3) snap-down suave si hay bajada por delante
-            TrySnapDown(moveDir, speed);
+            {
+                BeginStep(moveDir, riserN, topY);
+            }
         }
-
-        // ---------- RISER ----------
+        
         bool TryRiserBlock(Vector3 moveDir, float speed, out float topY, out Vector3 riserNormal)
         {
             topY = 0f; riserNormal = default;
@@ -169,15 +180,12 @@ namespace Player.Scripts.MovementFSM
                 : Physics.SphereCast (ankle,      probeRadius, dir, out hit, fwd, walkableMask, QueryTriggerInteraction.Ignore);
             if (!gotRiser) return false;
 
-            // Si la normal.y es alta, puede ser TAPA (edge de box). Intento de rescate:
             if (hit.normal.y > maxRiserNormalY)
             {
-                // Re-casteo más bajo y con radio un poco menor para “enganchar” la cara vertical.
                 Vector3 ankleLow = ankle - Vector3.up * Mathf.Min(edgeBiasDown * 0.75f, 0.03f);
                 float rSmall = probeRadius * 0.9f;
                 if (Physics.SphereCast(ankleLow, rSmall, dir, out var faceHit, fwd, walkableMask, QueryTriggerInteraction.Ignore))
                 {
-                    // Acepto si ahora parece una cara (normal.y baja) y está encarada.
                     if (faceHit.normal.y <= maxRiserNormalY &&
                         Vector3.Dot(dir, -faceHit.normal) >= approachDotMin)
                     {
@@ -235,7 +243,6 @@ namespace Player.Scripts.MovementFSM
             return true;
         }
 
-        // ---------- LEDGE suspendido ----------
         bool TryLedgeBlock(Vector3 moveDir, float speed, out float topY, out Vector3 fakeRiserNormal)
         {
             topY = 0f; fakeRiserNormal = default;
@@ -277,7 +284,6 @@ namespace Player.Scripts.MovementFSM
             return true;
         }
 
-        // ---------- CRES­TA de RAMPA ----------
         bool TryRampCrestAsStep(Vector3 moveDir, out float topY, out Vector3 fakeRiserNormal)
         {
             topY = 0f; fakeRiserNormal = default;
@@ -325,7 +331,6 @@ namespace Player.Scripts.MovementFSM
             return true;
         }
 
-        // ---------- Step (servo a tiempo constante, gravedad ON) ----------
         void BeginStep(Vector3 moveDir, Vector3 riserN, float topY)
         {
             _stepping = true;
@@ -344,10 +349,14 @@ namespace Player.Scripts.MovementFSM
 
         void ContinueStep()
         {
+            if (_model && _model.jumpDownThisFrame)
+            {
+                return; 
+            }
+            
             float T = Mathf.Max(0.04f, stepTime);
             float tN = Mathf.Clamp01(Mathf.InverseLerp(_t0, _t1, Time.time));
 
-            // s(t) suave
             float s = tN * tN * (3f - 2f * tN);
             float ds = (6f * tN * (1f - tN)) / T;
 
@@ -372,48 +381,9 @@ namespace Player.Scripts.MovementFSM
             if (Time.time >= _t1 - 1e-4f)
             {
                 _stepping = false;
-                _snapActive = true;
-                _snapTargetY = _y1;
-                _snapEndTime = Time.time + snapTime;
             }
         }
-
-        // ---------- Snap-down suave ----------
-        void TrySnapDown(Vector3 moveDir, float speed)
-        {
-            Vector3 foot = BottomSphereCenter();
-            float fwd = checkForward * 0.6f + Mathf.Min(0.35f, speed * Time.fixedDeltaTime * speedCompForward * 0.6f);
-            Vector3 ahead = foot + moveDir * fwd + Vector3.up * (maxStepDown + Skin);
-
-            if (Physics.Raycast(ahead, Vector3.down, out var hit, maxStepDown + 2f * Skin, walkableMask, QueryTriggerInteraction.Ignore))
-            {
-                float targetY = hit.point.y + Skin;
-                float dy = targetY - rb.position.y;
-                if (dy < -0.03f)
-                {
-                    _snapActive = true;
-                    _snapTargetY = targetY;
-                    _snapEndTime = Time.time + snapTime;
-                }
-            }
-        }
-
-        void DoSnapDownSmooth()
-        {
-            Vector3 pos = rb.position;
-            float y = pos.y;
-            float targetY = _snapTargetY;
-
-            float err = targetY - y;
-            float ay = snapSpring * err - snapDamp * rb.velocity.y;
-
-            rb.AddForce(new Vector3(0f, ay, 0f), ForceMode.Acceleration);
-
-            if (Time.time >= _snapEndTime || Mathf.Abs(err) < 0.004f)
-                _snapActive = false;
-        }
-
-        // ---------- Helpers ----------
+        
         Vector3 BottomSphereCenter()
         {
             float r = capsule.radius;
@@ -439,7 +409,6 @@ namespace Player.Scripts.MovementFSM
         public void CancelStep()
         {
             _stepping = false;
-            _snapActive = false;
         }
 
         void OnValidate()

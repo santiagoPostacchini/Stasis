@@ -19,7 +19,7 @@ namespace Player.Scripts.MovementFSM
         private LayerMask _moveCheckMask;
         private bool _wasGrounded;
 
-        private bool _isRunning, _isStopping, _inAir;
+        private bool _isRunning, _isStopping, _inAir, _isStunned;
 
         public S_Grounded(FSM fsm, Model model, Transform camHolder)
         {
@@ -128,11 +128,23 @@ namespace Player.Scripts.MovementFSM
         {
             if (_model.canMove)
             {
-                float targetSpeed = _model.runningKeyPressed ? _model.runningSpeed : _model.walkingSpeed;
+                _isStunned = Time.time < _model.speedCapUntil;
+                float targetSpeed;
+                
+                if (_isStunned)
+                {
+                    targetSpeed = _model.hardLandSpeedCap;
+                }
+                else
+                {
+                    targetSpeed = _model.runningKeyPressed ? _model.runningSpeed : _model.walkingSpeed;
+                }
+                
                 if (_speedOverrides.Count > 0)
                 {
                     targetSpeed = _speedOverrides[^1]();
                 }
+
 
                 Vector2 inputDirection = new Vector2(_model.xAxis, _model.zAxis);
                 if (inputDirection.magnitude > 1f) inputDirection.Normalize();
@@ -184,8 +196,9 @@ namespace Player.Scripts.MovementFSM
         {
             if (_model.canMove)
             {
+                _isStunned = Time.time < _model.speedCapUntil;
                 _isRunning = _model.canRun && _model.runningKeyPressed &&
-                             (Mathf.Abs(_model.xAxis) > 0.1f || Mathf.Abs(_model.zAxis) > 0.1f);
+                             (Mathf.Abs(_model.xAxis) > 0.1f || Mathf.Abs(_model.zAxis) > 0.1f) && !_isStunned;
             }
             
             _model.UpdateIsRunning(_isRunning);
@@ -246,10 +259,8 @@ namespace Player.Scripts.MovementFSM
             float jumpVel = Mathf.Sqrt(2f * Mathf.Abs(g) * h);
 
             var vel = _model.rb.velocity;
-            vel.y = 0f;
+            vel.y = jumpVel;
             _model.rb.velocity = vel;
-            
-            _model.rb.AddForce(Vector3.up * jumpVel, ForceMode.VelocityChange);
             
             _model.groundedIgnoreUntil = Time.time + _model.groundedIgnoreAfterJump;
 
@@ -277,7 +288,10 @@ namespace Player.Scripts.MovementFSM
 
             if (!allowSlide)
             {
-                _model.rb.AddForce(Vector3.down * 10f, ForceMode.Acceleration);
+                if (_model.rb.velocity.y <= 0.1f)
+                {
+                    _model.rb.AddForce(Vector3.down * 5f, ForceMode.Acceleration);
+                }
             }
         }
     }

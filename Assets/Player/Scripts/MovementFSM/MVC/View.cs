@@ -125,7 +125,7 @@ namespace Player.Scripts.MovementFSM.MVC
         }
 
         public void OnStop(bool stp) => _isStopping = stp;
-        public void GroundedChangedEvent(bool grounded, float airTime)
+        public void GroundedChangedEvent(bool grounded, float airTime, float fallSpeed)
         {
             _worldGrounded = grounded;
             if (grounded)
@@ -133,6 +133,11 @@ namespace Player.Scripts.MovementFSM.MVC
                 float totalAir = Time.time - _leftGroundTime;
                 float fallDist = _leftGroundY - (rb ? rb.position.y : 0f);
                 float impactSpeed = rb ? Mathf.Abs(rb.velocity.y) : 0f;
+                
+                if (playerCamEffects)
+                {
+                    playerCamEffects.TriggerLandTilt(impactSpeed, totalAir);
+                }
 
                 bool showLand = !_animGrounded && (
                                     totalAir >= landAnimMinAirTime ||

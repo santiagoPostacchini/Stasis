@@ -1,8 +1,7 @@
 using Player.FullBody_Scripts.MovementFSM;
-using Player.Scripts.MovementFSM.MVC;
 using UnityEngine;
 
-namespace Player.Scripts.MovementFSM
+namespace Player.Scripts.MovementFSM.MVC
 {
     public class Controller : IController
     {

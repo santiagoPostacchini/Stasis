@@ -11,6 +11,7 @@ namespace Player.Scripts.MovementFSM
 
         private bool _enteredFromGround;
         private float _airTime;
+        private  float _gravity = 9.81f;
 
         public S_Air(FSM fsm, Model model, Transform camHolder)
         {
@@ -58,8 +59,6 @@ namespace Player.Scripts.MovementFSM
             if (_model.IsGroundedNow())
             {
                 if (_airTime < _model.minAirTime) return;
-
-                _model.ClearJumpBuffer();
                 _model.airEnteredFromGround = false;
                 _model.landedPending = true;
                 _fsm.ChangeState(FSM.States.Grounded);
@@ -70,7 +69,6 @@ namespace Player.Scripts.MovementFSM
         {
             if (!_model.canMove) return;
 
-            // Control aéreo
             Vector2 input = new Vector2(_model.xAxis, _model.zAxis);
             if (input.sqrMagnitude > 1f) input.Normalize();
 
@@ -86,6 +84,8 @@ namespace Player.Scripts.MovementFSM
             Vector3 add = Vector3.ClampMagnitude(delta, maxDelta);
 
             _model.rb.AddForce(new Vector3(add.x, 0f, add.z), ForceMode.VelocityChange);
+            
+            _model.rb.AddForce(Vector3.down * _gravity, ForceMode.Acceleration);
         }
 
         public void OnExit()
@@ -125,10 +125,8 @@ namespace Player.Scripts.MovementFSM
             float jumpVel = Mathf.Sqrt(2f * Mathf.Abs(g) * h);
 
             var vel = _model.rb.velocity;
-            vel.y = 0f;
+            vel.y = jumpVel;
             _model.rb.velocity = vel;
-    
-            _model.rb.AddForce(Vector3.up * jumpVel, ForceMode.VelocityChange);
 
             _airTime = 0f;
         }

@@ -268,177 +268,117 @@ namespace Player.Scripts.MovementFSM
             [Tooltip("Aumenta el alcance del cast según la caída.")]
             public float fallProbeVelocityMul = 0.035f;
 
-            [Header("Grounding Stability")]
-            [Tooltip("Tiempo que debe sostenerse el contacto antes de reportar Grounded=true.")]
-            public float groundEnterStability;
-
-            [Tooltip("Retraso al soltar suelo. 0 para salida inmediata.")]
-            public float groundExitStability;
-
-            private bool _rawGrounded;
-            private float _rawChangeTime;
-            private RaycastHit _rawHit;
-            private float _rawSlope;
-
             private float _lastGroundTrueTime;
 
-            void GetCapsuleWorld(out Vector3 top, out Vector3 bottom, out float r)
+            void GetCapsuleWorld(out Vector3 bottom, out float r)
             {
                 const float skin = 0.02f;
                 r = Mathf.Max(0.01f, (capsule ? capsule.radius : 0.3f) - skin);
                 Vector3 center = transform.TransformPoint(capsule ? capsule.center : Vector3.zero);
                 float height = capsule ? capsule.height : 1.8f;
                 float half = height * 0.5f - r;
-                top = center + Vector3.up * half;
                 bottom = center - Vector3.up * half;
             }
 
             bool IsValidGroundHit(in RaycastHit hit)
             {
                 if (!hit.collider) return false;
+
                 float slope = Vector3.Angle(hit.normal, Vector3.up);
-                if (slope > maxGroundSlopeDeg) return false;
-
-                float dy = (transform.position.y) - hit.point.y;
-                if (dy < -0.05f) return false;
-                return true;
-            }
-
-            bool TryRayRingGround(float extraByFall, out RaycastHit best)
-            {
-                best = default;
-                bool found = false;
-
-                GetCapsuleWorld(out var top, out var bottom, out var r);
-
-                float maxDist = Mathf.Max(groundCheckDistance, groundSnapDistance) + extraByFall + 0.06f;
-                Vector3[] offs = { Vector3.zero, Vector3.forward, -Vector3.forward, Vector3.right, -Vector3.right };
-                float ring = Mathf.Max(0.02f, r * 0.5f);
-
-                foreach (var o in offs)
+                if (slope > maxGroundSlopeDeg)
                 {
-                    Vector3 baseFoot = bottom + Vector3.up * (r + 0.02f);
-                    Vector3 from = baseFoot + o * ring + Vector3.up * (maxDist * 0.5f);
-
-                    if (Physics.Raycast(from, Vector3.down, out var h, maxDist, WalkableGroundMask,
-                            QueryTriggerInteraction.Ignore)
-                        && IsValidGroundHit(h))
-                    {
-                        if (!found || h.point.y > best.point.y)
-                        {
-                            best = h;
-                            found = true;
-                        }
-                    }
+                    //Debug.Log($"[Grounding] Hit {hit.collider.name}, pero RECHAZADO: Pendiente ({slope:F1}°) > Máxima ({maxGroundSlopeDeg}°).", hit.collider);
+                    return false;
                 }
 
-                return found;
+                float feetY = transform.position.y + (capsule ? capsule.center.y - capsule.height * 0.5f : 0f);
+                if (hit.point.y > feetY + 0.1f) return false;
+            
+                return true;
             }
 
             void UpdateGrounding()
             {
-                bool raw = false;
-                RaycastHit rawHit = default;
-                float rawSlope = 0f;
-
                 if (!capsule)
                 {
                     Grounded = false;
+                    if (Grounded == _prevGrounded) return;
+                    OnGroundedChanged(Grounded, default);
+                    _prevGrounded = Grounded;
                     return;
                 }
 
-                GetCapsuleWorld(out var top, out var bottom, out var r);
-                Vector3 sphereOrigin = bottom + Vector3.up * 0.01f;
+                GetCapsuleWorld(out var bottom, out var r);
+                Vector3 castOrigin = bottom + Vector3.up * r;
 
-                float extraByFall = (rb && rb.velocity.y < 0f)
-                    ? Mathf.Clamp(-rb.velocity.y * fallProbeVelocityMul, 0f, 0.3f)
+                float extraByFall = (rb && rb.velocity.y < 0f) 
+                    ? Mathf.Abs(rb.velocity.y * fallProbeVelocityMul) 
                     : 0f;
-
-                float castDist = Mathf.Max(groundCheckDistance, groundSnapDistance) + extraByFall + 0.02f;
-
-                if (Physics.SphereCast(sphereOrigin, r, Vector3.down, out var hitS, castDist, WalkableGroundMask,
-                        QueryTriggerInteraction.Ignore)
-                    && IsValidGroundHit(hitS))
+                float castDistance = groundCheckDistance + extraByFall;
+    
+                bool hitDetected = Physics.SphereCast(
+                    castOrigin,
+                    r,
+                    Vector3.down,
+                    out RaycastHit hitInfo,
+                    castDistance,
+                    WalkableGroundMask,
+                    QueryTriggerInteraction.Ignore
+                );
+                
+                if (hitDetected && IsValidGroundHit(hitInfo))
                 {
-                    float dist = Mathf.Max(0f, (sphereOrigin.y - r) - hitS.point.y);
-                    if (dist <= groundSnapDistance + extraByFall)
-                    {
-                        raw = true;
-                        rawHit = hitS;
-                        rawSlope = Vector3.Angle(hitS.normal, Vector3.up);
-                    }
-                }
-
-                if (!raw)
-                {
-                    if (Physics.CapsuleCast(top, bottom, r, Vector3.down, out var hitC, castDist, WalkableGroundMask,
-                            QueryTriggerInteraction.Ignore)
-                        && IsValidGroundHit(hitC))
-                    {
-                        float baseY = (bottom.y - r);
-                        float dist = Mathf.Max(0f, baseY - hitC.point.y);
-                        if (dist <= groundSnapDistance + extraByFall)
-                        {
-                            raw = true;
-                            rawHit = hitC;
-                            rawSlope = Vector3.Angle(hitC.normal, Vector3.up);
-                        }
-                    }
-                }
-
-                if (!raw)
-                {
-                    if (TryRayRingGround(extraByFall, out var ringHit))
-                    {
-                        float baseY = (bottom.y - r);
-                        float dist = Mathf.Max(0f, baseY - ringHit.point.y);
-                        if (dist <= groundSnapDistance + extraByFall)
-                        {
-                            raw = true;
-                            rawHit = ringHit;
-                            rawSlope = Vector3.Angle(ringHit.normal, Vector3.up);
-                        }
-                    }
-                }
-
-                if (raw != _rawGrounded)
-                {
-                    _rawGrounded = raw;
-                    _rawChangeTime = Time.time;
-                    if (raw)
-                    {
-                        _rawHit = rawHit;
-                        _rawSlope = rawSlope;
-                    }
-                }
-
-                bool want = Grounded;
-
-                if (_rawGrounded)
-                {
-                    if (!Grounded && (Time.time - _rawChangeTime) >= groundEnterStability)
-                    {
-                        want = true;
-                        GroundHit = _rawHit;
-                        GroundSlopeDeg = _rawSlope;
-                    }
-                    else if (Grounded)
-                    {
-                        GroundHit = _rawHit;
-                        GroundSlopeDeg = _rawSlope;
-                    }
+                    Grounded = true;
+                    GroundHit = hitInfo;
+                    GroundSlopeDeg = Vector3.Angle(hitInfo.normal, Vector3.up);
                 }
                 else
                 {
-                    if (Grounded && (Time.time - _rawChangeTime) >= groundExitStability)
+                    Grounded = false;
+                    GroundHit = default;
+                    GroundSlopeDeg = 0f;
+                }
+                
+                if (Grounded != _prevGrounded)
+                {
+                    //Debug.Log($"[Grounding] *** ESTADO CAMBIÓ *** -> {Grounded}. Hit: {(GroundHit.collider ? GroundHit.collider.name : "NADA")}", this);
+                    
+                    OnGroundedChanged(Grounded, GroundHit); 
+        
+                    _prevGrounded = Grounded;
+
+                    if (Grounded)
                     {
-                        want = false;
-                        GroundHit = default;
-                        GroundSlopeDeg = 0f;
+                        _hasNotifiedGroundOnce = true;
+                        _lastNotifiedGroundHit = GroundHit;
+                        _nextGroundNotifyTime = Time.time + groundNotifyInterval;
+                    }
+                    else
+                    {
+                        _hasNotifiedGroundOnce = false;
                     }
                 }
+                else if (Grounded && continuousGroundNotify)
+                {
+                    bool timeOk = (groundNotifyInterval <= 0f) || (Time.time >= _nextGroundNotifyTime);
 
-                Grounded = want;
+                    bool hitDiff =
+                        !_hasNotifiedGroundOnce ||
+                        GroundHit.collider != _lastNotifiedGroundHit.collider ||
+                        (GroundHit.point - _lastNotifiedGroundHit.point).sqrMagnitude >
+                        (groundReNotifyPosEps * groundReNotifyPosEps) ||
+                        Vector3.Dot(GroundHit.normal.normalized, _lastNotifiedGroundHit.normal.normalized) <
+                        groundReNotifyNormalCos;
+
+                    if (timeOk || hitDiff)
+                    {
+                        OnGroundedChanged(true, GroundHit);
+                        _lastNotifiedGroundHit = GroundHit;
+                        _hasNotifiedGroundOnce = true;
+                        if (groundNotifyInterval > 0f)
+                            _nextGroundNotifyTime = Time.time + groundNotifyInterval;
+                    }
+                }
             }
 
             #endregion
@@ -532,7 +472,6 @@ namespace Player.Scripts.MovementFSM
                             {
                                 land = downHit.point;
                                 foundLand = true;
-                                foundSameTop = false;
                                 break;
                             }
                         }
@@ -979,7 +918,38 @@ namespace Player.Scripts.MovementFSM
             void OnDrawGizmosSelected()
             {
                 if (!drawGizmos) return;
+                
+                if (capsule)
+                {
+                    GetCapsuleWorld(out var bottom, out var r);
+                    Vector3 castOrigin = bottom + Vector3.up * r;
+        
+                    float castDistance = groundCheckDistance; 
 
+                    Gizmos.color = Color.yellow;
+                    Gizmos.DrawWireSphere(castOrigin, r);
+
+                    Vector3 endPosition = castOrigin + Vector3.down * castDistance;
+                    Gizmos.DrawWireSphere(endPosition, r);
+
+                    Gizmos.DrawLine(castOrigin, endPosition);
+
+                    if (Application.isPlaying)
+                    {
+                        if (Grounded)
+                        {
+                            Gizmos.color = Color.green;
+                            Gizmos.DrawWireSphere(GroundHit.point, r);
+                            Gizmos.DrawRay(GroundHit.point, GroundHit.normal * 0.5f);
+                        }
+                        else
+                        {
+                            Gizmos.color = Color.red;
+                            Gizmos.DrawWireSphere(endPosition, r);
+                        }
+                    }
+                }
+                
                 Gizmos.matrix = Matrix4x4.identity;
 
                 Vector3 f = Application.isPlaying

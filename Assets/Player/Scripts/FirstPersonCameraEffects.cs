@@ -28,6 +28,7 @@ namespace Player.Scripts
         public float rollOutSpeed = 8f;
         public bool  vaultAsPulse = true;
         [Min(0.05f)] public float vaultHoldTime = 0.20f;
+        
 
         [Header("Shake / Bob")]
         public bool enableShake = true;
@@ -37,22 +38,39 @@ namespace Player.Scripts
         public float bobSpeed = 8f;
         public float bobAmount = 0.03f;
         [Range(0f,1f)] public float idleBobWeight = 0.2f;
+        
+        [Header("Landing Tilt")]
+        public bool enableLandTilt = true;
+        [Tooltip("Velocidad de caída mínima para activar el tilt.")]
+        public float landTiltMinSpeed = 4f;
+        [Tooltip("Velocidad de caída para el máximo tilt.")]
+        public float landTiltMaxSpeed = 15f;
+        [Tooltip("Ángulo de tilt (roll) con velocidad mínima.")]
+        public float landTiltMinAngle = 2f;
+        [Tooltip("Ángulo de tilt (roll) con velocidad máxima.")]
+        public float landTiltMaxAngle = 8f;
+        [Tooltip("Duración del 'pulso' de tilt al aterrizar.")]
+        public float landTiltHoldTime = 0.18f;
+        [Tooltip("Intensidad de shake (vibración) con velocidad mínima.")]
+        public float landTiltMinShake = 0.5f;
+        [Tooltip("Intensidad de shake (vibración) con velocidad máxima.")]
+        public float landTiltMaxShake = 2.0f;
+        [Tooltip("Tiempo de suavizado para el 'roll' (tilt). 0.1 es un buen valor.")]
+        public float rollSmoothTime = 0.1f;
 
-        // --- Nuevo: usar Dutch de Cinemachine para tilt ---
         [Header("Cinemachine")]
         [Tooltip("Si está activo, el tilt se aplica como Lens.Dutch (roll real en eje Z de la vcam).")]
         public bool useCinemachineDutch = true;
 
-        // ----- internos -----
-        float _rollTarget, _rollCurrent, _vaultTimer;
+        float _rollTarget, _rollCurrent, _rollPulseTimer, _rollVelocity;
         float _fovCurrent;
-        float _extraFovRuntime; // suma (run + wallrun + vault)
+        float _extraFovRuntime;
         float _shakeAmpRuntime; Vector2 _shakePhase;
         Vector3 _bobLocalOrigin;
 
         CinemachineBrain _brain;
-        CinemachineCamera _activeCamCached; // vcam activa cacheada
-        float _baseFovLive;                 // FOV base cacheado de la vcam activa
+        CinemachineCamera _activeCamCached;
+        float _baseFovLive;
         bool  _haveBaseFov;
 
         void Awake()
@@ -70,7 +88,6 @@ namespace Player.Scripts
             }
             _bobLocalOrigin = effectsPivot.localPosition;
 
-            // Inicial: si hay override lo usamos; si no, esperaremos a que la vcam esté live
             _haveBaseFov = baseFovOverride > 0f;
             _baseFovLive = _haveBaseFov ? baseFovOverride : (cam ? cam.fieldOfView : 60f);
             _fovCurrent  = _baseFovLive;
@@ -86,7 +103,6 @@ namespace Player.Scripts
             _fovCurrent = _baseFovLive;
             ApplyFovImmediate(_fovCurrent);
 
-            // Asegurar Dutch en 0 al habilitar
             if (useCinemachineDutch) ApplyDutch(0f);
         }
 
@@ -94,11 +110,11 @@ namespace Player.Scripts
         {
             RefreshActiveCamAndMaybeCacheBase();
 
-            if (vaultAsPulse && _vaultTimer > 0f)
+            if (_rollPulseTimer > 0f)
             {
-                _vaultTimer -= Time.deltaTime;
-                if (_vaultTimer <= 0f)
-                    _rollTarget = Mathf.Approximately(Mathf.Abs(_rollTarget), vaultTilt) ? 0f : _rollTarget;
+                _rollPulseTimer -= Time.deltaTime;
+                if (_rollPulseTimer <= 0f)
+                    _rollTarget = 0f;
             }
 
             if (enableShake && _shakeAmpRuntime > 0f)
@@ -107,15 +123,19 @@ namespace Player.Scripts
 
         void LateUpdate()
         {
-            // --- ROLL (animación del tilt) ---
-            float rollSpeed = (Mathf.Abs(_rollTarget) > Mathf.Abs(_rollCurrent)) ? rollInSpeed : rollOutSpeed;
-            _rollCurrent = Mathf.MoveTowardsAngle(_rollCurrent, _rollTarget, rollSpeed * Time.deltaTime);
+            float maxSpeed = (Mathf.Abs(_rollTarget) > Mathf.Abs(_rollCurrent)) ? rollInSpeed : rollOutSpeed;
+            _rollCurrent = Mathf.SmoothDampAngle(
+                _rollCurrent,
+                _rollTarget,
+                ref _rollVelocity,
+                rollSmoothTime,
+                maxSpeed,
+                Time.deltaTime
+            );
 
             if (useCinemachineDutch && HasActiveVcam())
             {
-                // Tilt real en eje Z de la cámara (Dutch)
                 ApplyDutch(_rollCurrent);
-                // Dejá el pivot sin rotación: lo usamos sólo para bob/shake de posición
                 effectsPivot.localRotation = Quaternion.identity;
             }
             else
@@ -166,7 +186,7 @@ namespace Player.Scripts
         {
             sideSign = Mathf.Clamp(sideSign, -1, 1);
             _rollTarget = (sideSign==0? 1: sideSign) * vaultTilt;
-            if (vaultAsPulse) _vaultTimer = vaultHoldTime;
+            if (vaultAsPulse) _rollPulseTimer = vaultHoldTime;
             AddFov(+Mathf.Abs(vaultFovAdd));
             AddImpulseShake(1.4f);
         }
@@ -193,10 +213,28 @@ namespace Player.Scripts
             if (!enableShake) return;
             _shakeAmpRuntime = Mathf.Max(_shakeAmpRuntime, Mathf.Abs(deg));
         }
+        
+        public void TriggerLandTilt(float impactSpeed, float airTime)
+        {
+            if (!enableLandTilt || impactSpeed < landTiltMinSpeed || airTime < 0.1f)
+                return;
+        
+            if (_rollPulseTimer > 0f) return;
+
+            float t = Mathf.InverseLerp(landTiltMinSpeed, landTiltMaxSpeed, impactSpeed);
+            float angle = Mathf.Lerp(landTiltMinAngle, landTiltMaxAngle, t);
+            
+            float shake = Mathf.Lerp(landTiltMinShake, landTiltMaxShake, t);
+            AddImpulseShake(shake);
+        
+            _rollTarget = (Random.value > 0.5f ? 1f : -1f) * angle;
+
+            _rollPulseTimer = landTiltHoldTime;
+        }
 
         public void ClearAll()
         {
-            _rollTarget = 0f; _vaultTimer = 0f; _extraFovRuntime = 0f; _shakeAmpRuntime = 0f;
+            _rollTarget = 0f; _rollPulseTimer = 0f; _extraFovRuntime = 0f; _shakeAmpRuntime = 0f;
             effectsPivot.localPosition = _bobLocalOrigin;
             effectsPivot.localRotation = Quaternion.identity;
             RefreshActiveCamAndMaybeCacheBase(force:true);
@@ -205,7 +243,6 @@ namespace Player.Scripts
             if (useCinemachineDutch) ApplyDutch(0f);
         }
 
-        // ===== helpers =====
         void AddFov(float delta) { if (!enableFovKick) return; _extraFovRuntime += delta; }
 
         void RefreshActiveCamAndMaybeCacheBase(bool force=false)
@@ -226,7 +263,7 @@ namespace Player.Scripts
         bool HasActiveVcam()
         {
             if (!_brain) return false;
-            return (_brain.ActiveVirtualCamera as CinemachineCamera) != null;
+            return (_brain.ActiveVirtualCamera as CinemachineCamera);
         }
 
         void ApplyDutch(float deg)

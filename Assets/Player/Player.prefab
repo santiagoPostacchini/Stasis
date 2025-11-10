@@ -2977,6 +2977,15 @@ MonoBehaviour:
   bobSpeed: 8
   bobAmount: 0.03
   idleBobWeight: 0.2
+  enableLandTilt: 1
+  landTiltMinSpeed: 6
+  landTiltMaxSpeed: 10
+  landTiltMinAngle: 3
+  landTiltMaxAngle: 9
+  landTiltHoldTime: 0.06
+  landTiltMinShake: 0.5
+  landTiltMaxShake: 2
+  rollSmoothTime: 0.1
   useCinemachineDutch: 1
 --- !u!114 &6135088207579927890
 MonoBehaviour:
@@ -6924,9 +6933,9 @@ MonoBehaviour:
   tagWallrun: Wallrun
   walkingSpeed: 5
   runningSpeed: 8
-  acceleration: 20
-  deceleration: 30
-  jumpHeight: 2
+  acceleration: 70
+  deceleration: 1
+  jumpHeight: 5
   isRunningRuntime: 0
   coyoteTime: 0.2
   jumpBufferTime: 0.2
@@ -6936,11 +6945,15 @@ MonoBehaviour:
   airAcceleration: 12
   minAirTime: 0.2
   landVelThreshold: -2.5
-  landEventCooldown: 0.5
+  landEventCooldown: 0.1
+  hardLandVelThreshold: -15
+  hardLandSpeedCap: 2
+  hardLandStunDuration: 0.5
   landedPending: 0
   lastAirTime: 0
   lastFallSpeed: 0
   lastLandingTime: -999
+  speedCapUntil: -999
   vaultRegrabCooldown: 0.4
   blockVaultUntil: -999
   isClimbingState: 0
@@ -6971,6 +6984,7 @@ MonoBehaviour:
   lastWallNormal: {x: 0, y: 0, z: 0}
   lastWallDetachTime: 0
   wallReorientDuration: 0.35
+  wallCameraLerpSpeed: 10
   wallSeamHold: 0.12
   wallNormalSmooth: 14
   blockWallrunUntil: -999
@@ -7072,8 +7086,8 @@ MonoBehaviour:
   forwardCheckDistance: 1.2
   clearanceSkin: 0.06
   capsule: {fileID: 5095219399026788450}
-  groundCheckDistance: 0.2
-  maxGroundSlopeDeg: 55
+  groundCheckDistance: 0.3
+  maxGroundSlopeDeg: 65
   useEnvAsGround: 1
   continuousGroundNotify: 1
   groundNotifyInterval: 0.1
@@ -7110,8 +7124,6 @@ MonoBehaviour:
   drawGizmos: 1
   groundSnapDistance: 0.08
   fallProbeVelocityMul: 0.035
-  groundEnterStability: 0
-  groundExitStability: 0
 --- !u!114 &3708308717764851789
 MonoBehaviour:
   m_ObjectHideFlags: 0

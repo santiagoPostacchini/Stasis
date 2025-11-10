@@ -8400,6 +8400,11 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 2122600739204704095, guid: 6fb0e2e9ee217874c86400acb6232deb,
+        type: 3}
+      propertyPath: landEventCooldown
+      value: 0.1
+      objectReference: {fileID: 0}
     - target: {fileID: 4812101479202239431, guid: 6fb0e2e9ee217874c86400acb6232deb,
         type: 3}
       propertyPath: m_LocalPosition.x
@@ -8454,6 +8459,21 @@ PrefabInstance:
         type: 3}
       propertyPath: m_Name
       value: Player
+      objectReference: {fileID: 0}
+    - target: {fileID: 7897226680629307198, guid: 6fb0e2e9ee217874c86400acb6232deb,
+        type: 3}
+      propertyPath: landTiltMaxAngle
+      value: 9
+      objectReference: {fileID: 0}
+    - target: {fileID: 7897226680629307198, guid: 6fb0e2e9ee217874c86400acb6232deb,
+        type: 3}
+      propertyPath: landTiltMaxSpeed
+      value: 10
+      objectReference: {fileID: 0}
+    - target: {fileID: 7897226680629307198, guid: 6fb0e2e9ee217874c86400acb6232deb,
+        type: 3}
+      propertyPath: landTiltMinAngle
+      value: 3
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

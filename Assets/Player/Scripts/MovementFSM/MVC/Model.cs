@@ -10,7 +10,7 @@ namespace Player.Scripts.MovementFSM.MVC
 {
     public class Model : MonoBehaviour, ISoundPlayer
     {
-        public event Action<bool, float> OnGroundedChanged = delegate { };
+        public event Action<bool, float, float> OnGroundedChanged = delegate { };
         public event Action<float, float> OnMove = delegate { };
         public event Action<bool> OnJump = delegate { };
         public event Action OnJumpSucceeded = delegate { };
@@ -83,12 +83,20 @@ namespace Player.Scripts.MovementFSM.MVC
         public float minAirTime = 0.08f;
         public float landVelThreshold = -2.5f;
 
-        [Header("Landing Event")] public float landEventCooldown = 0.15f;
+        [Header("Landing Event")] 
+        public float landEventCooldown = 0.15f;
+        [Tooltip("Velocidad de caída (Y) necesaria para activar el 'stun'. Debe ser más negativa que 'landVelThreshold'.")]
+        public float hardLandVelThreshold = -8f;
+        [Tooltip("Velocidad máxima a la que se limitará el jugador durante el stun (m/s).")]
+        public float hardLandSpeedCap = 2f; 
+        [Tooltip("Duración del 'stun' (limitación de velocidad) en segundos.")]
+        public float hardLandStunDuration = 0.5f;
         [HideInInspector] public bool landedPending;
         [HideInInspector] public float lastAirTime;
         [HideInInspector] public float lastFallSpeed;
         [HideInInspector] public float lastLandingTime = -999f;
-
+        [HideInInspector] public float speedCapUntil = -999f;
+        
         [Header("Vault")] public float vaultRegrabCooldown = 0.25f;
         [HideInInspector] public float blockVaultUntil = -999f;
 
@@ -165,15 +173,12 @@ namespace Player.Scripts.MovementFSM.MVC
 
         [HideInInspector] public float wallJustJumpedUntil = -999f;
         [HideInInspector] public float wallSeamDisableUntil = -999f;
-
         [HideInInspector] public float lastLeftGroundTime = -999f;
-
         [HideInInspector] public float xAxis, zAxis, rawX, rawZ;
         [HideInInspector] public bool runningKeyPressed;
         [HideInInspector] public float stopThreshold = 0.05f;
         [HideInInspector] public float moveThreshold = 0.20f;
         [HideInInspector] public float stopCooldown = 0.2f;
-
         [HideInInspector] public bool wasMovingByInput;
         [HideInInspector] public float stopTimer;
 
@@ -181,7 +186,6 @@ namespace Player.Scripts.MovementFSM.MVC
         public bool canRun = true;
 
         [HideInInspector] public bool jumpDownThisFrame;
-
 
         private void Start()
         {
@@ -207,11 +211,9 @@ namespace Player.Scripts.MovementFSM.MVC
 
             if (Scanner)
             {
-                Scanner.OnProbeUpdated += p => probe = p;
                 probe = Scanner.Probe;
-
+                Scanner.OnProbeUpdated += p => probe = p;
                 Scanner.OnGroundedChanged += HandleGroundedChanged;
-                
                 Scanner.groundMask      = groundMask;
                 Scanner.environmentMask = groundMask | wallMask;
                 Scanner.tagVault        = tagVault;
@@ -279,8 +281,8 @@ namespace Player.Scripts.MovementFSM.MVC
         public void UpdateIsRunning(bool run) => OnRun?.Invoke(run);
 
         // ReSharper disable Unity.PerformanceAnalysis
-        private void GroundChangedEvent(bool grounded, float airTime)
-            => OnGroundedChanged?.Invoke(grounded, airTime);
+        private void GroundChangedEvent(bool grounded, float airTime, float fallSpeed)
+            => OnGroundedChanged?.Invoke(grounded, airTime, fallSpeed);
 
         // ReSharper disable Unity.PerformanceAnalysis
         public void WallrunStartEvent(int dir) => OnWallrunStart?.Invoke(dir);
@@ -311,7 +313,7 @@ namespace Player.Scripts.MovementFSM.MVC
         {
             if (!grounded)
             {
-                GroundChangedEvent(false, 0f);
+                GroundChangedEvent(false, 0f, 0f);
                 lastLeftGroundTime = Time.time;
                 airEnteredFromGround = true;
                 landedPending = false;
@@ -320,20 +322,12 @@ namespace Player.Scripts.MovementFSM.MVC
 
             if (Time.time < groundedIgnoreUntil)
             {
-                GroundChangedEvent(false, Time.time - lastLeftGroundTime);
-                return;
-            }
-
-            if (HasJumpBuffered())
-            {
-                GroundChangedEvent(false, Time.time - lastLeftGroundTime);
-                landedPending = false;
-                lastLandingTime = Time.time;
+                GroundChangedEvent(false, Time.time - lastLeftGroundTime, 0f);
                 return;
             }
             
             float airTime = Time.time - lastLeftGroundTime;
-            GroundChangedEvent(true, airTime);
+            GroundChangedEvent(true, airTime, lastFallSpeed);
 
             float at = airTime;
             bool minAirOk  = at >= minAirTime;
@@ -344,6 +338,10 @@ namespace Player.Scripts.MovementFSM.MVC
             {
                 lastLandingTime = Time.time;
                 landedPending = false;
+                if (lastFallSpeed <= hardLandVelThreshold)
+                {
+                    speedCapUntil = Time.time + hardLandStunDuration;
+                }
             }
             else
             {
