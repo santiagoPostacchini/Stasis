@@ -56,7 +56,8 @@ namespace Puzzle_Elements.Hedron.Scripts
         public Action OnCollision;
         public Action OnFreezeStart;
         public Action OnFreezeStop;
-
+        public Action OnGrab;
+        //
         [HideInInspector] public Vector3 posInitial;
 
         public PhysicsBox(bool isOverlappingAnything)
@@ -86,17 +87,21 @@ namespace Puzzle_Elements.Hedron.Scripts
 
         public void Grab()
         {
+            Debug.Log("grab2");
+            OnGrab += () => Debug.Log("Grab");
+            OnGrab?.Invoke();
             if (!_isFreezed)
             {
                 _savedVelocity = Vector3.zero;
                 _savedAngularVelocity = Vector3.zero;
-            }
 
+            }
+      
             gameObject.layer = _objGrabPointTransform.gameObject.layer;
             transform.parent = _objGrabPointTransform;
             transform.localPosition = Vector3.zero;
             transform.localRotation = Quaternion.identity;
-
+          
             rb.isKinematic = true;
             rb.useGravity = false;
 
@@ -124,7 +129,7 @@ namespace Puzzle_Elements.Hedron.Scripts
             rb.isKinematic = true;
             rb.useGravity  = false;
             SetSelfColliderTrigger(true);
-
+            OnGrab?.Invoke();
             _objGrabPointTransform = palm;
 
             StartCoroutine(Co_ApproachAndScale(palm, palmHeight, approachTime));

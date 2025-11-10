@@ -8,16 +8,18 @@ using Player.Scripts.MovementFSM;
 using Player.Scripts.MovementFSM.MVC;
 using System.Threading.Tasks;
 using System.Collections;
+using Audio.Scripts;
+using System;
 
 namespace Puzzle_Elements.Button.Scripts
 {
-    public class Button : MonoBehaviour, IInteractable
+    public class Button : MonoBehaviour, IInteractable, ISoundPlayer
     {
         private static readonly int Click = Animator.StringToHash("Click");
         public string animatorParam = "click";
         [SerializeField] private Animator animator;
         [Tooltip("Evento lanzado al presionar el boton")]
-        public UnityEvent onPressed;
+        public UnityEvent OnPressed;
         [Tooltip("Texto que aparece al entrar en colision con el boton")]
         [SerializeField] private TextMeshProUGUI textInteract;
         public Material yellow, green;
@@ -27,11 +29,14 @@ namespace Puzzle_Elements.Button.Scripts
         public TextMeshProUGUI E;
         public TextMeshProUGUI text;
 
+
+        public Action OnPressedAudio;
         public void SetText(TextMeshProUGUI texto, string message)
         {
             if (E == null || text == null) return;
             texto.text = message;
         }
+
         public void Interact()
         {
             Debug.Log("TrayApplyInteract");
@@ -51,7 +56,8 @@ namespace Puzzle_Elements.Button.Scripts
         IEnumerator ActivateEvent()
         {
             yield return new WaitForSeconds(1f);
-            onPressed?.Invoke();
+            OnPressed?.Invoke();
+            OnPressedAudio?.Invoke();
         }
        
         IEnumerator ReturnToIdle()
