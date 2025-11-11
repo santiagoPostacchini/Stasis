@@ -12,14 +12,14 @@ public class ElevatorShipmentTrain : MonoBehaviour, IStasis
     public StasisEffect StasisEffect { get; private set; }
 
     private PistonVisualAuto _visual;
-    private KinematicPiston _piston;
+    private KinematicCargoPlatform _piston;
 
     private List<StasisPartElevatorShipmentTrain> list = new List<StasisPartElevatorShipmentTrain>();
     // Start is called before the first frame update
     private void Awake()
     {
         _visual = GetComponent<PistonVisualAuto>();
-        _piston = GetComponentInChildren<KinematicPiston>();
+        _piston = GetComponentInChildren<KinematicCargoPlatform>();
     }
     void Start()
     {

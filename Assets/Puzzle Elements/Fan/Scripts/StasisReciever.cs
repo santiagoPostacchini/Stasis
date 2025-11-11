@@ -16,7 +16,7 @@ namespace Puzzle_Elements.Fan.Scripts
         }
         private void Update()
         {
-            if (Vector3.Distance(transform.position, GameManager.Instance.player.transform.position) < 10)
+            if (Vector3.Distance(transform.position, GameManager.Instance.player.transform.position) < 20)
             {
                 _col.isTrigger = true;
             }
