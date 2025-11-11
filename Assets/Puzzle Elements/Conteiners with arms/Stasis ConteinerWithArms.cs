@@ -5,6 +5,7 @@ using UnityEngine;
 
 public class StasisConteinerWithArms : MonoBehaviour,IStasis
 {
+    public StasisConectionTipControllerWithCargo _stasisConection;
     public bool IsFreezed => isFreezed;
 
     public StasisEffect StasisEffect { get; private set; }
@@ -24,14 +25,24 @@ public class StasisConteinerWithArms : MonoBehaviour,IStasis
     public void StatisEffectActivate()
     {
         FreezeObject();
+        if (_stasisConection != null)
+        {
+            //_stasisConection.Conection(false,null,this);
+            _stasisConection.Notify(true, isFreezed, null, this);
+        }
     }
 
     public void StatisEffectDeactivate()
     {
         UnfreezeObject();
+        if (_stasisConection != null)
+        {
+            //_stasisConection.Conection(false,null,this);
+            _stasisConection.Notify(true, isFreezed, null, this);
+        }
     }
 
-    private void FreezeObject()
+    public void FreezeObject()
     {
         if (!isFreezed)
         {
@@ -42,7 +53,7 @@ public class StasisConteinerWithArms : MonoBehaviour,IStasis
         }
     }
 
-    private void UnfreezeObject()
+    public void UnfreezeObject()
     {
 
         if (!isFreezed) return;

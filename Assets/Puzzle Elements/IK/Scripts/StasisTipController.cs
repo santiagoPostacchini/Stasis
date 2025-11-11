@@ -7,6 +7,8 @@ using Managers.Game;
 
 public class StasisTipController : MonoBehaviour,IStasis
 {
+
+    public StasisConectionTipControllerWithCargo _stasisConection;
     public bool IsFreezed => _isFreezed;
     public StasisEffect StasisEffect { get; }
     private bool _isFreezed = false;
@@ -77,15 +79,25 @@ public class StasisTipController : MonoBehaviour,IStasis
     {
 
         FreezeObject();
+        if(_stasisConection != null)
+        {
+            //_stasisConection.Conection(true,this,null);
+            _stasisConection.Notify(true, _isFreezed, this, null);
+        }
         _followTargetController.canMove = false;
     }
 
     public void StatisEffectDeactivate()
     {
         UnfreezeObject();
+        if (_stasisConection != null)
+        {
+            //_stasisConection.Conection(true,this,null);
+            _stasisConection.Notify(true, _isFreezed, this, null);
+        }
         _followTargetController.canMove = true;
     }
-    private void FreezeObject()
+    public void FreezeObject()
     {
         if (!_isFreezed)
         {
@@ -95,7 +107,7 @@ public class StasisTipController : MonoBehaviour,IStasis
         }
     }
 
-    private void UnfreezeObject()
+    public void UnfreezeObject()
     {
         if (!_isFreezed) return;
         _isFreezed = false;

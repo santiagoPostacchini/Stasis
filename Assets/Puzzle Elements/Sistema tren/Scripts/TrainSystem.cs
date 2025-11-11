@@ -154,7 +154,7 @@ public class TrainSystem : MonoBehaviour
 
         // Siempre al índice 0 para el "start" del sistema
         TeleportRbTo(trainRb, trainWaypoints[0].position);
-
+        barricadeRb.gameObject.transform.position = barricadeWP1.transform.position;
         // Reset de estado coherente con cualquier modo
         trainRunRequested = false;
         trainHaltAtDeparture = false;
