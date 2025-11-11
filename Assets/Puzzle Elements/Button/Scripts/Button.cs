@@ -51,13 +51,13 @@ namespace Puzzle_Elements.Button.Scripts
             //ChangeMaterial();
             EventManager.TriggerEvent("Click", gameObject);
             Debug.Log("Evento llamado");
+            OnPressedAudio?.Invoke();
             StartCoroutine(ReturnToIdle());
         }
         IEnumerator ActivateEvent()
         {
             yield return new WaitForSeconds(1f);
             OnPressed?.Invoke();
-            OnPressedAudio?.Invoke();
         }
        
         IEnumerator ReturnToIdle()

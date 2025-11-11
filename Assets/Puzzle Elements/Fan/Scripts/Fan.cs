@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Player.Stasis;
 using UnityEngine;
@@ -77,6 +78,9 @@ namespace Puzzle_Elements.Fan.Scripts
         public Color gizmoColorFront = new Color(0f, 0.8f, 1f, 0.7f);
         public Color gizmoColorBack = new Color(1f, 0.6f, 0f, 0.7f);
 
+
+        public Action OnPlayFan;
+        public Action OnOffFan;
         private void Awake()
         {
             _rb = GetComponent<Rigidbody>();
@@ -118,6 +122,11 @@ namespace Puzzle_Elements.Fan.Scripts
         private void SetRunning(bool running)
         {
             _isRunning = running;
+            if (running)
+            {
+                OnPlayFan?.Invoke();
+            }
+            else OnOffFan?.Invoke();
             if (!running) _rb.angularVelocity = Vector3.zero;
             if (running && windParticles) windParticles.Play();
             else if (windParticles) windParticles.Pause();
@@ -140,6 +149,7 @@ namespace Puzzle_Elements.Fan.Scripts
         {
             _isStasis = true;
             _rb.isKinematic = true;
+            OnOffFan?.Invoke();
             _rb.angularVelocity = Vector3.zero;
             _ccExternalVel.Clear();
             if (windParticles) windParticles.Stop();
@@ -151,6 +161,7 @@ namespace Puzzle_Elements.Fan.Scripts
             _isStasis = false;
             _rb.isKinematic = false;
             if (windParticles) windParticles.Play();
+            OnPlayFan?.Invoke();
             StasisEffect.StasisEffectStop();
         }
         

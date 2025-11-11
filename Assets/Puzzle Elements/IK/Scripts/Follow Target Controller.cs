@@ -314,6 +314,19 @@ public class FollowTargetController : MonoBehaviour
         ChangePosition();
     }
 
+
+    public void ChangePositionToBrother()
+    {
+        currentTip = startAnchor;
+        if (moveRoutine != null) StopCoroutine(moveRoutine);
+        moveRoutine = StartCoroutine(MoveRB_Pausable(currentTip, moveDuration));
+    }
+    public void ChangePositionToStartAnchor()
+    {
+        currentTip = brother;
+        if (moveRoutine != null) StopCoroutine(moveRoutine);
+        moveRoutine = StartCoroutine(MoveRB_Pausable(currentTip, moveDuration));
+    }
     /// <summary>
     /// Toggles target tip between StartAnchor (A) and Brother (B), running a timed move.
     /// </summary>
