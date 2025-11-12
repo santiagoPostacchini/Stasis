@@ -59,7 +59,7 @@ namespace Editor
                     // Solo sincroniza la lista en el inspector (no suscribe)
                     Undo.RecordObject(agent, "Refresh Audio Events");
                     var keys = AudioEventHub.EditorScanTargets(agent.TargetScripts)
-                                             .Select(p => AudioEventHub.MakeKeyForEditor(agent, p.script, p.memberName));
+                                             .Select(p => AudioEventHub.MakeKeyForEditor(p.script, p.memberName));
                     agent.SyncEventConfigListWithReflectedMembers(keys);
                     EditorUtility.SetDirty(agent);
                     GUI.FocusControl(null);

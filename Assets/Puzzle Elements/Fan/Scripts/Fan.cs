@@ -129,39 +129,23 @@ namespace Puzzle_Elements.Fan.Scripts
             else OnOffFan?.Invoke();
             if (!running) _rb.angularVelocity = Vector3.zero;
             if (running && windParticles) windParticles.Play();
-            else if (windParticles) windParticles.Pause();
+            else if (windParticles) windParticles.Stop();
         }
 
         public bool IsFreezed => _isStasis;
         public StasisEffect StasisEffect { get; private set; }
-
-        public void EventPositiveFan()
-        {
-            if (!IsFreezed) StatisEffectActivate();
-        }
-
-        public void EventNegativeFan()
-        {
-            if (IsFreezed) StatisEffectDeactivate();
-        }
-
+        
         public void StatisEffectActivate()
         {
             _isStasis = true;
-            _rb.isKinematic = true;
-            OnOffFan?.Invoke();
-            _rb.angularVelocity = Vector3.zero;
-            _ccExternalVel.Clear();
-            if (windParticles) windParticles.Stop();
+            StopFan();
             StasisEffect.StasisEffectStart();
         }
 
         public void StatisEffectDeactivate()
         {
             _isStasis = false;
-            _rb.isKinematic = false;
-            if (windParticles) windParticles.Play();
-            OnPlayFan?.Invoke();
+            StartFan();
             StasisEffect.StasisEffectStop();
         }
         

@@ -7,10 +7,6 @@ using UnityEngine;
 
 namespace Audio.Scripts
 {
-    /// <summary>
-    /// Manager central (flyweight) que escanea, se suscribe y reproduce SFX
-    /// para todos los AudioEventAgent registrados.
-    /// </summary>
     [DefaultExecutionOrder(-50)]
     public class AudioEventHub : MonoBehaviour
     {
@@ -151,7 +147,7 @@ namespace Audio.Scripts
             {
                 var handlerType = ei.EventHandlerType;
                 if (!IsZeroParamDelegateType(handlerType)) continue;
-                string key = MakeKey(agent, script, ei.Name);
+                string key = MakeKey(script, ei.Name);
                 _eventsByKey[agent][key] = (script, ei);
             }
 
@@ -161,7 +157,7 @@ namespace Audio.Scripts
                 if (!typeof(Delegate).IsAssignableFrom(fType)) continue;
                 if (!IsZeroParamDelegateType(fType)) continue;
                 if (fi.Name.Contains("k__BackingField")) continue;
-                string key = MakeKey(agent, script, fi.Name);
+                string key = MakeKey(script, fi.Name);
                 _fieldsByKey[agent][key] = (script, fi);
             }
         }
@@ -186,8 +182,8 @@ namespace Audio.Scripts
             if (_fieldsByKey.TryGetValue(agent, out var f)) foreach (var k in f.Keys) yield return k;
         }
 
-        private static string MakeKey(AudioEventAgent agent, MonoBehaviour script, string memberName)
-            => $"{agent.GetInstanceID()}::{script.GetInstanceID()}::{memberName}";
+        private static string MakeKey(MonoBehaviour script, string memberName)
+            => $"{script.GetType().FullName}::{memberName}";
 
         // ---------- Event handler ----------
         private void OnReflectedEvent(AudioEventAgent agent, string eventKey)
@@ -408,7 +404,7 @@ namespace Audio.Scripts
             }
         }
 
-        public static string MakeKeyForEditor(AudioEventAgent agent, MonoBehaviour script, string memberName)
-            => $"{agent.GetInstanceID()}::{script.GetInstanceID()}::{memberName}";
+        public static string MakeKeyForEditor(MonoBehaviour script, string memberName)
+            => $"{script.GetType().FullName}::{memberName}";
     }
 }
