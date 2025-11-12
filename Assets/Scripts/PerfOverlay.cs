@@ -1,5 +1,5 @@
 using System;
-using System.Diagnostics; // Process, TotalProcessorTime
+using System.Diagnostics;
 using System.Text;
 using TMPro;
 using UnityEngine;
@@ -79,6 +79,7 @@ public class PerfOverlay : MonoBehaviour
         _frames++;
 
         // CPU % proceso (cada ~250 ms)
+        /*
         var now = Time.realtimeSinceStartupAsDouble;
         var dt = now - _lastWall;
         if (dt >= 0.25)
@@ -90,7 +91,7 @@ public class PerfOverlay : MonoBehaviour
             _cpuUsagePercent = Mathf.Clamp((float)(cpuDelta / (dt * logical) * 100.0), 0f, 100f);
             _lastCpuTotal = cur;
             _lastWall = now;
-        }
+        }*/
 
         if (Time.unscaledTime >= _nextUpdate)
         {
