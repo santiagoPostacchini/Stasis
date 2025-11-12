@@ -5,9 +5,6 @@ using ObjectPool;
 
 namespace Audio.Scripts
 {
-    /// <summary>
-    /// Punto único para pedir/devolver AudioSources del pool y configurarlos.
-    /// </summary>
     public class SfxManager : MonoBehaviour
     {
         public static SfxManager Instance;

@@ -6,10 +6,6 @@ using UnityEngine.Audio;
 
 namespace Audio.Scripts
 {
-    /// <summary>
-    /// Componente liviano por objeto. Solo guarda configuración e indica
-    /// qué scripts deben escanearse. El procesamiento lo hace AudioEventHub.
-    /// </summary>
     [DisallowMultipleComponent]
     public class AudioEventAgent : MonoBehaviour
     {
@@ -63,37 +59,51 @@ namespace Audio.Scripts
         // ---------- Sync de inspector (no suscribe) ----------
         public void SyncEventConfigListWithReflectedMembers(IEnumerable<string> detectedKeys)
         {
-            // agregar los nuevos
-            var enumerable = detectedKeys as string[] ?? detectedKeys.ToArray();
-            foreach (var key in enumerable)
-                if (events.All(e => e.eventKey != key))
+            var detectedKeyList = detectedKeys as string[] ?? detectedKeys.ToArray();
+            // 1. Crear un diccionario de las configuraciones existentes para búsqueda rápida
+            var existingConfigs = events.ToDictionary(e => e.eventKey, e => e);
+            var newEventList = new List<EventConfig>();
+            foreach (var key in detectedKeyList)
+            {
+                // Generar los nombres amigables desde la nueva key (Ej: "PlayerSounds.OnJump")
+                var parts = key.Split(new[] { "::" }, StringSplitOptions.None);
+                var member = parts.Length > 1 ? parts[1] : key;
+                string display = member;
+                if (parts.Length > 1)
                 {
-                    var parts = key.Split(new[] { "::" }, StringSplitOptions.None);
-                    var member = parts.Length > 2 ? parts[2] : key;
-                    // Display: Script.Member (si se puede)
-                    string display = member;
-#if UNITY_EDITOR
-                    // En editor podemos intentar sacar el nombre del tipo de script
-                    if (int.TryParse(parts[1], out _))
-                        display = member; // fallback
-#endif
-                    events.Add(new EventConfig { eventKey = key, eventName = member, displayName = display });
+                    var typeName = parts[0].Split('.').LastOrDefault() ?? parts[0];
+                    display = $"{typeName}.{member}";
                 }
 
-            // quitar los que ya no existen
-            var keySet = new HashSet<string>(enumerable);
-            events.RemoveAll(e => !keySet.Contains(e.eventKey));
+                if (existingConfigs.TryGetValue(key, out var existingConfig))
+                {
+                    // 3. ¡La key existe! Preservamos la configuración antigua.
+                    //    Actualizamos el display/event name por si cambió.
+                    existingConfig.displayName = display;
+                    existingConfig.eventName = member;
+                    newEventList.Add(existingConfig);
+                }
+                else
+                {
+                    // 4. La key es nueva. Creamos una configuración por defecto.
+                    newEventList.Add(new EventConfig { eventKey = key, eventName = member, displayName = display });
+                }
+            }
+            events.Clear();
+            events.AddRange(newEventList);
         }
+
 
 #if UNITY_EDITOR
         private IEnumerable<string> EditorDetectedKeys()
         {
             foreach (var (script, member) in AudioEventHub.EditorScanTargets(targetScripts))
-                yield return AudioEventHub.MakeKeyForEditor(this, script, member);
+            {
+                yield return AudioEventHub.MakeKeyForEditor(script, member);
+            }
         }
 #endif
 
-        // ----------------- Data structs -----------------
         [Serializable]
         public class EventConfig
         {

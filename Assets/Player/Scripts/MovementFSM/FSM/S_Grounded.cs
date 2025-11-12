@@ -55,7 +55,9 @@ namespace Player.Scripts.MovementFSM
             HandleStoppingLogic();
 
             bool grounded = _model.IsGroundedNow();
-            if (!grounded && _wasGrounded)
+            
+            if (!grounded && _wasGrounded && 
+                (!_model.StairStepper || !_model.StairStepper.IsStepping))
             {
                 _model.lastLeftGroundTime = Time.time;
                 _model.airEnteredFromGround = true;
@@ -288,10 +290,18 @@ namespace Player.Scripts.MovementFSM
 
             if (!allowSlide)
             {
-                if (_model.rb.velocity.y <= 0.1f)
+                if (_model.rb.useGravity) _model.rb.useGravity = false;
+
+                if (_model.rb.velocity.y < 0.1f)
                 {
-                    _model.rb.AddForce(Vector3.down * 5f, ForceMode.Acceleration);
+                    var vel = _model.rb.velocity;
+                    vel.y = 0;
+                    _model.rb.velocity = vel;
                 }
+            }
+            else
+            {
+                if (_model.rb.useGravity == false) _model.rb.useGravity = true;
             }
         }
     }
