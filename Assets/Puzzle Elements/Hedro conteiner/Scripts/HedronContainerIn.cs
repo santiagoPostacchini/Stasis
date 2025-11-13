@@ -94,7 +94,8 @@ public class HedronContainerIn : MonoBehaviour, IInteractable
     private bool canAtracction = true;
     private bool canOpenPanel = true;
 
-    public Action OnHedroContainerActivate; 
+    public Action OnHedroContainerActivate;
+   
 
     // ====== STATE MACHINE ======
     private enum ContainerState

@@ -28,14 +28,16 @@ public class TrainSystem : MonoBehaviour
     public float barricadeSpeed = 2.5f;
     public float barricadeArriveThreshold = 0.02f;
 
-    public enum TrainPathMode { Loop, PingPong, Once } // <-- NUEVO
+    public enum TrainPathMode { Loop, PingPong, Once }
 
     [Header("Train (Rigidbody kinematic + Waypoints)")]
     [Tooltip("Rigidbody del tren (debe estar en Kinematic = true).")]
-    public Rigidbody trainRb; // <-- ahora movemos por Rigidbody kinematic + MovePosition
+    public Rigidbody trainRb;
     public List<Transform> trainWaypoints = new List<Transform>();
     public Transform departure;
     public float trainSpeed = 4f;
+    [Tooltip("Aceleración del tren para el perfil trapezoidal.")]
+    public float trainAcceleration = 6f;
     public float trainArriveThreshold = 0.03f;
     [Tooltip("Tiempo de espera en el extremo. En Loop también se usa antes del teletransporte al primero.")]
     public float trainTeleportWaitSeconds = 2f;
@@ -79,18 +81,32 @@ public class TrainSystem : MonoBehaviour
     private int trainCurrentIdx;
     private int trainDir = +1; // +1 adelante, -1 atrás
     private float trainWaitUntil;
-    private enum TrainState { IdleAtDeparture, Running, PauseAtEnd, HoldAtEnd } // <-- NUEVO estado
+    private enum TrainState { IdleAtDeparture, Running, PauseAtEnd, HoldAtEnd }
     private TrainState trainState = TrainState.IdleAtDeparture;
     private int trainPauseNextIdx;
     private bool trainPauseDoTeleport;
 
-    public UnityEvent eventsPlayerDeath;
+    // --- Perfil trapezoidal para el tren (por segmento) ---
+    private bool trainSegmentActive;
+    private Vector3 trainSegmentFrom;
+    private Vector3 trainSegmentTo;
+    private Vector3 trainSegmentDirN;
+    private float trainSegmentDistance;
+    private float trainSegmentTravelled;
+    private float trainCurrentSpeed;
 
+    private enum TrainProfilePhase { Accel, Cruise, Decel }
+    private TrainProfilePhase trainProfilePhase;
+
+    public UnityEvent eventsPlayerDeath;
 
     public Action OnTrenStartEngine;
     public Action OnTrenEndEngine;
     public Action OnTrenStartMovement;
     public Action OnTrenEndMovement;
+
+
+    private bool _alreadyActivate = false;
 
     void Awake()
     {
@@ -98,6 +114,7 @@ public class TrainSystem : MonoBehaviour
         HookContainer(true);
         PrepareSystems();
     }
+
     private void Start()
     {
         GameManager.Instance.OnDeathPlayer += TeleportTrainToStart;
@@ -126,14 +143,20 @@ public class TrainSystem : MonoBehaviour
     }
 
     public void EnableSystem() => StartAllMovement();
+
     public void StartEngineTrain()
     {
-        OnTrenStartEngine.Invoke();
+        if (_alreadyActivate) return;
+        OnTrenStartEngine?.Invoke();
+        _alreadyActivate = true;
     }
+
     public void EndEngineTrain()
     {
         OnTrenEndEngine?.Invoke();
+        _alreadyActivate = false;
     }
+
     public void RequestTrainHaltAtDeparture()
     {
         if (!trainConfigured) return;
@@ -168,6 +191,8 @@ public class TrainSystem : MonoBehaviour
 
         // Siempre al índice 0 para el "start" del sistema
         TeleportRbTo(trainRb, trainWaypoints[0].position);
+        ResetTrainSegmentProfile();
+
         barricadeRb.gameObject.transform.position = barricadeWP1.transform.position;
         // Reset de estado coherente con cualquier modo
         trainRunRequested = false;
@@ -194,11 +219,12 @@ public class TrainSystem : MonoBehaviour
         eventsPlayerDeath?.Invoke();
         OnTrenEndMovement?.Invoke();
     }
-    IEnumerator OpenHedronConteiners() 
+
+    IEnumerator OpenHedronConteiners()
     {
         yield return new WaitForSeconds(3f);
-
     }
+
     void FixedUpdate()
     {
         elevConfigured = IsElevatorConfigured();
@@ -259,6 +285,8 @@ public class TrainSystem : MonoBehaviour
         else barrState = BarricadeState.Idle;
 
         // Train (Rigidbody Kinematic)
+        ResetTrainSegmentProfile();
+
         if (ValidateTrainSetup())
         {
             // Índices por defecto
@@ -273,6 +301,8 @@ public class TrainSystem : MonoBehaviour
                 if (resetPositions && !IsNear(trainRb.position, trainWaypoints[0].position, trainArriveThreshold))
                     TeleportRbTo(trainRb, trainWaypoints[0].position);
 
+                ResetTrainSegmentProfile();
+
                 trainState = TrainState.IdleAtDeparture;
                 trainRunRequested = false;
                 trainDir = +1;
@@ -284,6 +314,8 @@ public class TrainSystem : MonoBehaviour
                 trainDepIdx = trainWaypoints.IndexOf(departure);
                 if (resetPositions && !IsNear(trainRb.position, trainWaypoints[trainDepIdx].position, trainArriveThreshold))
                     TeleportRbTo(trainRb, trainWaypoints[trainDepIdx].position);
+
+                ResetTrainSegmentProfile();
 
                 trainState = TrainState.IdleAtDeparture;
                 trainRunRequested = false;
@@ -319,7 +351,7 @@ public class TrainSystem : MonoBehaviour
 
     private bool ValidateTrainSetup()
     {
-        if (trainRb == null) return false; // <-- requerimos el Rigidbody del tren
+        if (trainRb == null) return false;
         if (!trainRb.isKinematic)
         {
             // Debug.LogWarning("[TrainSystem] trainRb debe ser Kinematic = true.", this);
@@ -462,7 +494,6 @@ public class TrainSystem : MonoBehaviour
         if (!systemEnabled || !trainConfigured) return;
         trainRunRequested = true;
         onTrainStarted?.Invoke();
-        //
         OnTrenStartMovement?.Invoke();
     }
 
@@ -480,12 +511,16 @@ public class TrainSystem : MonoBehaviour
                     Vector3 depPos = trainWaypoints[depIndex].position;
 
                     if (!IsNear(trainRb.position, depPos, trainArriveThreshold))
+                    {
                         TeleportRbTo(trainRb, depPos);
+                        ResetTrainSegmentProfile();
+                    }
 
                     if (trainRunRequested)
                     {
                         trainDir = +1;
                         trainCurrentIdx = (trainPathMode == TrainPathMode.Once) ? 1 : NextIndexFrom(depIndex, trainDir);
+                        ResetTrainSegmentProfile();
                         trainState = TrainState.Running;
                     }
                     break;
@@ -505,6 +540,7 @@ public class TrainSystem : MonoBehaviour
                         onTrainStoppedAtDeparture?.Invoke();
                         trainHaltAtDeparture = false;
                         trainState = TrainState.IdleAtDeparture;
+                        ResetTrainSegmentProfile();
                         break;
                     }
 
@@ -513,6 +549,7 @@ public class TrainSystem : MonoBehaviour
                         // Llegamos a [1] -> quedarnos ahí
                         trainRunRequested = false;
                         trainState = TrainState.HoldAtEnd; // se queda detenido en el objetivo
+                        ResetTrainSegmentProfile();
                     }
                     else if (trainPathMode == TrainPathMode.Loop)
                     {
@@ -523,10 +560,12 @@ public class TrainSystem : MonoBehaviour
                             trainPauseDoTeleport = true;
                             trainPauseNextIdx = Mathf.Clamp(trainFirstIdx + 1, trainFirstIdx, trainLastIdx);
                             trainState = TrainState.PauseAtEnd;
+                            ResetTrainSegmentProfile();
                         }
                         else
                         {
                             trainCurrentIdx = next;
+                            ResetTrainSegmentProfile();
                         }
                     }
                     else // PingPong
@@ -540,10 +579,12 @@ public class TrainSystem : MonoBehaviour
                             trainPauseDoTeleport = false; // no teletransporte en ping-pong
                             trainPauseNextIdx = Mathf.Clamp(trainCurrentIdx + trainDir, trainFirstIdx, trainLastIdx);
                             trainState = TrainState.PauseAtEnd;
+                            ResetTrainSegmentProfile();
                         }
                         else
                         {
                             trainCurrentIdx = next;
+                            ResetTrainSegmentProfile();
                         }
                     }
                     break;
@@ -557,6 +598,8 @@ public class TrainSystem : MonoBehaviour
                     {
                         TeleportRbTo(trainRb, trainWaypoints[trainFirstIdx].position);
                     }
+
+                    ResetTrainSegmentProfile();
 
                     trainCurrentIdx = trainPauseNextIdx;
 
@@ -605,24 +648,74 @@ public class TrainSystem : MonoBehaviour
         return false;
     }
 
-    // Helpers: Rigidbody Kinematic (tren)
-    private bool MoveKinematicLinear(Rigidbody rb, Vector3 targetPos, float speed, float arriveThreshold)
+    // --- Perfil trapezoidal para el tren --- //
+    private void ResetTrainSegmentProfile()
     {
-        // MovePosition respeta colisiones y sincroniza con la física.
-        Vector3 toTarget = targetPos - rb.position;
-        float dist = toTarget.magnitude;
+        trainSegmentActive = false;
+        trainSegmentDistance = 0f;
+        trainSegmentTravelled = 0f;
+        trainCurrentSpeed = 0f;
+        trainProfilePhase = TrainProfilePhase.Accel;
+    }
 
-        if (dist <= arriveThreshold)
+    private void BeginTrainSegment(Vector3 from, Vector3 to)
+    {
+        trainSegmentFrom = from;
+        trainSegmentTo = to;
+        trainSegmentDirN = (to - from).normalized;
+        trainSegmentDistance = Vector3.Distance(from, to);
+        trainSegmentTravelled = 0f;
+        trainCurrentSpeed = 0f;
+        trainProfilePhase = TrainProfilePhase.Accel;
+        trainSegmentActive = true;
+    }
+
+    // Helpers: Rigidbody Kinematic (tren) con aceleración y desaceleración suaves
+    private bool MoveKinematicLinear(Rigidbody rb, Vector3 targetPos, float cruiseSpeed, float arriveThreshold)
+    {
+        // Vector hacia el objetivo
+        Vector3 toTarget = targetPos - rb.position;
+        float distance = toTarget.magnitude;
+
+        // Si ya estamos muy cerca, colocamos en destino y reseteamos velocidad
+        if (distance <= arriveThreshold)
         {
             rb.MovePosition(targetPos);
+            trainCurrentSpeed = 0f;
             return true;
         }
 
-        float s = Mathf.Max(0f, speed);
-        float step = s * Time.fixedDeltaTime;
-        Vector3 dir = (dist > 1e-5f) ? (toTarget / dist) : Vector3.zero;
-        Vector3 next = (step >= dist) ? targetPos : rb.position + dir * step;
+        float dt = Time.fixedDeltaTime;
+
+        // Parámetros del perfil
+        float accel = Mathf.Max(1e-4f, trainAcceleration); // usa tu variable pública
+        float maxSpeed = Mathf.Max(0f, cruiseSpeed);       // usa trainSpeed que le pasás
+
+        // Velocidad máxima que me puedo permitir si quiero poder frenar en "distance"
+        float maxSpeedForStop = Mathf.Sqrt(Mathf.Max(0f, 2f * accel * distance));
+        float desiredSpeed = Mathf.Min(maxSpeed, maxSpeedForStop);
+
+        // Aceleramos o frenamos hacia esa velocidad deseada
+        trainCurrentSpeed = Mathf.MoveTowards(trainCurrentSpeed, desiredSpeed, accel * dt);
+
+        // Paso de movimiento
+        float step = trainCurrentSpeed * dt;
+
+        // Dirección normalizada
+        Vector3 dir = (distance > 1e-5f) ? (toTarget / distance) : Vector3.zero;
+
+        // Siguiente posición (clamp para no pasarse del objetivo)
+        Vector3 next = (step >= distance) ? targetPos : rb.position + dir * step;
+
         rb.MovePosition(next);
+
+        // Si el paso fue suficiente para llegar o pasarse, consideramos que llegamos
+        if (step >= distance)
+        {
+            trainCurrentSpeed = 0f;
+            return true;
+        }
+
         return false;
     }
 
@@ -632,10 +725,12 @@ public class TrainSystem : MonoBehaviour
     private void TeleportRbTo(Rigidbody rb, Vector3 pos)
     {
         if (rb == null) return;
-        // Teletransporte inmediato y limpio; no usar MovePosition para saltos grandes.
         rb.position = pos;
         rb.velocity = Vector3.zero;
         rb.angularVelocity = Vector3.zero;
+
+        if (rb == trainRb)
+            ResetTrainSegmentProfile();
     }
 
 #if UNITY_EDITOR
