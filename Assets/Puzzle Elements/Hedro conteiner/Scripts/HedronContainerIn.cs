@@ -5,6 +5,7 @@ using UnityEngine;
 using UnityEngine.Events;
 using Player.Scripts.Interactor;
 using TMPro;
+using System;
 
 [RequireComponent(typeof(Collider))]
 public class HedronContainerIn : MonoBehaviour, IInteractable
@@ -92,6 +93,8 @@ public class HedronContainerIn : MonoBehaviour, IInteractable
 
     private bool canAtracction = true;
     private bool canOpenPanel = true;
+
+    public Action OnHedroContainerActivate; 
 
     // ====== STATE MACHINE ======
     private enum ContainerState
@@ -362,6 +365,7 @@ public class HedronContainerIn : MonoBehaviour, IInteractable
             _placedFired = true;
 
             onHedronPlaced?.Invoke();
+            OnHedroContainerActivate?.Invoke();
 
             var rbBox = _box != null ? _box.GetComponent<Rigidbody>() : null;
             if (rbBox != null) rbBox.useGravity = false;
@@ -573,12 +577,13 @@ public class HedronContainerIn : MonoBehaviour, IInteractable
 
             if (ejectTorque > 0f)
             {
-                Vector3 rand = Random.onUnitSphere * ejectTorque;
+                Vector3 rand = UnityEngine.Random.onUnitSphere * ejectTorque;
                 _rb.AddTorque(rand, ForceMode.VelocityChange);
             }
         }
 
         onHedronRemoved?.Invoke();
+        OnHedroContainerActivate?.Invoke();
 
         _isEjecting = false;
         ResetToIdle();
