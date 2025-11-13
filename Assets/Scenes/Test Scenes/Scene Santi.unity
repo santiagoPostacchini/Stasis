@@ -2502,7 +2502,7 @@ Transform:
   m_GameObject: {fileID: 807316376}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0.70710576, z: -0, w: 0.7071078}
-  m_LocalPosition: {x: -1.93, y: 2.9717045, z: -8.16}
+  m_LocalPosition: {x: -1.93, y: 4.97, z: -8.16}
   m_LocalScale: {x: 0.24477322, y: 3.6576, z: 7.8770685}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -2963,7 +2963,7 @@ Transform:
   m_GameObject: {fileID: 1768396071}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 3.7524135, y: 2.9717045, z: -4.2156496}
+  m_LocalPosition: {x: 3.7524135, y: 4.68, z: -4.2156496}
   m_LocalScale: {x: 0.24477322, y: 3.6576, z: 7.8770685}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -3068,7 +3068,7 @@ Transform:
   m_GameObject: {fileID: 1775301044}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0.70710576, z: -0, w: 0.7071078}
-  m_LocalPosition: {x: -7.43, y: 2.9717045, z: -4.66}
+  m_LocalPosition: {x: -7.43, y: 4.82, z: -4.66}
   m_LocalScale: {x: 0.24477322, y: 3.6576, z: 7.8770685}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -8400,6 +8400,21 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 2238090570637613019, guid: 6fb0e2e9ee217874c86400acb6232deb,
+        type: 3}
+      propertyPath: stepHeight
+      value: 0.4
+      objectReference: {fileID: 0}
+    - target: {fileID: 2238090570637613019, guid: 6fb0e2e9ee217874c86400acb6232deb,
+        type: 3}
+      propertyPath: shoulderWidth
+      value: 0.55
+      objectReference: {fileID: 0}
+    - target: {fileID: 2238090570637613019, guid: 6fb0e2e9ee217874c86400acb6232deb,
+        type: 3}
+      propertyPath: shoulderHeightOffset
+      value: 1.4
+      objectReference: {fileID: 0}
     - target: {fileID: 4812101479202239431, guid: 6fb0e2e9ee217874c86400acb6232deb,
         type: 3}
       propertyPath: m_LocalPosition.x
@@ -8454,6 +8469,16 @@ PrefabInstance:
         type: 3}
       propertyPath: m_Name
       value: Player
+      objectReference: {fileID: 0}
+    - target: {fileID: 7897226680629307198, guid: 6fb0e2e9ee217874c86400acb6232deb,
+        type: 3}
+      propertyPath: climbFovAdd
+      value: 15
+      objectReference: {fileID: 0}
+    - target: {fileID: 7897226680629307198, guid: 6fb0e2e9ee217874c86400acb6232deb,
+        type: 3}
+      propertyPath: enableHeadbob
+      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

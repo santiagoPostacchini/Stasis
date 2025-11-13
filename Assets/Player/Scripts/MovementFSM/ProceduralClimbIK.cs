@@ -49,6 +49,16 @@ namespace Player.Scripts.MovementFSM
 
         private float _climbCycle;
 
+        // Public methods for camera effects
+        public float GetClimbCycle() => _climbCycle;
+        
+        public float GetHandHeightDifference()
+        {
+            if (!rHandTarget || !lHandTarget) return 0f;
+            // Positive = right hand higher, negative = left hand higher
+            return rHandTarget.position.y - lHandTarget.position.y;
+        }
+
         private void LateUpdate()
         {
             if (!model || !rHandTarget || !lHandTarget || !model.rb)

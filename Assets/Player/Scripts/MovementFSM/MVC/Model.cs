@@ -320,10 +320,18 @@ namespace Player.Scripts.MovementFSM.MVC
                 return;
             }
 
+            // Only ignore ground detection if we're still in the air (velocity upward or small downward)
+            // This prevents blocking ground detection when actually on the ground
             if (Time.time < groundedIgnoreUntil)
             {
-                GroundChangedEvent(false, Time.time - lastLeftGroundTime, 0f);
-                return;
+                // Check if we're actually falling (not just a brief ignore period)
+                bool isActuallyFalling = rb && rb.velocity.y < -0.5f;
+                if (isActuallyFalling)
+                {
+                    GroundChangedEvent(false, Time.time - lastLeftGroundTime, 0f);
+                    return;
+                }
+                // If not falling, allow ground detection to proceed (might be on ground after jump)
             }
             
             float airTime = Time.time - lastLeftGroundTime;

@@ -1,5 +1,6 @@
 using UnityEngine;
 using Unity.Cinemachine;
+using Player.Scripts.MovementFSM;
 
 namespace Player.Scripts
 {
@@ -9,6 +10,8 @@ namespace Player.Scripts
         [Header("Refs")]
         public Transform effectsPivot;
         public UnityEngine.Camera cam;
+        [Tooltip("Reference to ProceduralClimbIK for hand-based camera tilt")]
+        public ProceduralClimbIK climbIK;
 
         [Header("FOV")]
         public bool  enableFovKick = true;
@@ -17,13 +20,14 @@ namespace Player.Scripts
         public float wallrunFovAdd = 4f;
         public float vaultFovAdd   = 3f;
         public float runFovAdd     = 6f;
-        public float climbFovAdd     = 30f;
+        public float climbFovAdd     = 15f;
         public float fovInSpeed    = 8f;
         public float fovOutSpeed   = 6f;
 
         [Header("Tilt / Roll")]
         [Range(0f, 45f)] public float wallrunTilt = 14f;
         [Range(0f, 45f)] public float vaultTilt  = 8f;
+        [Range(0f, 45f)] public float climbTilt  = 8f;
         public float rollInSpeed  = 10f;
         public float rollOutSpeed = 8f;
         public bool  vaultAsPulse = true;
@@ -67,6 +71,10 @@ namespace Player.Scripts
         float _extraFovRuntime;
         float _shakeAmpRuntime; Vector2 _shakePhase;
         Vector3 _bobLocalOrigin;
+        bool _isClimbing;
+        float _climbBobPhase;
+        bool _climbFovApplied;
+        float _climbTiltCurrent;
 
         CinemachineBrain _brain;
         CinemachineCamera _activeCamCached;
@@ -159,6 +167,42 @@ namespace Player.Scripts
                 float t = Time.time * bobSpeed;
                 pos += Vector3.up * (Mathf.Sin(t) * bobAmount * w);
             }
+            
+            // Climb-specific bob effect (vertical movement during climb)
+            if (_isClimbing)
+            {
+                _climbBobPhase += Time.deltaTime * 2.5f; // Climb bob speed
+                float climbBob = Mathf.Sin(_climbBobPhase) * 0.008f; // Subtle vertical bob
+                pos += Vector3.up * climbBob;
+                
+                // Calculate camera tilt based on hand movement
+                if (climbIK != null)
+                {
+                    // Get hand height difference (positive = right hand higher, negative = left hand higher)
+                    float handHeightDiff = climbIK.GetHandHeightDifference();
+                    
+                    // Get climb cycle to determine hand movement phase
+                    float cycle = climbIK.GetClimbCycle();
+                    
+                    // Calculate tilt based on hand height difference and cycle
+                    // When one hand is higher, tilt camera in that direction
+                    float targetTilt = Mathf.Clamp(handHeightDiff * (climbTilt / 0.5f), -climbTilt, climbTilt);
+                    
+                    // Also add cycle-based tilt for smoother movement
+                    float cycleTilt = Mathf.Sin(cycle) * (climbTilt * 0.3f);
+                    targetTilt += cycleTilt;
+                    
+                    // Smooth the tilt
+                    _climbTiltCurrent = Mathf.Lerp(_climbTiltCurrent, targetTilt, Time.deltaTime * 8f);
+                    _rollTarget = _climbTiltCurrent;
+                }
+                else
+                {
+                    // Fallback to static tilt if no IK reference
+                    _rollTarget = climbTilt;
+                }
+            }
+            
             if (enableShake && _shakeAmpRuntime > 0f)
             {
                 _shakePhase += new Vector2(shakeFrequency, shakeFrequency * 1.21f) * Time.deltaTime;
@@ -198,11 +242,26 @@ namespace Player.Scripts
         
         public void ClimbStart()
         {
+            _isClimbing = true;
+            _climbBobPhase = 0f;
+            _climbFovApplied = true;
+            _climbTiltCurrent = 0f;
             AddFov(+Mathf.Abs(climbFovAdd));
+            // Add subtle shake during climb
+            if (enableShake) _shakeAmpRuntime = Mathf.Max(_shakeAmpRuntime, 0.8f);
         }
         public void ClimbEnd()
         {
-            AddFov(-Mathf.Abs(climbFovAdd));
+            _isClimbing = false;
+            // Only remove FOV if it was actually applied to prevent double removal
+            if (_climbFovApplied)
+            {
+                AddFov(-Mathf.Abs(climbFovAdd));
+                _climbFovApplied = false;
+            }
+            // Reset tilt
+            _climbTiltCurrent = 0f;
+            _rollTarget = 0f;
         }
 
         public void OnRunStart() => AddFov(+Mathf.Abs(runFovAdd));
@@ -235,6 +294,10 @@ namespace Player.Scripts
         public void ClearAll()
         {
             _rollTarget = 0f; _rollPulseTimer = 0f; _extraFovRuntime = 0f; _shakeAmpRuntime = 0f;
+            _isClimbing = false;
+            _climbBobPhase = 0f;
+            _climbFovApplied = false;
+            _climbTiltCurrent = 0f;
             effectsPivot.localPosition = _bobLocalOrigin;
             effectsPivot.localRotation = Quaternion.identity;
             RefreshActiveCamAndMaybeCacheBase(force:true);

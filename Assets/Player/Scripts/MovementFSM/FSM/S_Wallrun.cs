@@ -22,6 +22,8 @@ namespace Player.Scripts.MovementFSM
         private float _seamHoldTimer;
         private Tween _reorientTween;
         private string _originalPanTiltInputName;
+        private bool _hasAppliedInitialUpBoost;
+        private Transform _visualRoot;
 
         public S_Wallrun(FSM fsm, Model model)
         {
@@ -40,6 +42,19 @@ namespace Player.Scripts.MovementFSM
 
             _smoothNormal = _wallNormal;
             _seamHoldTimer = 0f;
+            _hasAppliedInitialUpBoost = false;
+
+            // Get visual root from VisualYawFollower if available and disable it during wallrun
+            var visualYawFollower = _model.GetComponentInChildren<VisualYawFollower>();
+            if (visualYawFollower != null)
+            {
+                if (visualYawFollower.visualRoot != null)
+                {
+                    _visualRoot = visualYawFollower.visualRoot;
+                }
+                // Disable VisualYawFollower during wallrun so we can manually control rotation
+                visualYawFollower.followEnabled = false;
+            }
 
             _model.WallrunStartEvent(_side);
 
@@ -50,6 +65,9 @@ namespace Player.Scripts.MovementFSM
             _reorientTween?.Kill();
             AdjustCameraOnEnter();
             ClampInitialWallrunSpeed();
+            
+            // Check if at bottom of wall and apply upward boost
+            CheckAndApplyInitialUpBoost();
         }
 
 
@@ -63,8 +81,8 @@ namespace Player.Scripts.MovementFSM
 
             var p = _model.probe;
 
-            if (p.action == ParkourAction.Climb &&
-                (_model.zAxis > 0.1f || _model.jumpDownThisFrame))
+            // Only allow transition to climb on jump, not on input
+            if (p.action == ParkourAction.Climb && _model.jumpDownThisFrame)
             {
                 _fsm.ChangeState(FSM.States.Climb);
                 return;
@@ -137,6 +155,13 @@ namespace Player.Scripts.MovementFSM
         public void OnExit()
         {
             _reorientTween?.Kill();
+            
+            var visualYawFollower = _model.GetComponentInChildren<VisualYawFollower>();
+            if (visualYawFollower)
+            {
+                visualYawFollower.followEnabled = true;
+            }
+            
             if (Time.time > _model.wallJustJumpedUntil)
             {
                 float until = Time.time + _model.wallPostJumpNoRegrab;
@@ -203,22 +228,18 @@ namespace Player.Scripts.MovementFSM
                 vHoriz = newDir * vHoriz.magnitude;
             }
 
-            Vector3 camF = _orient ? _orient.forward : _model.transform.forward;
-            camF.y = 0f;
-            camF.Normalize();
-            Vector3 camR = _orient ? _orient.right : _model.transform.right;
-            camR.y = 0f;
-            camR.Normalize();
-            Vector3 wishDir = (camR * _model.xAxis + camF * _model.zAxis);
-            if (wishDir.sqrMagnitude > 1e-4f) wishDir.Normalize();
-
-            bool pushingForward = _model.zAxis > _model.wallInputThreshold;
-
+            // Ignore key inputs - maintain current speed along wall
             float curAlong = Vector3.Dot(vHoriz, wallForward);
-            float targetAlong = pushingForward ? _model.wallRunMaxSpeed : Mathf.Max(_model.wallCruiseSpeed, curAlong);
-            float accel = pushingForward ? _model.wallRunAccel : _model.wallCruiseAccel;
-            float delta = Mathf.Clamp(targetAlong - curAlong, -accel * Time.fixedDeltaTime,
-                accel * Time.fixedDeltaTime);
+            // Maintain speed, but don't accelerate/decelerate based on input
+            float targetAlong = Mathf.Max(_model.wallCruiseSpeed, curAlong);
+            // Only allow slight deceleration if going too fast, but no acceleration from input
+            float maxSpeed = _model.wallRunMaxSpeed;
+            if (curAlong > maxSpeed)
+            {
+                targetAlong = Mathf.Max(maxSpeed, curAlong - _model.wallCruiseAccel * Time.fixedDeltaTime);
+            }
+            float delta = Mathf.Clamp(targetAlong - curAlong, -_model.wallCruiseAccel * Time.fixedDeltaTime,
+                _model.wallCruiseAccel * Time.fixedDeltaTime);
 
             Vector3 addAlong = wallForward * delta;
             _rb.AddForce(addAlong, ForceMode.VelocityChange);
@@ -233,14 +254,29 @@ namespace Player.Scripts.MovementFSM
             float stick = blend * _model.wallStickKp * err - _model.wallStickKd * vInto;
             _rb.AddForce(-n * stick, ForceMode.Force);
 
-            if (_model.wallUseGravity)
-                _rb.AddForce(Vector3.up * (_model.gravityCounterForce * blend), ForceMode.Force);
-
             float vy = _rb.velocity.y;
+            
+            // Apply gravity counterforce consistently
+            if (_model.wallUseGravity)
+            {
+                // Use full gravity counterforce regardless of blend to prevent inconsistent falling
+                float gravityCounter = _model.gravityCounterForce;
+                // Only reduce counterforce slightly during entry blend to smooth transition
+                if (blend < 1f)
+                {
+                    gravityCounter *= Mathf.Lerp(0.7f, 1f, blend);
+                }
+                _rb.AddForce(Vector3.up * gravityCounter, ForceMode.Force);
+            }
 
-            vy = !pushingForward
-                ? Mathf.MoveTowards(vy, -_model.wallGlideDownSpeed, 8f * Time.fixedDeltaTime)
-                : Mathf.MoveTowards(vy, 0f, 8f * Time.fixedDeltaTime);
+            // Maintain consistent downward glide speed
+            float targetGlideSpeed = -_model.wallGlideDownSpeed;
+            // Smooth transition to glide speed during entry
+            if (blend < 1f)
+            {
+                targetGlideSpeed = Mathf.Lerp(vy, -_model.wallGlideDownSpeed, blend);
+            }
+            vy = Mathf.MoveTowards(vy, targetGlideSpeed, 8f * Time.fixedDeltaTime);
 
             _rb.velocity = new Vector3(vHoriz.x + addAlong.x, vy, vHoriz.z + addAlong.z);
 
@@ -355,6 +391,14 @@ namespace Player.Scripts.MovementFSM
             float blend = 1f - Mathf.Exp(-_model.wallCameraLerpSpeed * Time.deltaTime);
 
             panTilt.PanAxis.Value = Mathf.LerpAngle(currentYaw, targetYaw, blend);
+            
+            // Also rotate the visual model to follow the wall direction
+            if (_visualRoot != null)
+            {
+                Quaternion targetRotation = Quaternion.LookRotation(wallForward, Vector3.up);
+                float visualBlend = 1f - Mathf.Exp(-_model.wallCameraLerpSpeed * Time.deltaTime);
+                _visualRoot.rotation = Quaternion.Slerp(_visualRoot.rotation, targetRotation, visualBlend);
+            }
         }
 
         private void ClampInitialWallrunSpeed()
@@ -375,6 +419,42 @@ namespace Player.Scripts.MovementFSM
             float clampedSpeedAlong = Mathf.Clamp(speedAlongWall, 0f, _model.wallRunMaxSpeed);
 
             _rb.velocity = (wallForward * clampedSpeedAlong) + (Vector3.up * vVert);
+        }
+        
+        private void CheckAndApplyInitialUpBoost()
+        {
+            if (_hasAppliedInitialUpBoost) return;
+            
+            // Check if we're at the bottom of the wall (low vertical velocity or near ground)
+            float vy = _rb.velocity.y;
+            bool isNearBottom = vy < 0.5f; // Low or negative vertical velocity
+            
+            // Also check if we're close to ground
+            if (_model.IsGroundedNow())
+            {
+                isNearBottom = false; // Don't boost if already on ground
+            }
+            else
+            {
+                // Raycast down to check distance to ground
+                if (Physics.Raycast(_rb.position, Vector3.down, out var hit, 2f, _model.groundMask))
+                {
+                    float distToGround = hit.distance;
+                    // If very close to ground, we're at the bottom
+                    if (distToGround < 0.5f)
+                    {
+                        isNearBottom = true;
+                    }
+                }
+            }
+            
+            if (isNearBottom)
+            {
+                // Apply upward boost
+                float upBoost = 2.5f; // Upward velocity boost
+                _rb.velocity = new Vector3(_rb.velocity.x, _rb.velocity.y + upBoost, _rb.velocity.z);
+                _hasAppliedInitialUpBoost = true;
+            }
         }
     }
 }

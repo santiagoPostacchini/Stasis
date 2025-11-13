@@ -1,4 +1,5 @@
 using DG.Tweening;
+using Player.Scripts.MovementFSM.MVC;
 using UnityEngine;
 using UnityEngine.Animations.Rigging;
 
@@ -222,23 +223,43 @@ namespace Player.Scripts.MovementFSM.MVC
             animator.CrossFade("Player_Leg_Climb", 0.05f);
             animator.CrossFade("Player_Arm_Climb", 0.05f);
             
+            // Pass climbIK reference to camera effects for hand-based tilt
+            if (playerCamEffects && climbIKHandler)
+            {
+                playerCamEffects.climbIK = climbIKHandler;
+            }
+            
             if (playerCamEffects) playerCamEffects.ClimbStart();
         }
 
         public void OnClimbEndEvent()
         {
+            // Get model reference to check if we're jumping
+            Model model = GetComponentInParent<Model>();
+            bool isJumpingFromClimb = model && model.didClimbJump;
+            
             if (visualYawFollower) visualYawFollower.enabled = true;
             if (spineConstraint) spineConstraint.weight = 0.75f;
             
             if (leftHandIkRig) leftHandIkRig.DOKill();
             if (rightHandIkRig) rightHandIkRig.DOKill();
             
-            if (leftHandIkRig) DOTween.To(() => leftHandIkRig.weight, x => leftHandIkRig.weight = x, 0f, ikFadeDuration);
-            if (rightHandIkRig) DOTween.To(() => rightHandIkRig.weight, x => rightHandIkRig.weight = x, 0f, ikFadeDuration)
-                .OnComplete(() => {
-                    if (climbIKHandler) climbIKHandler.enabled = false;
-                });
-            
+            // If jumping from climb, immediately disable IK to prevent animation conflicts
+            if (isJumpingFromClimb)
+            {
+                if (leftHandIkRig) leftHandIkRig.weight = 0f;
+                if (rightHandIkRig) rightHandIkRig.weight = 0f;
+                if (climbIKHandler) climbIKHandler.enabled = false;
+            }
+            else
+            {
+                // Normal fade out
+                if (leftHandIkRig) DOTween.To(() => leftHandIkRig.weight, x => leftHandIkRig.weight = x, 0f, ikFadeDuration);
+                if (rightHandIkRig) DOTween.To(() => rightHandIkRig.weight, x => rightHandIkRig.weight = x, 0f, ikFadeDuration)
+                    .OnComplete(() => {
+                        if (climbIKHandler) climbIKHandler.enabled = false;
+                    });
+            }
             
             if (playerCamEffects) playerCamEffects.ClimbEnd();
         }

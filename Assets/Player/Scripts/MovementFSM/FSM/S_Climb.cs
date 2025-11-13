@@ -104,15 +104,20 @@ namespace Player.Scripts.MovementFSM
             _m.ClimbStartEvent(forward);
             
         }
-        
-        // EN: S_Climb.cs
 
         public void OnUpdate()
         {
             if (_m.jumpDownThisFrame)
             {
-                ClimbJump(); 
-                return;
+                Vector3 camForward = _orient.forward;
+                float lookPitch = camForward.y;
+                float upThreshold = 0.3f;
+                
+                if (!_mantling || lookPitch > upThreshold)
+                {
+                    ClimbJump(); 
+                    return;
+                }
             }
             
             WallCheck(false);
@@ -134,27 +139,23 @@ namespace Player.Scripts.MovementFSM
 
             if (_mantling)
             {
-                // empuje asistido breve
                 if (Time.time <= _mantleUntil)
                     _rb.AddForce(_mantleDirCached * _mantleAssistAccel, ForceMode.Acceleration);
 
-                // guía constante hacia el stand (suave)
                 Vector3 toStand = _mantleStandPoint - _rb.position;
                 Vector3 plan = Vector3.ProjectOnPlane(toStand, Vector3.up);
                 float distPlan = plan.magnitude;
                 if (distPlan > 0.01f)
                 {
                     Vector3 guideDir = plan.normalized;
-                    _rb.AddForce(guideDir * 20f, ForceMode.Acceleration); // “arrime” horizontal
-                    _rb.AddForce((-_planarNormal) * 6f, ForceMode.Acceleration); // un poco “hacia adentro”
+                    _rb.AddForce(guideDir * 20f, ForceMode.Acceleration);
+                    _rb.AddForce((-_planarNormal) * 6f, ForceMode.Acceleration);
                 }
 
-                // cap global de speed durante el pop
                 float spd = _rb.velocity.magnitude;
                 if (spd > _maxMantleSpeed)
                     _rb.AddForce(-_rb.velocity.normalized * (spd - _maxMantleSpeed), ForceMode.VelocityChange);
 
-                // cuando ya estás casi a la altura, asentar
                 if (_rb.position.y >= _mantleStandPoint.y - 0.02f && distPlan < 0.12f)
                     _rb.AddForce(Vector3.down * 1.5f, ForceMode.VelocityChange);
 
@@ -292,6 +293,19 @@ namespace Player.Scripts.MovementFSM
             _m.lastWallDetachTime = Time.time;
             _m.didClimbJump = true;
             
+            float timeSinceEnter = Time.time - _enterTime;
+            bool isEarlyJump = timeSinceEnter < 0.1f;
+            
+            _climbing = false;
+            _mantling = false;
+            _m.isClimbingState = false;
+            _m.isMantlingState = false;
+            _m.isAtLedge = false;
+            
+            _m.JumpSucceed();
+            
+            _m.ClimbEndEvent();
+            
             Vector3 camForward = _orient.forward;
             
             Vector3 lookDirH = camForward;
@@ -336,15 +350,32 @@ namespace Player.Scripts.MovementFSM
             }
 
             Vector3 vCleaned = _rb.velocity;
-            float vInto = Vector3.Dot(vCleaned, -_planarNormal);
-            if (vInto > 0f)
+            
+            // If jumping very early, use entry velocity more conservatively to prevent absurd launch
+            if (isEarlyJump)
             {
-                vCleaned += _planarNormal * vInto; 
+                // Clean horizontal velocity more aggressively for early jumps
+                vCleaned = Vector3.zero;
+                vCleaned.y = Mathf.Max(0f, _entryVelocity.y); // Only keep upward velocity if any
             }
-            vCleaned.y = 0f;
+            else
+            {
+                float vInto = Vector3.Dot(vCleaned, -_planarNormal);
+                if (vInto > 0f)
+                {
+                    vCleaned += _planarNormal * vInto; 
+                }
+                vCleaned.y = 0f;
+            }
+            
             _rb.velocity = vCleaned;
 
             _rb.AddForce(velChange, ForceMode.VelocityChange); 
+            
+            // Restore gravity and movement
+            _rb.useGravity = true;
+            _m.canMove = true;
+            _rb.drag = _prevDrag;
 
             ExitToNext();
         }
@@ -409,6 +440,13 @@ namespace Player.Scripts.MovementFSM
         
         void StartMantleFromStand(Vector3 standP, Vector3 ledgeP)
         {
+            // Ensure we're not in a buggy state from previous leap
+            if (_m.didClimbJump)
+            {
+                // Reset climb jump flag to allow proper mantle animation
+                _m.didClimbJump = false;
+            }
+            
             _mantling = true;
             _mantleStandPoint = standP;
             
