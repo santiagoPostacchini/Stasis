@@ -1,4 +1,5 @@
 using Managers.Game;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -85,6 +86,12 @@ public class TrainSystem : MonoBehaviour
 
     public UnityEvent eventsPlayerDeath;
 
+
+    public Action OnTrenStartEngine;
+    public Action OnTrenEndEngine;
+    public Action OnTrenStartMovement;
+    public Action OnTrenEndMovement;
+
     void Awake()
     {
         ResolveHeights();
@@ -119,7 +126,14 @@ public class TrainSystem : MonoBehaviour
     }
 
     public void EnableSystem() => StartAllMovement();
-
+    public void StartEngineTrain()
+    {
+        OnTrenStartEngine.Invoke();
+    }
+    public void EndEngineTrain()
+    {
+        OnTrenEndEngine?.Invoke();
+    }
     public void RequestTrainHaltAtDeparture()
     {
         if (!trainConfigured) return;
@@ -178,6 +192,7 @@ public class TrainSystem : MonoBehaviour
         trainState = TrainState.IdleAtDeparture;
 
         eventsPlayerDeath?.Invoke();
+        OnTrenEndMovement?.Invoke();
     }
     IEnumerator OpenHedronConteiners() 
     {
@@ -447,6 +462,8 @@ public class TrainSystem : MonoBehaviour
         if (!systemEnabled || !trainConfigured) return;
         trainRunRequested = true;
         onTrainStarted?.Invoke();
+        //
+        OnTrenStartMovement?.Invoke();
     }
 
     // Train (Rigidbody Kinematic + Loop / PingPong / Once)
