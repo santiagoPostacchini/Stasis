@@ -1,8 +1,8 @@
 using System.IO;
-using UnityEngine;
 using UnityEditor;
+using UnityEngine;
 
-namespace VolumetricFogAndMist2 {
+namespace Art.VolumetricFog2.Editor {
 
     public class NoiseGenerator : EditorWindow {
 

@@ -1,4 +1,4 @@
-namespace VolumetricFogAndMist2 {
+namespace Art.VolumetricFog2.Editor {
 
     public static class NoiseTools {
 

@@ -1,8 +1,9 @@
-using UnityEngine;
 using UnityEditor;
+using UnityEngine;
 using UnityEngine.Rendering.Universal;
+using VolumetricFogAndMist2;
 
-namespace VolumetricFogAndMist2 {
+namespace Art.VolumetricFog2.Editor {
 
     [CustomEditor(typeof(VolumetricFogManager))]
     public class VolumetricFogManagerEditor : UnityEditor.Editor {

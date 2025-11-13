@@ -1,8 +1,9 @@
-using UnityEngine;
 using UnityEditor;
 using UnityEditor.SceneManagement;
+using UnityEngine;
+using VolumetricFogAndMist2;
 
-namespace VolumetricFogAndMist2 {
+namespace Art.VolumetricFog2.Editor {
 
     public partial class VolumetricFogEditor {
 

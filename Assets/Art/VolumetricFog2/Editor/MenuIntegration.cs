@@ -1,7 +1,9 @@
-using UnityEngine;
 using UnityEditor;
+using UnityEngine;
+using VolumetricFogAndMist2;
+using Tools = VolumetricFogAndMist2.Tools;
 
-namespace VolumetricFogAndMist2 {
+namespace Art.VolumetricFog2.Editor {
 
     public class VolumetricFog2EditorIntegration : MonoBehaviour {
 

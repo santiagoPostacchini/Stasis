@@ -14,12 +14,14 @@
 //-----------------------------------------------------------------------------------------------------------------------------------------
 //  2023.11.04 _ KimYC1223
 //=========================================================================================================================================
+
+using CurvedPathGenerator;
 using UnityEditor;
 using UnityEngine;
 
 #region PathFollwerGUI
 
-namespace CurvedPathGenerator
+namespace Puzzle_Elements.Path.Editor.CurvedPathGenerator
 {
     /// <summary>
     /// A follower script GUI that GameObject to follow the created path

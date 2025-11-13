@@ -14,15 +14,17 @@
 //-----------------------------------------------------------------------------------------------------------------------------------------
 //  2023.11.04 _ KimYC1223
 //=========================================================================================================================================
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using CurvedPathGenerator;
 using UnityEditor;
 using UnityEngine;
 
 #region PathGeneratorGUI
 
-namespace CurvedPathGenerator
+namespace Puzzle_Elements.Path.Editor.CurvedPathGenerator
 {
     /// <summary>
     /// GUI Script to help generate path based on Bézier curve
