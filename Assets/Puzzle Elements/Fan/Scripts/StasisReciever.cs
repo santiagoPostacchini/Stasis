@@ -10,13 +10,15 @@ namespace Puzzle_Elements.Fan.Scripts
         private Collider _col;
         public bool IsFreezed { get; }
         public StasisEffect StasisEffect { get; }
+
+        public float dist = 20;
         private void Start()
         {
             _col = GetComponent<Collider>();
         }
         private void Update()
         {
-            if (Vector3.Distance(transform.position, GameManager.Instance.player.transform.position) < 20)
+            if (Vector3.Distance(transform.position, GameManager.Instance.player.transform.position) < dist)
             {
                 _col.isTrigger = true;
             }
