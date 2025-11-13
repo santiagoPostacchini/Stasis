@@ -51,6 +51,7 @@ public class CheckpointSequence : MonoBehaviour
     void Update()
     {
         if (!collapseMultiplePerFrame) return;
+
         // Si varias condiciones se cumplen al mismo tiempo (por proximidad encadenada),
         // consumimos todos en orden sin esperar al próximo frame.
         bool progressed;
@@ -79,7 +80,7 @@ public class CheckpointSequence : MonoBehaviour
         {
             if (cp == null) continue;
             if (on) cp.OnReached.AddListener(HandleReached);
-            else     cp.OnReached.RemoveListener(HandleReached);
+            else cp.OnReached.RemoveListener(HandleReached);
         }
     }
 
@@ -121,12 +122,24 @@ public class CheckpointSequence : MonoBehaviour
         SaveProgress();
     }
 
+    /// <summary>
+    /// Devuelve el Transform de spawn del último checkpoint activado.
+    /// Si no hay checkpoints, devuelve el propio transform del objeto que tiene este script.
+    /// </summary>
     public Transform GetCurrentSpawn()
     {
-        // último activado, si no hay, el primero
         if (Count == 0) return transform;
+
         var idx = Mathf.Clamp(currentIndex - 1, 0, Count - 1);
         return orderedCheckpoints[idx].Spawn;
+    }
+
+    /// <summary>
+    /// Versión en Vector3, equivalente a tu LinearCheckpointSystem.CurrentCheckpointPos().
+    /// </summary>
+    public Vector3 CurrentCheckpointPos()
+    {
+        return GetCurrentSpawn().position;
     }
 
     public bool TeleportPlayerToCurrent()
@@ -141,9 +154,13 @@ public class CheckpointSequence : MonoBehaviour
     {
         int idx = orderedCheckpoints.FindIndex(c => c.Id == id);
         if (idx < 0) return false;
+
         currentIndex = idx + 1;
+
         if (!markPreviousAsActive)
-            foreach (var cp in orderedCheckpoints) cp.MarkActive(false);
+            foreach (var cp in orderedCheckpoints)
+                cp.MarkActive(false);
+
         MarkActiveFlags();
         SaveProgress();
         return true;
@@ -153,8 +170,14 @@ public class CheckpointSequence : MonoBehaviour
     void SaveProgress()
     {
         if (!enablePlayerPrefsSave || Count == 0) return;
+
         var last = LastActivated;
-        if (last == null) { PlayerPrefs.DeleteKey(saveKey); return; }
+        if (last == null)
+        {
+            PlayerPrefs.DeleteKey(saveKey);
+            return;
+        }
+
         PlayerPrefs.SetString(saveKey, last.Id);
     }
 
@@ -162,6 +185,7 @@ public class CheckpointSequence : MonoBehaviour
     {
         if (!enablePlayerPrefsSave || Count == 0) return;
         if (!PlayerPrefs.HasKey(saveKey)) return;
+
         var id = PlayerPrefs.GetString(saveKey);
         JumpToCheckpointId(id, markPreviousAsActive: true);
     }

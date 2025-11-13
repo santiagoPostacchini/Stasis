@@ -13,7 +13,7 @@ namespace Puzzle_Elements.Water.Scripts
         public UnityEvent OnFallInWater;
         Model player;
 
-        [SerializeField] private LinearCheckpointSystem _checkpoint;
+        [SerializeField] private CheckpointSequence _checkpoint;
         private void OnTriggerEnter(Collider other)
         {
             player = other.GetComponent<Model>();

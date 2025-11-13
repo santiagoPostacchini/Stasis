@@ -15,7 +15,7 @@ public class HedronContainerIn : MonoBehaviour, IInteractable
     [SerializeField] private Button _button;
     public Transform anchor;
     [SerializeField] private Animator _anim;
-    [SerializeField] private Transform pos;
+    [SerializeField] private Transform pos; // centro de atracción / eyección
 
     [Header("=== ANIMATION CONFIGURATION ===")]
     [SerializeField] private string openTrigger = "OPEN";
@@ -26,12 +26,12 @@ public class HedronContainerIn : MonoBehaviour, IInteractable
     [SerializeField] private float openToEjectDelay = 2f;
     [SerializeField] private float ejectCooldown = 0.15f;
     [SerializeField] private float scaleUpSeconds = 0.35f;
-    [SerializeField] private float shrinkDuration = 1.2f; // (queda para otros usos)
+    [SerializeField] private float shrinkDuration = 1.2f; // sin usar, pero lo dejo
     [SerializeField] private float panelShowDelay = 2f;
     [SerializeField] private float panelCloseDelay = 1f;
 
     [Header("=== MOVEMENT & PHYSICS ===")]
-    [SerializeField] private float attractionSpeed = 5f; // (legacy - ya no se usa en Update)
+    [SerializeField] private float attractionSpeed = 5f; // si no usás curvas
     [SerializeField] private float stopDistance = 0.05f;
     [SerializeField] private float ejectNudgeDistance = 0.08f;
     [SerializeField] private float ejectTorque = 0f;
@@ -91,9 +91,52 @@ public class HedronContainerIn : MonoBehaviour, IInteractable
     public float PanelShowDelay { get => panelShowDelay; set => panelShowDelay = value; }
 
     private bool canAtracction = true;
+    private bool canOpenPanel = true;
 
-    // Nueva referencia al coroutine de atracción
-    private Coroutine _attractRoutine;
+    // ====== STATE MACHINE ======
+    private enum ContainerState
+    {
+        Idle,
+        Attracting,
+        Docked,
+        Opening,
+        Ejecting
+    }
+
+    [SerializeField] private ContainerState _state = ContainerState.Idle;
+
+    // ====== Timers / datos de estados ======
+
+    // Atracción
+    private float _attractTimer;
+    private float _attractDuration;
+    private Vector3 _attractStartPos;
+    private Quaternion _attractStartRot;
+    private Vector3 _attractStartScale;
+    private Vector3 _attractEndPos;
+    private Quaternion _attractEndRot;
+    private Vector3 _attractEndScale;
+
+    // Panel
+    private float _panelShowTimer;
+    private float _panelCloseTimer;
+    private float _panelBlockTimer;
+
+    // Bloqueo de atracción tras eyección
+    private float _cantAtracctionTimer;
+
+    // Opening -> espera antes de eyectar
+    private float _openingTimer;
+
+    // Ejecting
+    public float _ejectMoveSpeed = 6f;
+    private Vector3 _ejectTargetPos;
+    public float _ejectScaleTimer;
+
+    // Glow
+    private bool _glowActive;
+    private float _glowTimer;
+    private float _glowDuration;
 
     void Awake()
     {
@@ -118,20 +161,239 @@ public class HedronContainerIn : MonoBehaviour, IInteractable
     {
         if (_button != null) _button.SetText(_button.E, "");
         if (panel != null) panel.gameObject.SetActive(false);
+        if (message != null) message.gameObject.SetActive(false);
+        if (E != null) E.gameObject.SetActive(false);
     }
 
     void Update()
     {
-        // Se elimina el Lerp brusco en Update; ahora se usa AttractAndDock coroutine.
-        if (!canOpenPanel && panel.activeSelf) panel.SetActive(false);
+        // Timers globales
+        UpdateBlockAttractionTimer();
+        UpdatePanelBlockTimer();
+        UpdatePanelTimers();
+        UpdateGlow();
+
+        // Máquina de estados principal
+        switch (_state)
+        {
+            case ContainerState.Idle:
+                UpdateIdle();
+                break;
+
+            case ContainerState.Attracting:
+                UpdateAttracting();
+                break;
+
+            case ContainerState.Docked:
+                UpdateDocked();
+                break;
+
+            case ContainerState.Opening:
+                UpdateOpening();
+                break;
+
+            case ContainerState.Ejecting:
+                UpdateEjecting();
+                break;
+        }
     }
 
-    // ==== NUEVO FLUJO DE ATRACCIÓN ====
+    // ================== STATE UPDATES ==================
+
+    void UpdateIdle()
+    {
+        _attracting = false;
+        _isEjecting = false;
+    }
+
+    void UpdateAttracting()
+    {
+        if (_current == null || _box == null || pos == null)
+        {
+            ResetToIdle();
+            return;
+        }
+
+        if (_rb == null)
+            _rb = _current.GetComponent<Rigidbody>();
+
+        // Si algo cambió drásticamente (player lo agarró, rigidbody dejó de ser kinematic, etc.)
+        if (_rb != null && (!_rb.isKinematic || _rb.transform != _current))
+        {
+            ResetToIdle();
+            return;
+        }
+
+        _attracting = true;
+
+        _attractTimer += Time.deltaTime;
+        float t01 = Mathf.Clamp01(_attractTimer / _attractDuration);
+
+        float p = useSmoothAttract ? posCurve.Evaluate(t01) : t01;
+        float r = useSmoothAttract ? rotCurve.Evaluate(t01) : t01;
+        float s = useSmoothAttract ? scaleCurve.Evaluate(t01) : t01;
+
+        // Movimiento hacia el centro
+        _current.position = Vector3.LerpUnclamped(_attractStartPos, _attractEndPos, p);
+
+        // Rotación “show”: se interpola hacia la rot final y además gira sobre Y
+        Quaternion baseRot = Quaternion.SlerpUnclamped(_attractStartRot, _attractEndRot, r);
+        _current.rotation = baseRot;
+        _current.Rotate(Vector3.up, 180f * Time.deltaTime, Space.World);
+
+        // Escala hacia targetScale
+        _current.localScale = Vector3.LerpUnclamped(_attractStartScale, _attractEndScale, s);
+
+        bool closeEnough = Vector3.Distance(_current.position, _attractEndPos) <= stopDistance;
+
+        bool smallEnough =
+            Mathf.Abs(_current.localScale.x - _attractEndScale.x) <= _attractEndScale.x * (dockScaleThreshold - 1f) &&
+            Mathf.Abs(_current.localScale.y - _attractEndScale.y) <= _attractEndScale.y * (dockScaleThreshold - 1f) &&
+            Mathf.Abs(_current.localScale.z - _attractEndScale.z) <= _attractEndScale.z * (dockScaleThreshold - 1f);
+
+        if (t01 >= 1f || (closeEnough && smallEnough))
+        {
+            DockObject();
+        }
+    }
+
+    void UpdateDocked()
+    {
+        _attracting = false;
+        // Espera Interact()
+    }
+
+    void UpdateOpening()
+    {
+        if (!HasOccupant || _box == null)
+        {
+            ResetToIdle();
+            return;
+        }
+
+        _openingTimer += Time.deltaTime;
+
+        // Cuando termina la anim de apertura (aprox), pasamos a ejecting
+        if (_openingTimer >= openToEjectDelay)
+        {
+            BeginEjectFromCenter();
+        }
+    }
+
+    void UpdateEjecting()
+    {
+        if (_box == null)
+        {
+            ResetToIdle();
+            return;
+        }
+
+        Transform t = _box.transform;
+        EnableAllColliders(t, false);
+        //EnableAllColliders(t, true);
+        // Si el player lo agarró y lo movió de jerarquía, salimos limpio
+        if (!t.gameObject.activeInHierarchy)
+        {
+            ResetToIdle();
+            return;
+        }
+
+        // Movimiento hacia fuera
+        t.position = Vector3.MoveTowards(t.position, _ejectTargetPos, _ejectMoveSpeed * Time.deltaTime);
+
+        // Rotación “show” en sentido contrario
+        t.Rotate(Vector3.up, -180f * Time.deltaTime, Space.World);
+
+        // Escala de targetScale -> Vector3.one
+        if (scaleUpSeconds > 0.01f)
+        {
+            _ejectScaleTimer += Time.deltaTime;
+            float st = Mathf.Clamp01(_ejectScaleTimer / scaleUpSeconds);
+            Vector3 startScale = targetScale;
+            Vector3 endScale = Vector3.one;
+            t.localScale = Vector3.LerpUnclamped(startScale, endScale, st);
+        }
+        else
+        {
+            t.localScale = Vector3.one;
+        }
+
+        // Llegó al final
+        if (Vector3.Distance(t.position, _ejectTargetPos) <= 0.01f)
+        {
+            FinishEject(t);
+        }
+    }
+
+    // ================== ATRACCIÓN / DOCK ==================
+
+    void DockObject()
+    {
+        if (_current == null || pos == null) { ResetToIdle(); return; }
+
+        // Encaje final
+        _current.position = pos.position;
+        if (alignRotationOnDock)
+            _current.rotation = pos.rotation;
+        _current.localScale = targetScale;
+
+        if (_rb == null)
+            _rb = _current.GetComponent<Rigidbody>();
+
+        if (_rb != null)
+        {
+            _rb.velocity = Vector3.zero;
+            _rb.angularVelocity = Vector3.zero;
+            _rb.useGravity = false;
+            _rb.isKinematic = true;
+        }
+
+        // Desactivar collider principal del hedro
+        var mainCol = _current.GetComponent<BoxCollider>();
+        if (mainCol != null) mainCol.enabled = false;
+
+        if (anchor != null)
+            _current.SetParent(anchor, true);
+        else
+            _current.SetParent(transform, true);
+
+        if (!_placedFired)
+        {
+            _placedFired = true;
+
+            onHedronPlaced?.Invoke();
+
+            var rbBox = _box != null ? _box.GetComponent<Rigidbody>() : null;
+            if (rbBox != null) rbBox.useGravity = false;
+
+            if (_box != null)
+            {
+                _box.transform.SetParent(transform, true);
+                _box.gameObject.SetActive(false); // caja “guardada”
+            }
+
+            if (_anim != null && !string.IsNullOrEmpty(closeTrigger))
+                _anim.SetTrigger(closeTrigger);
+
+            if (_button != null)
+                _button.SetText(_button.E, buttonExtractionText);
+
+            StartGlowOnce();
+            ActivatePanel();
+        }
+
+        _attracting = false;
+        _state = ContainerState.Docked;
+    }
+
+    // ================== TRIGGERS ==================
+
     void OnTriggerEnter(Collider other)
     {
         if (_current != null) return;
-        if (!enabled || anchor == null) return;
+        if (!enabled) return;
         if (!canAtracction) return;
+        if (pos == null) return;
         if (((1 << other.gameObject.layer) & acceptMask) == 0) return;
         if (!HasPhysicsBox(other.gameObject)) return; // setea _box si existe
 
@@ -143,169 +405,202 @@ public class HedronContainerIn : MonoBehaviour, IInteractable
             _rb.velocity = Vector3.zero;
             _rb.angularVelocity = Vector3.zero;
             _rb.useGravity = false;
-            _rb.isKinematic = true; // evita saltos de física durante atracción
+            _rb.isKinematic = true;
         }
 
-        // Cancelar cualquier atracción previa
-        if (_attractRoutine != null) StopCoroutine(_attractRoutine);
-
-        if (useSmoothAttract)
-            _attractRoutine = StartCoroutine(AttractAndDock(_current, _rb, _box));
-        else
-        {
-            // Fallback: legacy shrink + atracción inmediata (no recomendado)
-            StartCoroutine(ShrinkOverTime(other.gameObject.transform, targetScale, shrinkDuration));
-            _attracting = true; // si quisieras mantener algún UI de “atrayendo…”
-        }
+        StartAttraction();
     }
 
     void OnTriggerExit(Collider other)
     {
-        if (other.transform == _current && _attracting)
+        if (other.transform == _current && _state == ContainerState.Attracting)
         {
-            // Si se sale mientras atrae, limpiamos el estado y paramos la rutina
-            if (_attractRoutine != null) StopCoroutine(_attractRoutine);
-            _attractRoutine = null;
-            ClearState();
+            ResetToIdle();
         }
     }
 
-    private IEnumerator AttractAndDock(Transform t, Rigidbody rb, PhysicsBox box)
+    void StartAttraction()
     {
-        if (t == null || anchor == null) yield break;
+        if (_current == null || pos == null)
+        {
+            ResetToIdle();
+            return;
+        }
+
+        _attractStartPos = _current.position;
+        _attractStartRot = _current.rotation;
+        _attractStartScale = _current.localScale;
+
+        _attractEndPos = pos.position;
+        _attractEndRot = pos.rotation;
+        _attractEndScale = targetScale;
+
+        _attractDuration = useSmoothAttract
+            ? Mathf.Max(0.05f, attractMaxSeconds)
+            : Mathf.Max(0.05f, Vector3.Distance(_attractStartPos, _attractEndPos) / Mathf.Max(0.01f, attractionSpeed));
+
+        _attractTimer = 0f;
 
         _attracting = true;
-
-        // Datos iniciales
-        Vector3 startPos = t.position;
-        Quaternion startRot = t.rotation;
-        Vector3 startScale = t.localScale;
-
-        Vector3 endPos = anchor.position;
-        Quaternion endRot = anchor.rotation;
-        Vector3 endScale = targetScale;
-
-        float dur = Mathf.Max(0.05f, attractMaxSeconds);
-        float elapsed = 0f;
-
-        // Seguridad física durante atracción
-        if (rb != null)
-        {
-            rb.useGravity = false;
-            rb.isKinematic = true;
-            rb.velocity = Vector3.zero;
-            rb.angularVelocity = Vector3.zero;
-        }
-
-        while (elapsed < dur)
-        {
-            elapsed += Time.deltaTime;
-            float t01 = Mathf.Clamp01(elapsed / dur);
-
-            float p = posCurve.Evaluate(t01);
-            float r = rotCurve.Evaluate(t01);
-            float s = scaleCurve.Evaluate(t01);
-
-            // Interpolaciones suaves
-            t.position = Vector3.LerpUnclamped(startPos, endPos, p);
-            t.rotation = Quaternion.SlerpUnclamped(startRot, endRot, r);
-            t.localScale = Vector3.LerpUnclamped(startScale, endScale, s);
-
-            // Criterios de “dock”
-            bool closeEnough = Vector3.Distance(t.position, endPos) <= stopDistance;
-
-            // margen relativo respecto a targetScale
-            bool smallEnough =
-                Mathf.Abs(t.localScale.x - endScale.x) <= endScale.x * (dockScaleThreshold - 1f) &&
-                Mathf.Abs(t.localScale.y - endScale.y) <= endScale.y * (dockScaleThreshold - 1f) &&
-                Mathf.Abs(t.localScale.z - endScale.z) <= endScale.z * (dockScaleThreshold - 1f);
-
-            if (smallEnough && closeEnough)
-                break;
-
-            yield return null;
-        }
-
-        // Snap final
-        t.position = endPos;
-        if (alignRotationOnDock) t.rotation = endRot;
-        t.localScale = endScale;
-
-        // Encastre / eventos (tu flujo original)
-        if (rb != null)
-        {
-            rb.velocity = Vector3.zero;
-            rb.angularVelocity = Vector3.zero;
-            rb.useGravity = false;
-            rb.isKinematic = true;
-        }
-
-        var mainCol = t.GetComponent<BoxCollider>();
-        if (mainCol != null) mainCol.enabled = false;
-
-        t.SetParent(anchor, true);
-
-        if (!_placedFired)
-        {
-            _placedFired = true;
-            onHedronPlaced?.Invoke();
-
-            var rbBox = _box != null ? _box.GetComponent<Rigidbody>() : null;
-            if (rbBox != null) rbBox.useGravity = false;
-
-            if (_box != null)
-            {
-                _box.transform.SetParent(transform, true);
-                _box.gameObject.SetActive(false);
-            }
-
-            if (_anim != null && !string.IsNullOrEmpty(closeTrigger))
-                _anim.SetTrigger(closeTrigger);
-
-            if (_button != null)
-                _button.SetText(_button.E, buttonExtractionText);
-
-            if (_rightMat != null && _leftMat != null)
-                StartCoroutine(GlowPulseOnce());
-
-            if (panel != null)
-                ActivatePanel();
-        }
-
-        _attracting = false;
-        _attractRoutine = null;
+        _state = ContainerState.Attracting;
     }
 
-    // ==== UTILIDADES EXISTENTES / EYECCIÓN ====
+    // ================== EYECCIÓN ==================
 
-    public IEnumerator ShrinkOverTime(Transform target, Vector3 finalScale, float duration)
+    public void OpenAndEject()
     {
-        if (target == null) yield break;
+        if (_isEjecting) return;
+        if (!HasOccupant || _box == null) return;
+        if (_state != ContainerState.Docked) return;
+        if (Time.time - _lastEjectTime < ejectCooldown) return;
 
-        Vector3 initialScale = target.localScale;
-        float elapsed = 0f;
+        canAtracction = false;
+        _cantAtracctionTimer = 3f;
 
-        while (elapsed < duration)
-        {
-            elapsed += Time.deltaTime;
-            float t = Mathf.Clamp01(elapsed / duration);
-            float smooth = Mathf.SmoothStep(0, 1, t);
-            target.localScale = Vector3.LerpUnclamped(initialScale, finalScale, smooth);
-            yield return null;
-        }
+        _isEjecting = true;
+        _lastEjectTime = Time.time;
 
-        target.localScale = finalScale;
+        if (_anim != null && !string.IsNullOrEmpty(openTrigger))
+            _anim.SetTrigger(openTrigger);
+
+        _openingTimer = 0f;
+        _state = ContainerState.Opening;
     }
 
-    void ClearState()
+    public void EjectNow()
+    {
+        if (_isEjecting) return;
+        if (!HasOccupant || _box == null) return;
+
+        canAtracction = false;
+        _cantAtracctionTimer = 3f;
+
+        _isEjecting = true;
+        _lastEjectTime = Time.time;
+
+        if (_anim != null && !string.IsNullOrEmpty(openTrigger))
+            _anim.SetTrigger(openTrigger);
+
+        _openingTimer = openToEjectDelay; // para forzar que pase directo
+        _state = ContainerState.Opening;
+    }
+
+    public void ForceEject() => EjectNow();
+
+    public void ClearContainer()
+    {
+        ResetToIdle();
+    }
+
+    public bool CanAcceptObject(GameObject obj)
+    {
+        if (_current != null || !enabled || pos == null) return false;
+        if (((1 << obj.layer) & acceptMask) == 0) return false;
+        return HasPhysicsBox(obj);
+    }
+
+    void BeginEjectFromCenter()
+    {
+        if (_box == null)
+        {
+            ResetToIdle();
+            return;
+        }
+
+        // Activar caja y sacarla del contenedor
+        _box.gameObject.SetActive(true);
+        _box.enabled = false; // componente PhysicsBox desactivado durante el launch
+        _box.transform.SetParent(null, true);
+
+        // Opcional: desparentar el hedro interno
+        if (_current != null)
+            _current.SetParent(null, true);
+
+        if (_rb == null)
+            _rb = _box.GetComponent<Rigidbody>();
+
+        if (_rb != null)
+        {
+            _rb.isKinematic = true;
+            _rb.useGravity = false;
+            _rb.velocity = Vector3.zero;
+            _rb.angularVelocity = Vector3.zero;
+        }
+
+        // Pos inicial de eyección: centro POS
+        if (pos != null)
+        {
+            _box.transform.position = pos.position;
+            _box.transform.rotation = pos.rotation;
+        }
+        else if (anchor != null)
+        {
+            _box.transform.position = anchor.position;
+            _box.transform.rotation = anchor.rotation;
+        }
+
+        // Destino: hacia adelante 2 unidades
+        _ejectTargetPos = _box.transform.position + _box.transform.forward * 1f;
+
+        // Escala inicial: igual targetScale
+        _box.transform.localScale = targetScale;
+        _ejectScaleTimer = 0f;
+
+        _state = ContainerState.Ejecting;
+    }
+
+    void FinishEject(Transform t)
+    {
+        if (t == null)
+        {
+            ResetToIdle();
+            return;
+        }
+
+        if (reenableColliderOnEject)
+        {
+            EnableAllColliders(t, true);
+        }
+
+        if (_rb == null)
+            _rb = t.GetComponent<Rigidbody>();
+
+        if (_rb != null)
+        {
+            _rb.isKinematic = false;
+            _rb.useGravity = true;
+            _rb.WakeUp();
+
+            if (ejectTorque > 0f)
+            {
+                Vector3 rand = Random.onUnitSphere * ejectTorque;
+                _rb.AddTorque(rand, ForceMode.VelocityChange);
+            }
+        }
+
+        onHedronRemoved?.Invoke();
+
+        _isEjecting = false;
+        ResetToIdle();
+    }
+
+    // ================== TIMERS, GLOW, UTILIDADES ==================
+
+    void ResetToIdle()
     {
         _current = null;
         _rb = null;
         _attracting = false;
         _placedFired = false;
-        _box = null;
         _isEjecting = false;
-        if (_button != null) _button.SetText(_button.E, "");
+        _box = null;
+        _openingTimer = 0f;
+        _attractTimer = 0f;
+
+        if (_button != null)
+            _button.SetText(_button.E, "");
+
+        _state = ContainerState.Idle;
     }
 
     bool HasPhysicsBox(GameObject go)
@@ -316,273 +611,126 @@ public class HedronContainerIn : MonoBehaviour, IInteractable
         return false;
     }
 
-    IEnumerator CantAtracction()
-    {
-        canAtracction = false;
-        yield return new WaitForSeconds(3f);
-        canAtracction = true;
-    }
-
-    public IEnumerator MoveForward6Units(Transform target)
-    {
-        if (target == null) yield break;
-        _box.transform.position = pos.transform.position;
-        _box.transform.rotation = pos.transform.rotation;
-
-        Vector3 startPos = target.position;
-        Vector3 targetPos = startPos + target.forward * 2f;
-
-        MeshCollider _boxHedro = target.GetComponent<MeshCollider>();
-        while (Vector3.Distance(target.position, targetPos) > 0.01f)
-        {
-            target.position = Vector3.MoveTowards(target.position, targetPos, 6 * Time.deltaTime);
-            if(_boxHedro != null)
-            {
-                if (_boxHedro.enabled)
-                {
-                    _boxHedro.enabled = false;
-                }
-            }
-            yield return null;
-        }
-        if(_boxHedro != null)
-        {
-            _boxHedro.enabled = true;
-        }
-      
-        target.position = targetPos; // asegurar posición final exacta
-    }
-
-    public void OpenAndEject()
-    {
-        if (_isEjecting) return;
-        if (!HasOccupant || _box == null) return;
-        if (Time.time - _lastEjectTime < ejectCooldown) return;
-
-        StartCoroutine(CantAtracction());
-        _isEjecting = true;
-        _lastEjectTime = Time.time;
-
-        if (_anim != null && !string.IsNullOrEmpty(openTrigger))
-            _anim.SetTrigger(openTrigger);
-
-        if (pos != null)
-            StartCoroutine(EjectToPosAfterDelay(posDelaySeconds));
-        else
-            StartCoroutine(EjectAfterDelay(openToEjectDelay));
-    }
-
-    public void EjectNow()
-    {
-        if (_isEjecting) return;
-        if (!HasOccupant || _box == null) return;
-        _isEjecting = true;
-        _lastEjectTime = Time.time;
-
-        if (pos != null)
-            StartCoroutine(EjectToPosAfterDelay(0f));
-        else
-            StartCoroutine(EjectAfterDelay(0f));
-    }
-
-    // Public method to force ejection
-    public void ForceEject() => EjectNow();
-
-    // Public method to clear container manually
-    public void ClearContainer()
-    {
-        if (_attractRoutine != null) StopCoroutine(_attractRoutine);
-        _attractRoutine = null;
-        ClearState();
-    }
-
-    // Public method to check if object can be accepted
-    public bool CanAcceptObject(GameObject obj)
-    {
-        if (_current != null || !enabled || anchor == null) return false;
-        if (((1 << obj.layer) & acceptMask) == 0) return false;
-        return HasPhysicsBox(obj);
-    }
-
-    IEnumerator EjectToPosAfterDelay(float delay)
-    {
-        _box.gameObject.SetActive(true);
-        if (_box != null) _box.enabled = false;
-        _box.transform.SetParent(null, true);
-
-        if (!HasOccupant || _box == null) { _isEjecting = false; yield break; }
-
-        _box.transform.position = pos.transform.position;
-        _box.transform.rotation = pos.transform.rotation;
-
-        if (delay > 0f) yield return new WaitForSeconds(delay);
-
-        if (_rb == null) _rb = _box.GetComponent<Rigidbody>();
-        Transform t = _current != null ? _current : _box.transform;
-        Rigidbody rb = _rb;
-        if (t == null || rb == null) { _isEjecting = false; yield break; }
-
-        t.SetParent(null, true);
-        if (reenableColliderOnEject) EnableAllColliders(t, true);
-
-        StartCoroutine(MoveForward6Units(_box.transform));
-
-        if (scaleUpSeconds > 0.01f)
-            yield return ScaleTo(t, Vector3.one, scaleUpSeconds);
-        else
-            t.localScale = Vector3.one;
-
-        if (ejectTorque > 0f)
-        {
-            Vector3 rand = Random.onUnitSphere * ejectTorque;
-            rb.AddTorque(rand, ForceMode.VelocityChange);
-        }
-
-        onHedronRemoved?.Invoke();
-
-        if (_box.transform.parent == transform)
-            _box.transform.SetParent(null, true);
-
-        _isEjecting = false;
-        ClearState();
-    }
-
-    IEnumerator EjectAfterDelay(float delay)
-    {
-        _box.gameObject.SetActive(true);
-        if (!HasOccupant || _box == null) { _isEjecting = false; yield break; }
-        if (delay > 0f) yield return new WaitForSeconds(delay);
-
-        if (_rb == null) _rb = _box.GetComponent<Rigidbody>();
-        Transform t = _current != null ? _current : _box.transform;
-        Rigidbody rb = _rb;
-        if (t == null || rb == null) { _isEjecting = false; yield break; }
-
-        t.SetParent(null, true);
-        if (reenableColliderOnEject) EnableAllColliders(t, true);
-
-        Vector3 dir = (anchor != null ? anchor.forward : transform.forward).normalized;
-        NudgeOutFromAnchor(t, dir, Mathf.Max(0f, ejectNudgeDistance));
-
-        rb.isKinematic = true;
-        rb.useGravity = false;
-        rb.velocity = Vector3.zero;
-        rb.angularVelocity = Vector3.zero;
-
-        onHedronRemoved?.Invoke();
-
-        yield return ScaleTo(t, Vector3.one, Mathf.Max(0.01f, scaleUpSeconds));
-
-        rb.isKinematic = false;
-        rb.useGravity = true;
-        rb.WakeUp();
-
-        if (ejectTorque > 0f)
-        {
-            Vector3 rand = Random.onUnitSphere * ejectTorque;
-            rb.AddTorque(rand, ForceMode.VelocityChange);
-        }
-
-        if (_box.transform.parent == transform)
-            _box.transform.SetParent(null, true);
-
-        _isEjecting = false;
-        ClearState();
-    }
-
-    IEnumerator ScaleTo(Transform target, Vector3 finalScale, float duration)
-    {
-        if (target == null) yield break;
-        Vector3 start = target.localScale;
-        float elapsed = 0f;
-
-        while (elapsed < duration)
-        {
-            elapsed += Time.deltaTime;
-            float t = Mathf.Clamp01(elapsed / duration);
-            float s = Mathf.SmoothStep(0f, 1f, t);
-            target.localScale = Vector3.LerpUnclamped(start, finalScale, s);
-            yield return null;
-        }
-        target.localScale = finalScale;
-    }
-
     void EnableAllColliders(Transform root, bool enabled)
     {
-        var cols = root.GetComponentsInChildren<Collider>(true);
+        var cols = root.GetComponentsInChildren<MeshCollider>(true);
         for (int i = 0; i < cols.Length; i++) cols[i].enabled = enabled;
     }
 
-    void NudgeOutFromAnchor(Transform t, Vector3 dir, float distance)
+    void UpdateBlockAttractionTimer()
     {
-        if (anchor == null || distance <= 0f) return;
-        t.position = anchor.position + dir * distance;
+        if (_cantAtracctionTimer > 0f)
+        {
+            _cantAtracctionTimer -= Time.deltaTime;
+            if (_cantAtracctionTimer <= 0f)
+            {
+                canAtracction = true;
+            }
+        }
     }
 
-    IEnumerator GlowPulseOnce()
+    void UpdatePanelBlockTimer()
+    {
+        if (_panelBlockTimer > 0f)
+        {
+            _panelBlockTimer -= Time.deltaTime;
+            if (_panelBlockTimer <= 0f)
+            {
+                canOpenPanel = true;
+            }
+        }
+
+        if (!canOpenPanel && panel != null && panel.activeSelf)
+            panel.SetActive(false);
+    }
+
+    void UpdatePanelTimers()
+    {
+        if (_panelShowTimer > 0f)
+        {
+            _panelShowTimer -= Time.deltaTime;
+            if (_panelShowTimer <= 0f)
+            {
+                if (panel != null && canOpenPanel)
+                    panel.SetActive(true);
+                if (E != null)
+                {
+                    E.gameObject.SetActive(true);
+                    E.text = extractionMessage;
+                }
+            }
+        }
+
+        if (_panelCloseTimer > 0f)
+        {
+            _panelCloseTimer -= Time.deltaTime;
+            if (_panelCloseTimer <= 0f)
+            {
+                if (message != null) message.gameObject.SetActive(false);
+                if (panel != null) panel.gameObject.SetActive(false);
+            }
+        }
+    }
+
+    void UpdateGlow()
+    {
+        if (!_glowActive) return;
+
+        float f = Mathf.Max(0.0001f, brightnessFrequency);
+        _glowTimer += Time.deltaTime;
+
+        float phase = _glowTimer * f;
+        float brightness = (Mathf.Cos(phase) + 1f) * 0.5f;
+
+        if (_rightMat != null)
+        {
+            Color e = _baseEmissionRight + (glowColor * brightness * brightnessAmplitude);
+            _rightMat.SetColor("_EmissionColor", e);
+        }
+        if (_leftMat != null)
+        {
+            Color e = _baseEmissionLeft + (glowColor * brightness * brightnessAmplitude);
+            _leftMat.SetColor("_EmissionColor", e);
+        }
+
+        if (_glowTimer >= _glowDuration)
+        {
+            if (_rightMat != null)
+            {
+                _rightMat.SetColor("_EmissionColor", _baseEmissionRight);
+                _rightMat.DisableKeyword("_EMISSION");
+            }
+            if (_leftMat != null)
+            {
+                _leftMat.SetColor("_EmissionColor", _baseEmissionLeft);
+                _leftMat.DisableKeyword("_EMISSION");
+            }
+
+            _glowActive = false;
+        }
+    }
+
+    void StartGlowOnce()
     {
         if (_rightMat != null) _rightMat.EnableKeyword("_EMISSION");
         if (_leftMat != null) _leftMat.EnableKeyword("_EMISSION");
 
         float f = Mathf.Max(0.0001f, brightnessFrequency);
-        float duration = Mathf.PI / f;
-        float t = 0f;
-
-        while (t < duration)
-        {
-            t += Time.deltaTime;
-            float phase = t * f;
-            float brightness = (Mathf.Cos(phase) + 1f) * 0.5f;
-
-            if (_rightMat != null)
-            {
-                Color e = _baseEmissionRight + (glowColor * brightness * brightnessAmplitude);
-                _rightMat.SetColor("_EmissionColor", e);
-            }
-            if (_leftMat != null)
-            {
-                Color e = _baseEmissionLeft + (glowColor * brightness * brightnessAmplitude);
-                _leftMat.SetColor("_EmissionColor", e);
-            }
-
-            yield return null;
-        }
-
-        if (_rightMat != null)
-        {
-            _rightMat.SetColor("_EmissionColor", _baseEmissionRight);
-            _rightMat.DisableKeyword("_EMISSION");
-        }
-        if (_leftMat != null)
-        {
-            _leftMat.SetColor("_EmissionColor", _baseEmissionLeft);
-            _leftMat.DisableKeyword("_EMISSION");
-        }
+        _glowDuration = Mathf.PI / f;
+        _glowTimer = 0f;
+        _glowActive = true;
     }
-    private bool canOpenPanel = true;
+
     private void ActivatePanel()
     {
-        StartCoroutine(WaitShowPanel());
+        _panelShowTimer = panelShowDelay;
     }
+
     public void ClosePanelByTren()
     {
         canOpenPanel = false;
-        StartCoroutine(waitClosePanel());
-    }
-    IEnumerator waitClosePanel()
-    {
-        yield return new WaitForSeconds(5f);
-        canOpenPanel = true;
-    }
-    IEnumerator WaitShowPanel()
-    {
-        yield return new WaitForSeconds(panelShowDelay);
-        if (panel != null && canOpenPanel) panel.SetActive(true);
-        if (E != null)
-        {
-            E.gameObject.SetActive(true);
-            E.text = extractionMessage;
-        }
+        _panelBlockTimer = 5f;
+        if (panel != null) panel.SetActive(false);
     }
 
     public void Interact()
@@ -591,15 +739,10 @@ public class HedronContainerIn : MonoBehaviour, IInteractable
         {
             if (E != null) E.gameObject.SetActive(false);
             if (message != null) message.gameObject.SetActive(true);
-            OpenAndEject();
-            StartCoroutine(WaitClosePanel());
-        }
-    }
 
-    IEnumerator WaitClosePanel()
-    {
-        yield return new WaitForSeconds(panelCloseDelay);
-        if (message != null) message.gameObject.SetActive(false);
-        if (panel != null) panel.gameObject.SetActive(false);
+            OpenAndEject();
+
+            _panelCloseTimer = panelCloseDelay;
+        }
     }
 }
