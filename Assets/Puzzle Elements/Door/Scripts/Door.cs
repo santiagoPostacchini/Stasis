@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using Managers.Events;
 using Puzzle_Elements.AllInterfaces;
@@ -36,6 +37,9 @@ namespace Puzzle_Elements.Door.Scripts
         private Vector3 _leftClosedPos, _rightClosedPos;
 
         [SerializeField] private ParticleSystem[] particlesDoor = new ParticleSystem[3];
+
+        public Action OnGear;
+        public Action OnDoor;
 
         private void Start()
         {
@@ -81,11 +85,13 @@ namespace Puzzle_Elements.Door.Scripts
             {
                 foreach (var gear in gears)
                 {
-                    EventManager.TriggerEvent(gearSoundName, gameObject);
+                    //EventManager.TriggerEvent(gearSoundName, gameObject);
+                    OnGear?.Invoke();
                     yield return RotateGear(gear, true);
                 }
 
-                EventManager.TriggerEvent(openSoundName, gameObject);
+                //EventManager.TriggerEvent(openSoundName, gameObject);
+                OnDoor?.Invoke();
                 yield return SlideDoors(true);
 
                 if (hasTimedClose)
@@ -93,12 +99,14 @@ namespace Puzzle_Elements.Door.Scripts
             }
             else
             {
-                EventManager.TriggerEvent(closeSoundName, gameObject);
+                //EventManager.TriggerEvent(closeSoundName, gameObject);
+                OnDoor?.Invoke();
                 yield return SlideDoors(false);
 
                 foreach (var gear in gears)
                 {
-                    EventManager.TriggerEvent(gearSoundName, gameObject);
+                    //EventManager.TriggerEvent(gearSoundName, gameObject);
+                     OnGear?.Invoke();
                     yield return RotateGear(gear, false);
                 }
             }

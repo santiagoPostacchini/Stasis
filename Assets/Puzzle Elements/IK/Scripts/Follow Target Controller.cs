@@ -4,6 +4,7 @@ using Unity.Mathematics;
 using System.Collections;
 using UnityEngine.Animations.Rigging;
 using Managers.Game;
+using System;
 
 [RequireComponent(typeof(Rigidbody))]
 public class FollowTargetController : MonoBehaviour
@@ -149,6 +150,11 @@ public class FollowTargetController : MonoBehaviour
 
     private float brotherCurrentMin = 0f;
 
+    public Action OnArmMove;
+    [Header("Eventos de movimiento")]
+    [SerializeField] private float armMoveSignificantDelta = 0.05f;
+    private bool armMovingNotified = false;
+
     // -------------------------
     // Helpers
     // -------------------------
@@ -218,7 +224,7 @@ public class FollowTargetController : MonoBehaviour
             distRaw = distFiltered = d.magnitude;
         }
     }
-    
+
     private void FixedUpdate()
     {
         // Keep RB pose coherent when working in parent frame
@@ -285,6 +291,20 @@ public class FollowTargetController : MonoBehaviour
         if (Mathf.Approximately(desired, currentWeight) || Mathf.Abs(desired - currentWeight) < weightDeadZone)
             desired = currentWeight;
 
+        float deltaWeight = Mathf.Abs(desired - currentWeight);
+        bool isMovingSignificantly = deltaWeight >= armMoveSignificantDelta;
+
+        if (isMovingSignificantly && !armMovingNotified)
+        {
+            OnArmMove?.Invoke();
+            armMovingNotified = true;
+        }
+        else if (!isMovingSignificantly && armMovingNotified)
+        {
+            armMovingNotified = false;
+        }
+        // ===============================================================
+
         // Smooth weight to rig
         if (rig != null)
         {
@@ -321,6 +341,7 @@ public class FollowTargetController : MonoBehaviour
         currentTip = startAnchor;
         if (moveRoutine != null) StopCoroutine(moveRoutine);
         moveRoutine = StartCoroutine(MoveRB_Pausable(to, moveDuration));
+        OnArmMove?.Invoke();
     }
     public void ChangePositionToStartAnchor()
     {
@@ -328,6 +349,7 @@ public class FollowTargetController : MonoBehaviour
         currentTip = brother;
         if (moveRoutine != null) StopCoroutine(moveRoutine);
         moveRoutine = StartCoroutine(MoveRB_Pausable(to, moveDuration));
+        OnArmMove?.Invoke();
     }
     /// <summary>
     /// Toggles target tip between StartAnchor (A) and Brother (B), running a timed move.
@@ -346,6 +368,7 @@ public class FollowTargetController : MonoBehaviour
 
         if (moveRoutine != null) StopCoroutine(moveRoutine);
         moveRoutine = StartCoroutine(MoveRB_Pausable(to, moveDuration));
+        OnArmMove?.Invoke();
     }
 
     // Recursive layer assign (expects a single bit in LayerMask)
