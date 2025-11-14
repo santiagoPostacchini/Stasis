@@ -21,7 +21,7 @@ namespace Puzzle_Elements.Water.Scripts
             {
                 
                 OnFallInWater?.Invoke();
-                player.transform.position = _checkpoint.CurrentCheckpointPos();
+               // player.transform.position = _checkpoint.CurrentCheckpointPos();
                 Rigidbody rb = player.GetComponent<Rigidbody>();
                 if(rb != null)
                 {
@@ -40,32 +40,32 @@ namespace Puzzle_Elements.Water.Scripts
                 }
             }
         }
-        private void OnCollisionEnter(Collision collision)
-        {
-            player = collision.gameObject.GetComponent<Model>();
-            if (player != null)
-            {
-                OnFallInWater?.Invoke();
-                //player.transform.position = _checkpoint.CurrentCheckpointPos();
-                Rigidbody rb = player.GetComponent<Rigidbody>();
-                if (rb != null)
-                {
-                    rb.velocity = Vector3.zero;
-                }
-            }
+        //private void OnCollisionEnter(Collision collision)
+        //{
+        //    player = collision.gameObject.GetComponent<Model>();
+        //    if (player != null)
+        //    {
+        //        OnFallInWater?.Invoke();
+        //        //player.transform.position = _checkpoint.CurrentCheckpointPos();
+        //        Rigidbody rb = player.GetComponent<Rigidbody>();
+        //        if (rb != null)
+        //        {
+        //            rb.velocity = Vector3.zero;
+        //        }
+        //    }
 
-            PhysicsBox hedro = collision.gameObject.GetComponent<PhysicsBox>();
-            if (hedro != null)
-            {
-                hedro.transform.position = hedro.posInitial;
+        //    PhysicsBox hedro = collision.gameObject.GetComponent<PhysicsBox>();
+        //    if (hedro != null)
+        //    {
+        //        hedro.transform.position = hedro.posInitial;
 
-                Rigidbody rb = hedro.GetComponent<Rigidbody>();
-                if (rb != null)
-                {
-                    rb.velocity = Vector3.zero;
-                }
-            }
-        }
+        //        Rigidbody rb = hedro.GetComponent<Rigidbody>();
+        //        if (rb != null)
+        //        {
+        //            rb.velocity = Vector3.zero;
+        //        }
+        //    }
+        //}
         public void PlayerDeath()
         {
             //player.transform.position = _checkpoint.CurrentCheckpointPos();
