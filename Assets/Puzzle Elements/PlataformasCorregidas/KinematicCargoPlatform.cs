@@ -1,8 +1,9 @@
 using UnityEngine;
 using UnityEngine.Events;
+using System.Collections;
 
-/// Mueve la plataforma del pist髇 arriba/abajo con perfil trapezoidal.
-/// Ideal para un pist髇 donde la base es fija y la plataforma sube y baja.
+/// Mueve la plataforma del pist贸n arriba/abajo con perfil trapezoidal.
+/// Ideal para un pist贸n donde la base es fija y la plataforma sube y baja.
 [DisallowMultipleComponent]
 [RequireComponent(typeof(Rigidbody))]
 public class KinematicCargoPlatform : MonoBehaviour
@@ -11,8 +12,8 @@ public class KinematicCargoPlatform : MonoBehaviour
     private enum Phase { Idle, Accel, Cruise, Decel, Dwell }
 
     [Header("Waypoints")]
-    public Transform pointA;  // posici髇 baja
-    public Transform pointB;  // posici髇 alta
+    public Transform pointA;  // posici贸n baja
+    public Transform pointB;  // posici贸n alta
 
     [Header("Movimiento")]
     public float cruiseSpeed = 2f;
@@ -27,12 +28,17 @@ public class KinematicCargoPlatform : MonoBehaviour
     public UnityEvent onReachA;
     public UnityEvent onReachB;
 
+    [Header("Delay de inicio")]
+    public float startDelay = 0f;
+
     Rigidbody _rb;
     Phase _phase = Phase.Idle;
     Vector3 _from, _to, _dirN;
     float _distanceTotal, _travelled, _velocity, _tDwell;
     bool _headingUp;
     Phase _lastPhase;
+    bool _isStarting = false;
+
     [SerializeField] private ElevatorShipmentTrain _elevatorShipmentTrain;
 
     void Awake()
@@ -41,19 +47,22 @@ public class KinematicCargoPlatform : MonoBehaviour
         _rb.isKinematic = true;
         _elevatorShipmentTrain = GetComponentInParent<ElevatorShipmentTrain>();
     }
-    
+
     void OnEnable()
     {
         if (!pointA || !pointB)
         {
             Debug.LogError("[PlatformMoverTrapezoid] Asigna pointA/pointB.");
-            enabled = false; return;
+            enabled = false; 
+            return;
         }
 
         _rb.position = startAtA ? pointA.position : pointB.position;
         _headingUp = startAtA;
         PrepareSegment();
-        if (autoStart) StartMove();
+
+        if (autoStart)
+            StartMove();
     }
 
     void PrepareSegment()
@@ -66,18 +75,43 @@ public class KinematicCargoPlatform : MonoBehaviour
         _velocity = 0f;
     }
 
+    // ---------------------------
+    // START MOVE con DELAY
+    // ---------------------------
     public void StartMove()
     {
-        if (_distanceTotal > 0.001f) _phase = Phase.Accel;
+        if (_isStarting) return;
+
+        if (startDelay > 0f)
+        {
+            StartCoroutine(StartMoveDelayed());
+            return;
+        }
+
+        if (_distanceTotal > 0.001f)
+            _phase = Phase.Accel;
     }
+
+    IEnumerator StartMoveDelayed()
+    {
+        _isStarting = true;
+        yield return new WaitForSeconds(startDelay);
+
+        if (_distanceTotal > 0.001f)
+            _phase = Phase.Accel;
+
+        _isStarting = false;
+    }
+    // ---------------------------
+
     public void StopMove()
     {
         _phase = Phase.Idle;
     }
+
     public void Desestasear()
     {
         _phase = _lastPhase;
-        
     }
 
     public void stasear()
@@ -86,23 +120,24 @@ public class KinematicCargoPlatform : MonoBehaviour
         {
             _lastPhase = _phase;
             _phase = Phase.Idle;
-            
             return;
         }
-        
     }
+
     public void ActivateKinematic()
     {
         _rb.isKinematic = true;
     }
+
     public void DesactivateKinematic()
     {
         _rb.isKinematic = false;
     }
+
     void FixedUpdate()
     {
-        
         if (_phase == Phase.Idle) return;
+
         float dt = Time.fixedDeltaTime;
 
         float dAccel = (cruiseSpeed * cruiseSpeed) / (2f * Mathf.Max(acceleration, 1e-4f));
@@ -131,20 +166,24 @@ public class KinematicCargoPlatform : MonoBehaviour
                 break;
 
             case Phase.Decel:
-              
-                remaining = _distanceTotal - _travelled;
-                float vStop = Mathf.Sqrt(Mathf.Max(0f, 2f * acceleration * remaining));
+                float rem = _distanceTotal - _travelled;
+                float vStop = Mathf.Sqrt(Mathf.Max(0f, 2f * acceleration * rem));
                 _velocity = Mathf.Min(_velocity, vStop);
                 _velocity = Mathf.MoveTowards(_velocity, 0f, acceleration * dt);
                 Step(_velocity * dt);
-                if (remaining <= arriveEpsilon || _velocity <= 1e-3f) Arrive();
+                if (rem <= arriveEpsilon || _velocity <= 1e-3f) Arrive();
                 break;
 
             case Phase.Dwell:
                 _tDwell -= dt;
                 if (_tDwell <= 0f)
                 {
-                    if (mode == Mode.Once && _headingUp) { _phase = Phase.Idle; break; }
+                    if (mode == Mode.Once && _headingUp)
+                    {
+                        _phase = Phase.Idle;
+                        break;
+                    }
+
                     if (mode == Mode.Loop)
                     {
                         _headingUp = true;
@@ -154,6 +193,7 @@ public class KinematicCargoPlatform : MonoBehaviour
                     {
                         _headingUp = !_headingUp;
                     }
+
                     PrepareSegment();
                     _phase = Phase.Accel;
                 }
