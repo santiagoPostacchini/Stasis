@@ -146,7 +146,82 @@ namespace Player.Stasis
         {
             _stasisActivate = true;
         }
+        // private void TryApplyStasis()
+        // {
+        //     if (!_stasisActivate) return;
+        //     if (!canShootStasis) return;
+        //     if (!mainCam)
+        //     {
+        //         if (debugLogs) Debug.LogWarning("[StasisGun] TryApplyStasis abortado: no hay Camera asignada.");
+        //         return;
+        //     }
+        //
+        //     int mask = layer.value != 0 ? layer.value : ~0;
+        //     if (layer.value == 0 && debugLogs)
+        //         Debug.LogWarning("[StasisGun] LayerMask objetivo está en 0; usando fallback ~0 temporalmente.");
+        //
+        //     canShootStasis = false;
+        //     StartCoroutine(ResetShootAfter(cooldown));
+        //     OnShoot?.Invoke();
+        //
+        //     Ray ray = GetForwardRay(camHolder,20);
+        //
+        //     bool gotHit = Physics.SphereCast(ray, radiusStasis, out RaycastHit hit, maxDistance, mask,
+        //                          QueryTriggerInteraction.Ignore)
+        //                   || Physics.Raycast(ray, out hit, maxDistance, mask, QueryTriggerInteraction.Ignore);
+        //
+        //     bool stasisHit = false;
+        //     Vector3 targetPoint = gotHit 
+        //                           ? hit.point 
+        //                           : ray.origin + ray.direction * Mathf.Min(25f, maxDistance * 0.2f);
+        //     
+        //     
+        //     if (gotHit)
+        //     {
+        //         var go = hit.collider.gameObject;
+        //         if (go.TryGetComponent<IStasis>(out var stasisComponent))
+        //         {
+        //             var staseable = stasisComponent;
+        //             var objStaseable = ((MonoBehaviour)stasisComponent).gameObject;
+        //
+        //             var root = go.GetComponentInParent<StasisRoot>();
+        //             if (root)
+        //             {
+        //                 var found = root.GetComponentsInChildren<MonoBehaviour>().OfType<IStasis>().FirstOrDefault();
+        //                 if (found != null)
+        //                 {
+        //                     staseable = found;
+        //                     objStaseable = ((MonoBehaviour)staseable).gameObject;
+        //                 }
+        //             }
+        //
+        //             stasisHit = true;
+        //
+        //             // EXACTAMENTE como tu StasisGun2: delay corto y toggle en ApplyStasisEffect
+        //             StartCoroutine(WaitStasisEffect(objStaseable, staseable));
+        //         }
+        //         else
+        //         {
+        //             SpawnMissFx(targetPoint, hit.normal);
+        //         }
+        //     }
+        //     else
+        //     {
+        //         SpawnMissFx(targetPoint, -ray.direction);
+        //     }
+        //
+        //     // Elegir mano(s) según wallrun/spam
+        //     var fireMode = ChooseHandForThisShot();
+        //
+        //     // Spawnear beam desde el(los) brazo(s) seleccionados (siempre hay FX)
+        //     SpawnBeamsNextFrame(targetPoint, stasisHit, fireMode);
+        //
+        //     // Debug
+        //     DrawDebugShot(ray, gotHit, hit, stasisHit);
+        // }
+        
         private void TryApplyStasis()
+        
         {
             if (!_stasisActivate) return;
             if (!canShootStasis) return;
@@ -164,44 +239,64 @@ namespace Player.Stasis
             StartCoroutine(ResetShootAfter(cooldown));
             OnShoot?.Invoke();
 
-            Ray ray = GetForwardRay(camHolder,20);
+            Ray ray = GetForwardRay(camHolder, 20);
 
             bool gotHit = Physics.SphereCast(ray, radiusStasis, out RaycastHit hit, maxDistance, mask,
                                  QueryTriggerInteraction.Ignore)
                           || Physics.Raycast(ray, out hit, maxDistance, mask, QueryTriggerInteraction.Ignore);
 
             bool stasisHit = false;
-            Vector3 targetPoint = gotHit 
-                                  ? hit.point 
+            Vector3 targetPoint = gotHit
+                                  ? hit.point
                                   : ray.origin + ray.direction * Mathf.Min(25f, maxDistance * 0.2f);
-            
-            
+
             if (gotHit)
             {
-                var go = hit.collider.gameObject;
-                if (go.TryGetComponent<IStasis>(out var stasisComponent))
-                {
-                    var staseable = stasisComponent;
-                    var objStaseable = ((MonoBehaviour)stasisComponent).gameObject;
+                // >>> NUEVO BLOQUE: resolver IStasis desde proxy o desde padres <<<
+                IStasis stasisComponent = null;
+                GameObject objStaseable = null;
 
-                    var root = go.GetComponentInParent<StasisRoot>();
+                // 1) Si le pegamos a un proxy registrado
+                if (StasisRegistry.TryGet(hit.collider, out var stasisFromProxy))
+                {
+                    stasisComponent = stasisFromProxy;
+                    objStaseable = ((MonoBehaviour)stasisComponent).gameObject;
+                }
+                else
+                {
+                    // 2) Buscar en la jerarquía del objeto impactado (plataforma hija → engrane padre)
+                    var stasisInParents = hit.collider.GetComponentInParent<IStasis>();
+                    if (stasisInParents != null)
+                    {
+                        stasisComponent = stasisInParents;
+                        objStaseable = ((MonoBehaviour)stasisComponent).gameObject;
+                    }
+                }
+
+                if (stasisComponent != null)
+                {
+                    // 3) Mantener tu lógica de StasisRoot (si existe, preferir el IStasis dentro del root)
+                    var root = objStaseable.GetComponentInParent<StasisRoot>();
                     if (root)
                     {
-                        var found = root.GetComponentsInChildren<MonoBehaviour>().OfType<IStasis>().FirstOrDefault();
+                        var found = root.GetComponentsInChildren<MonoBehaviour>()
+                                        .OfType<IStasis>()
+                                        .FirstOrDefault();
                         if (found != null)
                         {
-                            staseable = found;
-                            objStaseable = ((MonoBehaviour)staseable).gameObject;
+                            stasisComponent = found;
+                            objStaseable = ((MonoBehaviour)stasisComponent).gameObject;
                         }
                     }
 
                     stasisHit = true;
 
-                    // EXACTAMENTE como tu StasisGun2: delay corto y toggle en ApplyStasisEffect
-                    StartCoroutine(WaitStasisEffect(objStaseable, staseable));
+                    // EXACTAMENTE como ya hacías: delay corto y toggle en ApplyStasisEffect
+                    StartCoroutine(WaitStasisEffect(objStaseable, stasisComponent));
                 }
                 else
                 {
+                    // No encontramos IStasis ni en proxy ni en padres → es un miss
                     SpawnMissFx(targetPoint, hit.normal);
                 }
             }
@@ -219,6 +314,7 @@ namespace Player.Stasis
             // Debug
             DrawDebugShot(ray, gotHit, hit, stasisHit);
         }
+
         private Ray GetForwardRay(Transform origin, float distance)
         {
             if (!origin)
