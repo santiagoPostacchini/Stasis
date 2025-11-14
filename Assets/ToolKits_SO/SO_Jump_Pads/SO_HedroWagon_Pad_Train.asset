@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4662f7d4049ad484091805f2b87a2895, type: 3}
   m_Name: SO_HedroWagon_Pad_Train
   m_EditorClassIdentifier: 
-  baseInitialSpeed: 90
+  baseInitialSpeed: 65
   maxElevationDeg: 45
   preferSlowerBranch: 1
   speedByDistance:
@@ -87,19 +87,19 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
-  tMin: 0.22
+  tMin: 20
   tMax: 2
-  tSearchIterations: 40
+  tSearchIterations: 64
   preserveIncomingHoriz: 0.25
   windupSeconds: 0.06
   coyoteTime: 0.06
   timeDilationDuringWindup: 0.95
-  powerMode: 1
-  distanceRemapMeters: {x: 2, y: 35}
-  overrideCheckpointCount: 10
-  nudgeTimeWindow: 0.08
+  powerMode: 0
+  distanceRemapMeters: {x: 0, y: 0}
+  overrideCheckpointCount: 0
+  nudgeTimeWindow: 0.6
   nudgeProximity: 1.1
   nudgeKp: 1.2
   nudgeKd: 0.5
   maxNudgeForce: 80
-  lateralOnly: 1
+  lateralOnly: 0
