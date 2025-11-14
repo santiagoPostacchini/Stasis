@@ -12,29 +12,29 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4662f7d4049ad484091805f2b87a2895, type: 3}
   m_Name: SO_PowerMode_Train
   m_EditorClassIdentifier: 
-  baseInitialSpeed: 50
-  maxElevationDeg: 40
+  baseInitialSpeed: 20
+  maxElevationDeg: 35
   preferSlowerBranch: 1
   speedByDistance:
     serializedVersion: 2
     m_Curve:
     - serializedVersion: 3
       time: 0
-      value: 1
-      inSlope: 0.69839436
-      outSlope: 0.69839436
+      value: 0
+      inSlope: 1
+      outSlope: 1
       tangentMode: 34
       weightedMode: 0
       inWeight: 0
-      outWeight: 0.33333334
+      outWeight: 0
     - serializedVersion: 3
-      time: 0.9956048
-      value: 1.6953248
-      inSlope: 0.69839436
-      outSlope: 0.69839436
+      time: 1
+      value: 1
+      inSlope: 1
+      outSlope: 1
       tangentMode: 34
       weightedMode: 0
-      inWeight: 0.33333334
+      inWeight: 0
       outWeight: 0
     m_PreInfinity: 2
     m_PostInfinity: 2
@@ -43,25 +43,25 @@ MonoBehaviour:
     serializedVersion: 2
     m_Curve:
     - serializedVersion: 3
-      time: 0.008333334
-      value: 1
-      inSlope: -0.08358793
-      outSlope: -0.08358793
-      tangentMode: 34
+      time: 0
+      value: 0
+      inSlope: 2
+      outSlope: 2
+      tangentMode: 0
       weightedMode: 0
       inWeight: 0
-      outWeight: 0.33333334
+      outWeight: 0
     - serializedVersion: 3
-      time: 12
-      value: -0.0023585558
-      inSlope: -0.08358793
-      outSlope: -0.08358793
-      tangentMode: 34
+      time: 1
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 0
       weightedMode: 0
-      inWeight: 0.33333334
+      inWeight: 0
       outWeight: 0
     m_PreInfinity: 2
-    m_PostInfinity: 1
+    m_PostInfinity: 2
     m_RotationOrder: 4
   powerByHold:
     serializedVersion: 2
@@ -95,7 +95,7 @@ MonoBehaviour:
   coyoteTime: 0.06
   timeDilationDuringWindup: 0.95
   powerMode: 0
-  distanceRemapMeters: {x: 2, y: 40}
+  distanceRemapMeters: {x: 2, y: 35}
   overrideCheckpointCount: 0
   nudgeTimeWindow: 0.08
   nudgeProximity: 1.1
