@@ -10,7 +10,7 @@ public class SensorLaser : MonoBehaviour
     [Tooltip("Lista de lasers")]
     public Laser[] lasers;
 
-
+    public GameObject[] laserGameobject;
     [Header("Events")]
     [Tooltip("Eventos que se llaman cuando el laser detecta al Player")]
     public UnityEvent OnIntruderDetected;
@@ -51,7 +51,7 @@ public class SensorLaser : MonoBehaviour
     public void CanKillPlayer()
     {
         _canKillPlayer = true;
-        foreach (var item in lasers)
+        foreach (var item in laserGameobject)
         {
             if(item != null)
             {
@@ -62,7 +62,7 @@ public class SensorLaser : MonoBehaviour
     public void CantKillPlayer()
     {
         _canKillPlayer = false;
-        foreach (var item in lasers)
+        foreach (var item in laserGameobject)
         {
             if (item != null)
             {
