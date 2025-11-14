@@ -21,13 +21,15 @@ public class SensorLaser : MonoBehaviour
 
     public Action OnLaser;
     public Action OnPlayerHit;
+
+    public bool _canKillPlayer = true;
     private void Start()
     {
         OnLaser?.Invoke();
     }
     private void Update()
     {
-        if (PlayerConfirmByTrigger() && !alreadyEventInit)
+        if (PlayerConfirmByTrigger() && !alreadyEventInit && _canKillPlayer)
         {
             OnIntruderDetected?.Invoke();
             OnPlayerHit?.Invoke();
@@ -44,6 +46,28 @@ public class SensorLaser : MonoBehaviour
         foreach (var item in lasers)
         {
             item.canShootLaserByStasis = a;
+        }
+    }
+    public void CanKillPlayer()
+    {
+        _canKillPlayer = true;
+        foreach (var item in lasers)
+        {
+            if(item != null)
+            {
+                item.gameObject.SetActive(true);
+            }
+        }
+    }
+    public void CantKillPlayer()
+    {
+        _canKillPlayer = false;
+        foreach (var item in lasers)
+        {
+            if (item != null)
+            {
+                item.gameObject.SetActive(false);
+            }
         }
     }
     bool PlayerConfirmByTrigger()
