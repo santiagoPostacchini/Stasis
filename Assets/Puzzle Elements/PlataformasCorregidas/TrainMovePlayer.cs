@@ -116,7 +116,7 @@ public class TrainMovePlayer : MonoBehaviour
                 {
                     // Restamos la componente hacia adelante:
                     // esto “aplana” la velocidad contra el vidrio
-                    playerRb.velocity -= dir * forwardComp*3;
+                    playerRb.velocity -= dir * forwardComp * 3;
                     // Opcional: puedes agregar un pequeño empuje hacia atrás si querés que rebote un poquito
                     // playerRb.velocity += -dir * 0.2f;
 
