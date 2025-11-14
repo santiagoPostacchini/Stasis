@@ -1,6 +1,6 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.Events;
-using System.Collections;
 
 [DisallowMultipleComponent]
 [RequireComponent(typeof(Rigidbody))]
@@ -10,7 +10,7 @@ public class KinematicCargoPlatform : MonoBehaviour
     private enum Phase { Idle, Accel, Cruise, Decel, Dwell }
 
     [Header("Waypoints")]
-    public Transform pointA; 
+    public Transform pointA;
     public Transform pointB;
 
     [Header("Movimiento")]
@@ -26,30 +26,32 @@ public class KinematicCargoPlatform : MonoBehaviour
     public UnityEvent onReachA;
     public UnityEvent onReachB;
 
-    [Header("Delay de inicio")]
-    public float startDelay = 0f;
-
     Rigidbody _rb;
     Phase _phase = Phase.Idle;
-    Phase _lastPhase = Phase.Idle;
-
     Vector3 _from, _to, _dirN;
     float _distanceTotal, _travelled, _velocity, _tDwell;
     bool _headingUp;
-    bool _isStarting = false;
+    Phase _lastPhase;
+
+    [SerializeField] private ElevatorShipmentTrain _elevatorShipmentTrain;
+
+    bool delayFinished = false;
+    float delayRemaining = 1.5f;
+    bool waitingDelay = false;
 
     void Awake()
     {
         _rb = GetComponent<Rigidbody>();
         _rb.isKinematic = true;
+        _elevatorShipmentTrain = GetComponentInParent<ElevatorShipmentTrain>();
     }
 
     void OnEnable()
     {
         if (!pointA || !pointB)
         {
-            Debug.LogError("[KinematicCargoPlatform] Falta asignar pointA/pointB.");
-            enabled = false;
+            Debug.LogError("[PlatformMoverTrapezoid] Asigna pointA/pointB.");
+            enabled = false; 
             return;
         }
 
@@ -57,8 +59,7 @@ public class KinematicCargoPlatform : MonoBehaviour
         _headingUp = startAtA;
         PrepareSegment();
 
-        if (autoStart)
-            StartMove();
+        if (autoStart) StartMove();
     }
 
     void PrepareSegment()
@@ -71,72 +72,71 @@ public class KinematicCargoPlatform : MonoBehaviour
         _velocity = 0f;
     }
 
-    // ───────────────────────────────────────────
-    // START MOVE CON DELAY (PAUSABLE POR STASIS)
-    // ───────────────────────────────────────────
+    // --------------------------
+    // DELAY STASEABLE REAL
+    // --------------------------
     public void StartMove()
     {
-        if (_isStarting) return;
-
-        if (startDelay > 0f)
-        {
-            StartCoroutine(StartMoveDelayedCoroutine());
-            return;
-        }
-
-        if (_distanceTotal > 0.001f)
-            _phase = Phase.Accel;
+        delayRemaining = 1.5f;
+        delayFinished = false;
+        waitingDelay = true;
+        StartCoroutine(DelayRoutine());
     }
 
-    IEnumerator StartMoveDelayedCoroutine()
+    IEnumerator DelayRoutine()
     {
-        _isStarting = true;
-
-        float timer = 0f;
-        while (timer < startDelay)
+        while (delayRemaining > 0f)
         {
-            if (_phase != Phase.Idle)  // si NO está en freeze, avanza el delay
-                timer += Time.deltaTime;
+            if (_elevatorShipmentTrain != null && _elevatorShipmentTrain.IsFreezed)
+            {
+                yield return null; // Está staseado → no avanza
+                continue;
+            }
 
+            delayRemaining -= Time.deltaTime;
             yield return null;
         }
 
-        if (_distanceTotal > 0.001f)
+        delayFinished = true;
+        waitingDelay = false;
+
+        if (!_elevatorShipmentTrain.IsFreezed)
             _phase = Phase.Accel;
-
-        _isStarting = false;
     }
 
-    // ───────────────────────────────────────────
-    // FREEZE / UNFREEZE CORRECTOS
-    // ───────────────────────────────────────────
-    public void stasear()
-    {
-        if (_phase != Phase.Idle)      // guardamos la fase REAL
-            _lastPhase = _phase;
-
-        _phase = Phase.Idle;           // congelar siempre = Idle
-    }
+    // --------------------------
+    public void StopMove() => _phase = Phase.Idle;
 
     public void Desestasear()
     {
-        if (_lastPhase != Phase.Idle)  // si congeló durante Accel/Cruise/Decel/Dwell
+        if (waitingDelay && delayFinished)
         {
-            _phase = _lastPhase;
+            _phase = Phase.Accel;
         }
         else
         {
-            _phase = Phase.Accel; // fallback si algo raro ocurre
+            _phase = _lastPhase;
         }
     }
 
-    // ───────────────────────────────────────────
-    // MOVIMIENTO PRINCIPAL (TRAPEZOIDAL)
-    // ───────────────────────────────────────────
+    public void stasear()
+    {
+        if (_elevatorShipmentTrain == null || _elevatorShipmentTrain.IsFreezed)
+        {
+            _lastPhase = _phase;
+            _phase = Phase.Idle;
+        }
+    }
+
+    public void ActivateKinematic() => _rb.isKinematic = true;
+    public void DesactivateKinematic() => _rb.isKinematic = false;
+
+    // -----------------------------
     void FixedUpdate()
     {
-        if (_phase == Phase.Idle) 
-            return;
+        if (waitingDelay) return; // ⭐ AHORA EL DELAY SE RESPETA
+
+        if (_phase == Phase.Idle) return;
 
         float dt = Time.fixedDeltaTime;
 
@@ -166,23 +166,19 @@ public class KinematicCargoPlatform : MonoBehaviour
                 break;
 
             case Phase.Decel:
-                float rem = _distanceTotal - _travelled;
-                float vStop = Mathf.Sqrt(Mathf.Max(0f, 2f * acceleration * rem));
+                remaining = _distanceTotal - _travelled;
+                float vStop = Mathf.Sqrt(Mathf.Max(0f, 2f * acceleration * remaining));
                 _velocity = Mathf.Min(_velocity, vStop);
                 _velocity = Mathf.MoveTowards(_velocity, 0f, acceleration * dt);
                 Step(_velocity * dt);
-                if (rem <= arriveEpsilon || _velocity <= 1e-3f) Arrive();
+                if (remaining <= arriveEpsilon || _velocity <= 1e-3f) Arrive();
                 break;
 
             case Phase.Dwell:
                 _tDwell -= dt;
                 if (_tDwell <= 0f)
                 {
-                    if (mode == Mode.Once && _headingUp)
-                    {
-                        _phase = Phase.Idle;
-                        break;
-                    }
+                    if (mode == Mode.Once && _headingUp) { _phase = Phase.Idle; break; }
 
                     if (mode == Mode.Loop)
                     {
@@ -222,3 +218,4 @@ public class KinematicCargoPlatform : MonoBehaviour
         else onReachA?.Invoke();
     }
 }
+
