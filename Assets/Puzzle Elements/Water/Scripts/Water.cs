@@ -46,7 +46,7 @@ namespace Puzzle_Elements.Water.Scripts
             if (player != null)
             {
                 OnFallInWater?.Invoke();
-                player.transform.position = _checkpoint.CurrentCheckpointPos();
+                //player.transform.position = _checkpoint.CurrentCheckpointPos();
                 Rigidbody rb = player.GetComponent<Rigidbody>();
                 if (rb != null)
                 {
@@ -68,7 +68,7 @@ namespace Puzzle_Elements.Water.Scripts
         }
         public void PlayerDeath()
         {
-            player.transform.position = _checkpoint.CurrentCheckpointPos();
+            //player.transform.position = _checkpoint.CurrentCheckpointPos();
         }
 
     }
