@@ -2,8 +2,6 @@ using UnityEngine;
 using UnityEngine.Events;
 using System.Collections;
 
-/// Mueve la plataforma del pistón arriba/abajo con perfil trapezoidal.
-/// Ideal para un pistón donde la base es fija y la plataforma sube y baja.
 [DisallowMultipleComponent]
 [RequireComponent(typeof(Rigidbody))]
 public class KinematicCargoPlatform : MonoBehaviour
@@ -12,8 +10,8 @@ public class KinematicCargoPlatform : MonoBehaviour
     private enum Phase { Idle, Accel, Cruise, Decel, Dwell }
 
     [Header("Waypoints")]
-    public Transform pointA;  // posición baja
-    public Transform pointB;  // posición alta
+    public Transform pointA; 
+    public Transform pointB;
 
     [Header("Movimiento")]
     public float cruiseSpeed = 2f;
@@ -33,27 +31,25 @@ public class KinematicCargoPlatform : MonoBehaviour
 
     Rigidbody _rb;
     Phase _phase = Phase.Idle;
+    Phase _lastPhase = Phase.Idle;
+
     Vector3 _from, _to, _dirN;
     float _distanceTotal, _travelled, _velocity, _tDwell;
     bool _headingUp;
-    Phase _lastPhase;
     bool _isStarting = false;
-
-    [SerializeField] private ElevatorShipmentTrain _elevatorShipmentTrain;
 
     void Awake()
     {
         _rb = GetComponent<Rigidbody>();
         _rb.isKinematic = true;
-        _elevatorShipmentTrain = GetComponentInParent<ElevatorShipmentTrain>();
     }
 
     void OnEnable()
     {
         if (!pointA || !pointB)
         {
-            Debug.LogError("[PlatformMoverTrapezoid] Asigna pointA/pointB.");
-            enabled = false; 
+            Debug.LogError("[KinematicCargoPlatform] Falta asignar pointA/pointB.");
+            enabled = false;
             return;
         }
 
@@ -75,16 +71,16 @@ public class KinematicCargoPlatform : MonoBehaviour
         _velocity = 0f;
     }
 
-    // ---------------------------
-    // START MOVE con DELAY
-    // ---------------------------
+    // ───────────────────────────────────────────
+    // START MOVE CON DELAY (PAUSABLE POR STASIS)
+    // ───────────────────────────────────────────
     public void StartMove()
     {
         if (_isStarting) return;
 
         if (startDelay > 0f)
         {
-            StartCoroutine(StartMoveDelayed());
+            StartCoroutine(StartMoveDelayedCoroutine());
             return;
         }
 
@@ -92,51 +88,55 @@ public class KinematicCargoPlatform : MonoBehaviour
             _phase = Phase.Accel;
     }
 
-    IEnumerator StartMoveDelayed()
+    IEnumerator StartMoveDelayedCoroutine()
     {
         _isStarting = true;
-        yield return new WaitForSeconds(startDelay);
+
+        float timer = 0f;
+        while (timer < startDelay)
+        {
+            if (_phase != Phase.Idle)  // si NO está en freeze, avanza el delay
+                timer += Time.deltaTime;
+
+            yield return null;
+        }
 
         if (_distanceTotal > 0.001f)
             _phase = Phase.Accel;
 
         _isStarting = false;
     }
-    // ---------------------------
 
-    public void StopMove()
+    // ───────────────────────────────────────────
+    // FREEZE / UNFREEZE CORRECTOS
+    // ───────────────────────────────────────────
+    public void stasear()
     {
-        _phase = Phase.Idle;
+        if (_phase != Phase.Idle)      // guardamos la fase REAL
+            _lastPhase = _phase;
+
+        _phase = Phase.Idle;           // congelar siempre = Idle
     }
 
     public void Desestasear()
     {
-        _phase = _lastPhase;
-    }
-
-    public void stasear()
-    {
-        if (_elevatorShipmentTrain == null || _elevatorShipmentTrain.IsFreezed)
+        if (_lastPhase != Phase.Idle)  // si congeló durante Accel/Cruise/Decel/Dwell
         {
-            _lastPhase = _phase;
-            _phase = Phase.Idle;
-            return;
+            _phase = _lastPhase;
+        }
+        else
+        {
+            _phase = Phase.Accel; // fallback si algo raro ocurre
         }
     }
 
-    public void ActivateKinematic()
-    {
-        _rb.isKinematic = true;
-    }
-
-    public void DesactivateKinematic()
-    {
-        _rb.isKinematic = false;
-    }
-
+    // ───────────────────────────────────────────
+    // MOVIMIENTO PRINCIPAL (TRAPEZOIDAL)
+    // ───────────────────────────────────────────
     void FixedUpdate()
     {
-        if (_phase == Phase.Idle) return;
+        if (_phase == Phase.Idle) 
+            return;
 
         float dt = Time.fixedDeltaTime;
 

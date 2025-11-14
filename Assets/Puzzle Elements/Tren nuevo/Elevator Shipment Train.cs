@@ -1,79 +1,102 @@
 using Player.Stasis;
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
 public class ElevatorShipmentTrain : MonoBehaviour, IStasis
 {
+    [Header("Movimiento")]
     public bool canMove = false;
+
+    [Header("Stasis Rendering")]
     [SerializeField] private List<Renderer> rends = new List<Renderer>();
+
     public bool IsFreezed => _isFreezed;
     private bool _isFreezed = false;
+
     public StasisEffect StasisEffect { get; private set; }
 
     private PistonVisualAuto _visual;
     private KinematicCargoPlatform _piston;
 
     private List<StasisPartElevatorShipmentTrain> list = new List<StasisPartElevatorShipmentTrain>();
-    // Start is called before the first frame update
+
+
     private void Awake()
     {
         _visual = GetComponent<PistonVisualAuto>();
         _piston = GetComponentInChildren<KinematicCargoPlatform>();
     }
-    void Start()
+
+    private void Start()
     {
         canMove = true;
-        //_anim = GetComponent<Animator>();
+
         StasisEffect = new StasisEffect(null, rends.ToArray());
+
         list.AddRange(GetComponentsInChildren<StasisPartElevatorShipmentTrain>());
     }
+
+
+    // ===========================
+    //   Activar / Desactivar
+    // ===========================
+
     public void ActivateElevatorShipment()
     {
-
-        // _anim.SetBool("On", true);
         canMove = true;
     }
+
     public void DesactivateElevatorShipment()
     {
-
-        // _anim.SetBool("On", false);
         canMove = false;
     }
-    void FreezeObject()
+
+
+    // ===========================
+    //   Freeze
+    // ===========================
+
+    private void FreezeObject()
     {
-        if (!_isFreezed)
-        {
-            _isFreezed = true;
+        if (_isFreezed) return;
+
+        _isFreezed = true;
+
+        // Asegura que el piston pause su delay / movimiento
+        if (_piston != null)
             _piston.stasear();
-            //AnimatorStateInfo info = _anim.GetCurrentAnimatorStateInfo(0);
-            //_timePaused = info.normalizedTime;
-            //_anim.speed = 0f;
-            StasisEffect.StasisEffectStart();
-            foreach (var item in list)
-            {
-                item.isFreezed = true;
-            }
-        }
 
+        // Efecto visual de stasis
+        StasisEffect.StasisEffectStart();
+
+        foreach (var item in list)
+            item.isFreezed = true;
     }
 
-    void UnFreezeObject()
+
+    // ===========================
+    //   UnFreeze
+    // ===========================
+
+    private void UnFreezeObject()
     {
-        if (_isFreezed)
-        {
-            _isFreezed = false;
-            _piston.Desestasear();
-            //_anim.speed = 1f;
-            //_anim.Play(_anim.GetCurrentAnimatorStateInfo(0).fullPathHash, 0, _timePaused);
-            StasisEffect.StasisEffectStop();
-            foreach (var item in list)
-            {
-                item.isFreezed = false;
-            }
-        }
+        if (!_isFreezed) return;
 
+        _isFreezed = false;
+
+        if (_piston != null)
+            _piston.Desestasear();  // Ahora el piston retoma correctamente incluso si estaba en delay
+
+        StasisEffect.StasisEffectStop();
+
+        foreach (var item in list)
+            item.isFreezed = false;
     }
+
+
+    // ===========================
+    //   IStasis Interface
+    // ===========================
 
     public void StatisEffectActivate()
     {
@@ -85,3 +108,4 @@ public class ElevatorShipmentTrain : MonoBehaviour, IStasis
         UnFreezeObject();
     }
 }
+
