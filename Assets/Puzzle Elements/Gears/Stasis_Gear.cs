@@ -81,6 +81,7 @@ namespace Puzzle_Elements.Gears
         public void StatisEffectDeactivate() => UnfreezeObject();
 
         // Permite activar desde un vecino sin encadenar más
+        // ReSharper disable Unity.PerformanceAnalysis
         public void ActivateFromChain()
         {
             _isChainActivation = true;
@@ -88,7 +89,7 @@ namespace Puzzle_Elements.Gears
             _isChainActivation = false;
         }
 
-        private void FreezeObject()
+        public void FreezeObject()
         {
             if (isFreezed) return;
             isFreezed = true;
