@@ -1,30 +1,31 @@
 using Player.Scripts.MovementFSM.MVC;
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
-public class ColliderDetectPlayer : MonoBehaviour
+namespace Puzzle_Elements.Fan.Scripts
 {
-    // Start is called before the first frame update
-    void Start()
+    public class ColliderDetectPlayer : MonoBehaviour
     {
-        
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
-    private void OnTriggerStay(Collider other)
-    {
-        Model player = other.GetComponent<Model>();
-        if(player != null)
+        // Start is called before the first frame update
+        void Start()
         {
-            Rigidbody rb = player.GetComponent<Rigidbody>();
-            if(rb != null)
+        
+        }
+
+        // Update is called once per frame
+        void Update()
+        {
+        
+        }
+        private void OnTriggerStay(Collider other)
+        {
+            Model player = other.GetComponent<Model>();
+            if(player != null)
             {
-                rb.velocity = Vector3.zero;
+                Rigidbody rb = player.GetComponent<Rigidbody>();
+                if(rb != null)
+                {
+                    rb.velocity = Vector3.zero;
+                }
             }
         }
     }

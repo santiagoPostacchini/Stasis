@@ -1,8 +1,9 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
-public class UIButtonHandler : MonoBehaviour
+namespace UIScripts
 {
+    public class UIButtonHandler : MonoBehaviour
+    {
     
+    }
 }

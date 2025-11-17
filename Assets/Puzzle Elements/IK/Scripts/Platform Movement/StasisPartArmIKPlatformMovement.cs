@@ -1,63 +1,66 @@
-using UnityEngine;
 using Player.Stasis;
-using IKSuite;
+using Puzzle_Elements.IK_OBJECT.Scripts;
+using UnityEngine;
 
-public class StasisPartArmIKPlatformMovement : MonoBehaviour,IStasis,IStasisPartIK
+namespace Puzzle_Elements.IK.Scripts.Platform_Movement
 {
-    public bool IsFreezed => _isFreezed;
-    public StasisEffect StasisEffect { get; }
-    private bool _isFreezed = false;
-    [SerializeField] private StasisTipControllerPlatformMovement stasisTipControllerPlatformMovement;
-    [SerializeField] private bool a;
-
-    void Start()
+    public class StasisPartArmIKPlatformMovement : MonoBehaviour,IStasis,IStasisPartIK
     {
-        stasisTipControllerPlatformMovement.OnFreezeEvent += StatisEffectActivate;
-        stasisTipControllerPlatformMovement.OnUnFreezeEvent += StatisEffectDeactivate;
-    }
+        public bool IsFreezed => _isFreezed;
+        public StasisEffect StasisEffect { get; }
+        private bool _isFreezed = false;
+        [SerializeField] private StasisTipControllerPlatformMovement stasisTipControllerPlatformMovement;
+        [SerializeField] private bool a;
+
+        void Start()
+        {
+            stasisTipControllerPlatformMovement.OnFreezeEvent += StatisEffectActivate;
+            stasisTipControllerPlatformMovement.OnUnFreezeEvent += StatisEffectDeactivate;
+        }
     
-    public void StatisEffectActivate()
-    {
-        NotifyTipController(true);
-    }
-
-    public void StatisEffectDeactivate()
-    {
-        NotifyTipController(false);
-    }
-
-    public void NotifyTipController(bool a)
-    {
-        if (a == true)
+        public void StatisEffectActivate()
         {
-            stasisTipControllerPlatformMovement.StatisEffectActivate();
+            NotifyTipController(true);
         }
-        else
-        {
-            stasisTipControllerPlatformMovement.StatisEffectDeactivate();
-        }
-    }
 
-    private void Update()
-    {
-        if (!a) return;
-
-        if (Input.GetKeyDown(KeyCode.J))
+        public void StatisEffectDeactivate()
         {
-            StatisEffectActivate();
+            NotifyTipController(false);
         }
-        if (Input.GetKeyDown(KeyCode.K))
-        {
-            StatisEffectDeactivate();
-        }
-    }
 
-    public void SetTipController(Component tipController)
-    {
-        var a = tipController.GetComponent<StasisTipControllerPlatformMovement>();
-        if (a != null)
+        public void NotifyTipController(bool a)
         {
-            stasisTipControllerPlatformMovement = a;
+            if (a == true)
+            {
+                stasisTipControllerPlatformMovement.StatisEffectActivate();
+            }
+            else
+            {
+                stasisTipControllerPlatformMovement.StatisEffectDeactivate();
+            }
+        }
+
+        private void Update()
+        {
+            if (!a) return;
+
+            if (Input.GetKeyDown(KeyCode.J))
+            {
+                StatisEffectActivate();
+            }
+            if (Input.GetKeyDown(KeyCode.K))
+            {
+                StatisEffectDeactivate();
+            }
+        }
+
+        public void SetTipController(Component tipController)
+        {
+            var a = tipController.GetComponent<StasisTipControllerPlatformMovement>();
+            if (a != null)
+            {
+                stasisTipControllerPlatformMovement = a;
+            }
         }
     }
 }

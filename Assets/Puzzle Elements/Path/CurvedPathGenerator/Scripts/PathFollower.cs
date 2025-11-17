@@ -15,11 +15,12 @@
 //-----------------------------------------------------------------------------------------------------------------------------------------
 //  2023.11.04 _ KimYC1223
 //=========================================================================================================================================
+
 using UnityEngine;
 
 #region PathFollower
 
-namespace CurvedPathGenerator
+namespace Puzzle_Elements.Path.CurvedPathGenerator.Scripts
 {
     #region PathFollwer_RequireComponents
 
@@ -42,7 +43,7 @@ namespace CurvedPathGenerator
         /// choose the path to move
         /// </summary>
         public PathGenerator Generator;
-        public MagicSwitch _magicSwitch;
+        public MagicSwitch.Scripts.MagicSwitch _magicSwitch;
         /// <summary>
         /// move speed
         /// </summary>
@@ -116,7 +117,7 @@ namespace CurvedPathGenerator
         /// </summary>
         private void Start()
         {
-            _magicSwitch = GetComponentInParent<MagicSwitch>();
+            _magicSwitch = GetComponentInParent<MagicSwitch.Scripts.MagicSwitch>();
             targetRigidbody = GetComponent<Rigidbody>();
             particle = GetComponentInChildren<ParticleSystem>();
             if ( Generator != null )

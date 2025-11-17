@@ -1,7 +1,8 @@
 using Player.Scripts.Interactor;
+using Puzzle_Elements.Hedro_conteiner.Scripts;
 using UnityEngine;
 
-namespace Player.Scripts.Interactor
+namespace Puzzle_Elements.PanelInteractable
 {
     public class InteractablePanel : MonoBehaviour, IInteractable
     {

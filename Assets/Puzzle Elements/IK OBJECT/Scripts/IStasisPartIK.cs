@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace IKSuite
+namespace Puzzle_Elements.IK_OBJECT.Scripts
 {
     // Tus scripts de bone pueden implementar esta interfaz
     // para recibir la referencia del "Stasis Tip Controller".

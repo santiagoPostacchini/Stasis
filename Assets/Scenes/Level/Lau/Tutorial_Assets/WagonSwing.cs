@@ -1,53 +1,56 @@
 using UnityEngine;
 
-public class WagonSwingRotation : MonoBehaviour
+namespace Scenes.Level.Lau.Tutorial_Assets
 {
-    [Header("Referencia al script de movimiento del vagón")]
-    public WagonMover wagonMover;
-
-    [Header("Swing mientras avanza")]
-    public float swingAngle = 5f;       // ángulo máximo de swing lateral
-    public float swingFrequency = 2f;   // velocidad del swing lateral
-
-    [Header("Swing al final")]
-    public float endSwingAngle = 8f;    // ángulo máximo del rebote final
-    public float endSwingDuration = 0.5f; // duración del rebote final
-
-    private float swingTimer = 0f;
-    private float endSwingTimer = 0f;
-    private Quaternion initialRotation;
-
-    void Start()
+    public class WagonSwingRotation : MonoBehaviour
     {
-        if (wagonMover != null)
-            initialRotation = wagonMover.transform.rotation;
-    }
+        [Header("Referencia al script de movimiento del vagón")]
+        public WagonMover wagonMover;
 
-    void LateUpdate()
-    {
-        if (wagonMover == null)
-            return;
+        [Header("Swing mientras avanza")]
+        public float swingAngle = 5f;       // ángulo máximo de swing lateral
+        public float swingFrequency = 2f;   // velocidad del swing lateral
 
-        if (!wagonMover.hasReachedEnd)
+        [Header("Swing al final")]
+        public float endSwingAngle = 8f;    // ángulo máximo del rebote final
+        public float endSwingDuration = 0.5f; // duración del rebote final
+
+        private float swingTimer = 0f;
+        private float endSwingTimer = 0f;
+        private Quaternion initialRotation;
+
+        void Start()
         {
-            // Swing lateral mientras avanza (sobre Z)
-            swingTimer += Time.deltaTime * swingFrequency;
-            float angleOffsetZ = Mathf.Sin(swingTimer) * swingAngle;
-            transform.rotation = initialRotation * Quaternion.Euler(0f, 0f, angleOffsetZ);
+            if (wagonMover != null)
+                initialRotation = wagonMover.transform.rotation;
         }
-        else
+
+        void LateUpdate()
         {
-            // Swing de rebote al final (sobre X)
-            if (endSwingTimer < endSwingDuration)
+            if (wagonMover == null)
+                return;
+
+            if (!wagonMover.hasReachedEnd)
             {
-                endSwingTimer += Time.deltaTime;
-                float t = endSwingTimer / endSwingDuration;
-                float angleOffsetX = Mathf.Sin(t * Mathf.PI * 2f) * endSwingAngle * (1f - t);
-                transform.rotation = initialRotation * Quaternion.Euler(angleOffsetX, 0f, 0f);
+                // Swing lateral mientras avanza (sobre Z)
+                swingTimer += Time.deltaTime * swingFrequency;
+                float angleOffsetZ = Mathf.Sin(swingTimer) * swingAngle;
+                transform.rotation = initialRotation * Quaternion.Euler(0f, 0f, angleOffsetZ);
             }
             else
             {
-                transform.rotation = initialRotation;
+                // Swing de rebote al final (sobre X)
+                if (endSwingTimer < endSwingDuration)
+                {
+                    endSwingTimer += Time.deltaTime;
+                    float t = endSwingTimer / endSwingDuration;
+                    float angleOffsetX = Mathf.Sin(t * Mathf.PI * 2f) * endSwingAngle * (1f - t);
+                    transform.rotation = initialRotation * Quaternion.Euler(angleOffsetX, 0f, 0f);
+                }
+                else
+                {
+                    transform.rotation = initialRotation;
+                }
             }
         }
     }

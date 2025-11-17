@@ -1,91 +1,94 @@
 using UnityEngine;
 
-public class PlayerRagdoll : MonoBehaviour
+namespace Player.Scripts
 {
-    [Header("<color=yellow>Main Components</color>")]
-    public Animator animator;
-    public Rigidbody mainRigidbody;
-    public Collider mainCollider;
-
-    [Header("<color=green>Ragdoll</color>")]
-    public Rigidbody[] ragdollRigidbodies;
-    public Collider[] ragdollColliders;
-
-    [Header("<color=red>Activation Switches</color>")]
-    public bool activateRagdoll = false;
-    public bool deactivateRagdoll = false;
-
-    private bool isRagdollActive = false;
-
-    void Awake()
+    public class PlayerRagdoll : MonoBehaviour
     {
-        ForceDisableRagdollAtStart();
-    }
+        [Header("<color=yellow>Main Components</color>")]
+        public Animator animator;
+        public Rigidbody mainRigidbody;
+        public Collider mainCollider;
 
-    void Start()
-    {
+        [Header("<color=green>Ragdoll</color>")]
+        public Rigidbody[] ragdollRigidbodies;
+        public Collider[] ragdollColliders;
 
-    }
+        [Header("<color=red>Activation Switches</color>")]
+        public bool activateRagdoll = false;
+        public bool deactivateRagdoll = false;
 
-    void Update()
-    {
-        if (activateRagdoll)
+        private bool isRagdollActive = false;
+
+        void Awake()
         {
-            activateRagdoll = false;
-            SetRagdollActive(true);
+            ForceDisableRagdollAtStart();
         }
 
-        if (deactivateRagdoll)
+        void Start()
         {
-            deactivateRagdoll = false;
-            SetRagdollActive(false);
-        }
-    }
 
-    private void ForceDisableRagdollAtStart()
-    {
-        isRagdollActive = false;
-        animator.enabled = true;
-
-        foreach (var rb in ragdollRigidbodies)
-        {
-            rb.isKinematic = true;
         }
 
-        foreach (var col in ragdollColliders)
+        void Update()
         {
-            col.enabled = false;
-        }
-
-        mainRigidbody.isKinematic = false;
-        mainCollider.enabled = true;
-    }
-
-    public void SetRagdollActive(bool isActive)
-    {
-        if (isRagdollActive == isActive) return;
-
-        isRagdollActive = isActive;
-        animator.enabled = !isActive;
-
-        foreach (var rb in ragdollRigidbodies)
-        {
-            rb.isKinematic = !isActive;
-
-            if (!rb.isKinematic)
+            if (activateRagdoll)
             {
-                rb.velocity = Vector3.zero;
-                rb.angularVelocity = Vector3.zero;
+                activateRagdoll = false;
+                SetRagdollActive(true);
+            }
+
+            if (deactivateRagdoll)
+            {
+                deactivateRagdoll = false;
+                SetRagdollActive(false);
             }
         }
 
-        foreach (var col in ragdollColliders)
+        private void ForceDisableRagdollAtStart()
         {
-            col.enabled = isActive;
+            isRagdollActive = false;
+            animator.enabled = true;
+
+            foreach (var rb in ragdollRigidbodies)
+            {
+                rb.isKinematic = true;
+            }
+
+            foreach (var col in ragdollColliders)
+            {
+                col.enabled = false;
+            }
+
+            mainRigidbody.isKinematic = false;
+            mainCollider.enabled = true;
         }
 
-        mainRigidbody.isKinematic = isActive;
-        mainCollider.enabled = !isActive;
+        public void SetRagdollActive(bool isActive)
+        {
+            if (isRagdollActive == isActive) return;
+
+            isRagdollActive = isActive;
+            animator.enabled = !isActive;
+
+            foreach (var rb in ragdollRigidbodies)
+            {
+                rb.isKinematic = !isActive;
+
+                if (!rb.isKinematic)
+                {
+                    rb.velocity = Vector3.zero;
+                    rb.angularVelocity = Vector3.zero;
+                }
+            }
+
+            foreach (var col in ragdollColliders)
+            {
+                col.enabled = isActive;
+            }
+
+            mainRigidbody.isKinematic = isActive;
+            mainCollider.enabled = !isActive;
+        }
     }
 }
 

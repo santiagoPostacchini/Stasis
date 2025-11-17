@@ -1,8 +1,9 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
-public class InercialPlatform : MonoBehaviour
+namespace Puzzle_Elements.PlataformasCorregidas
 {
+    public class InercialPlatform : MonoBehaviour
+    {
    
+    }
 }

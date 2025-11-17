@@ -1,40 +1,43 @@
 using UnityEngine;
 
-public class HeadRotationClamper : MonoBehaviour
+namespace Player.Scripts
 {
-    [Header("Referencias")]
-    [SerializeField] private Transform cameraTransform; // Cámara que sigue la cabeza
-    [SerializeField] private Transform headBone; // El hueso de la cabeza (constrained object)
-
-    [Header("Clamps")]
-    [SerializeField] private float minPitch = -20f;
-    [SerializeField] private float maxPitch = 70f;
-
-    private Quaternion initialHeadLocalRotation;
-
-    void Start()
+    public class HeadRotationClamper : MonoBehaviour
     {
-        // Guardamos la rotación local inicial de la cabeza
-        initialHeadLocalRotation = headBone.localRotation;
-    }
+        [Header("Referencias")]
+        [SerializeField] private Transform cameraTransform; // Cámara que sigue la cabeza
+        [SerializeField] private Transform headBone; // El hueso de la cabeza (constrained object)
 
-    void LateUpdate()
-    {
-        // Obtenemos la rotación X (pitch) relativa de la cámara
-        float cameraPitch = cameraTransform.eulerAngles.x;
+        [Header("Clamps")]
+        [SerializeField] private float minPitch = -20f;
+        [SerializeField] private float maxPitch = 70f;
 
-        // Convertimos de 0-360 a -180 a 180 para que los clamps funcionen bien
-        if (cameraPitch > 180f)
-            cameraPitch -= 360f;
+        private Quaternion initialHeadLocalRotation;
 
-        // Clampeamos el ángulo
-        float clampedPitch = Mathf.Clamp(cameraPitch, minPitch, maxPitch);
+        void Start()
+        {
+            // Guardamos la rotación local inicial de la cabeza
+            initialHeadLocalRotation = headBone.localRotation;
+        }
 
-        // Aplicamos la rotación clampeada solo en X
-        Quaternion targetRotation = Quaternion.Euler(clampedPitch, headBone.eulerAngles.y, headBone.eulerAngles.z);
+        void LateUpdate()
+        {
+            // Obtenemos la rotación X (pitch) relativa de la cámara
+            float cameraPitch = cameraTransform.eulerAngles.x;
 
-        // Aplicamos la rotación directamente
-        headBone.rotation = targetRotation;
+            // Convertimos de 0-360 a -180 a 180 para que los clamps funcionen bien
+            if (cameraPitch > 180f)
+                cameraPitch -= 360f;
+
+            // Clampeamos el ángulo
+            float clampedPitch = Mathf.Clamp(cameraPitch, minPitch, maxPitch);
+
+            // Aplicamos la rotación clampeada solo en X
+            Quaternion targetRotation = Quaternion.Euler(clampedPitch, headBone.eulerAngles.y, headBone.eulerAngles.z);
+
+            // Aplicamos la rotación directamente
+            headBone.rotation = targetRotation;
+        }
     }
 }
 

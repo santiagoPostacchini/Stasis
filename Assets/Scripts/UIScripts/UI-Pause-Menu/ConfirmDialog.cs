@@ -1,70 +1,73 @@
 using System;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-using TMPro;
 
-[DisallowMultipleComponent]
-[AddComponentMenu("UI/Confirm Dialog Controller")]
-public class ConfirmDialogController : MonoBehaviour
+namespace UIScripts.UI_Pause_Menu
 {
-    [Header("UI")]
-    [SerializeField] private CanvasGroup canvasGroup;
-    [SerializeField] private TextMeshProUGUI titleText;
-    [SerializeField] private TextMeshProUGUI messageText;
-    [SerializeField] private Button yesButton;
-    [SerializeField] private Button noButton;
-
-    private Action _onYes;
-    private Action _onNo;
-
-    void Awake()
+    [DisallowMultipleComponent]
+    [AddComponentMenu("UI/Confirm Dialog Controller")]
+    public class ConfirmDialogController : MonoBehaviour
     {
-        HideImmediate();
-        if (yesButton) yesButton.onClick.AddListener(OnYes);
-        if (noButton)  noButton.onClick.AddListener(OnNo);
-    }
+        [Header("UI")]
+        [SerializeField] private CanvasGroup canvasGroup;
+        [SerializeField] private TextMeshProUGUI titleText;
+        [SerializeField] private TextMeshProUGUI messageText;
+        [SerializeField] private Button yesButton;
+        [SerializeField] private Button noButton;
 
-    public void Show(string title, string message, Action onYes, Action onNo)
-    {
-        _onYes = onYes;
-        _onNo  = onNo;
+        private Action _onYes;
+        private Action _onNo;
 
-        if (titleText)   titleText.text = title;
-        if (messageText) messageText.text = message;
-
-        gameObject.SetActive(true);
-        if (canvasGroup)
+        void Awake()
         {
-            canvasGroup.alpha = 1;
-            canvasGroup.blocksRaycasts = true;
-            canvasGroup.interactable = true;
+            HideImmediate();
+            if (yesButton) yesButton.onClick.AddListener(OnYes);
+            if (noButton)  noButton.onClick.AddListener(OnNo);
         }
-    }
 
-    public void Hide()
-    {
-        if (canvasGroup)
+        public void Show(string title, string message, Action onYes, Action onNo)
         {
-            canvasGroup.alpha = 0;
-            canvasGroup.blocksRaycasts = false;
-            canvasGroup.interactable = false;
+            _onYes = onYes;
+            _onNo  = onNo;
+
+            if (titleText)   titleText.text = title;
+            if (messageText) messageText.text = message;
+
+            gameObject.SetActive(true);
+            if (canvasGroup)
+            {
+                canvasGroup.alpha = 1;
+                canvasGroup.blocksRaycasts = true;
+                canvasGroup.interactable = true;
+            }
         }
-        gameObject.SetActive(false);
-        _onYes = null;
-        _onNo  = null;
-    }
 
-    private void HideImmediate() => Hide();
+        public void Hide()
+        {
+            if (canvasGroup)
+            {
+                canvasGroup.alpha = 0;
+                canvasGroup.blocksRaycasts = false;
+                canvasGroup.interactable = false;
+            }
+            gameObject.SetActive(false);
+            _onYes = null;
+            _onNo  = null;
+        }
 
-    private void OnYes()
-    {
-        _onYes?.Invoke();
-        Hide();
-    }
+        private void HideImmediate() => Hide();
 
-    private void OnNo()
-    {
-        _onNo?.Invoke();
-        Hide();
+        private void OnYes()
+        {
+            _onYes?.Invoke();
+            Hide();
+        }
+
+        private void OnNo()
+        {
+            _onNo?.Invoke();
+            Hide();
+        }
     }
 }

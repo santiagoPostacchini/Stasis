@@ -1,212 +1,230 @@
-using System.Collections;
 using Managers.Game;
 using Player.Scripts.MovementFSM.MVC;
 using UnityEngine;
 
-[DisallowMultipleComponent]
-[RequireComponent(typeof(Collider))]
-public class SmokeHazardTrigger : MonoBehaviour
+namespace _Ian.VFX.Smoke
 {
-    [Header("Filtro de objetivo")]
-    [Tooltip("Si está activo, solo afecta al colisionar con este tag (ej: Player).")]
-    public bool requireTag = true;
-    public string targetTag = "Player";
-
-    [Tooltip("Opcional: filtra por capas (dejar en Nothing para ignorar).")]
-    public LayerMask playerLayers;
-
-    [Header("Referencia directa (opcional)")]
-    [Tooltip("Si lo completas, siempre usará este Model como objetivo. Si lo dejas vacío, lo buscará en el collider que entra.")]
-    public Model forcedPlayerModel;
-
-    [Header("Comportamiento de ahogo")]
-    [Tooltip("Tiempo para pasar de multiplicador 1 a 0 dentro del humo.")]
-    [Min(0.1f)] public float slowdownDuration = 2f;
-
-    [Tooltip("Tiempo extra en segundos que el player debe permanecer en 0 para morir.")]
-    [Min(0f)] public float timeAtZeroBeforeDeath = 1f;
-
-    [Tooltip("Curva de caída de movilidad. X: tiempo normalizado (0–1), Y: multiplicador (1–0).")]
-    public AnimationCurve slowdownCurve = AnimationCurve.EaseInOut(0f, 1f, 1f, 0f);
-
-    [Header("Reset")]
-    [Tooltip("Restaurar el multiplicador a 1 al salir del humo (si no ha muerto aún).")]
-    public bool restoreOnExit = true;
-
-    [Header("Cooldown de muerte")]
-    [Tooltip("Evita múltiples muertes seguidas (segundos).")]
-    [Min(0f)] public float repeatCooldown = 0.25f;
-
-    private float _nextAllowedDeathTime;
-
-    // Estado interno
-    private bool _playerInside;
-    private Coroutine _slowRoutine;
-
-    private IHazardSlowTarget _currentSlowTarget;
-
-    private void Reset()
+    [DisallowMultipleComponent]
+    [RequireComponent(typeof(Collider))]
+    public class SmokeHazardTrigger : MonoBehaviour
     {
-        var col = GetComponent<Collider>();
-        col.isTrigger = true; // Asegura Trigger
-    }
+        [Header("Filtro de objetivo")]
+        [Tooltip("Si está activo, solo afecta a colliders con este tag (ej: Player).")]
+        public bool requireTag = true;
+        public string targetTag = "Player";
 
-    private void OnTriggerEnter(Collider other)
-    {
-        if (!IsValidTarget(other)) return;
+        [Tooltip("Opcional: filtra por capas (dejar en Nothing para ignorar).")]
+        public LayerMask playerLayers;
 
-        _playerInside = true;
-        StartSlowdown(other);
-    }
+        [Header("Referencia al Player")]
+        [Tooltip("Model del jugador que expone hazardSpeedMultiplier. Asignar por inspector.")]
+        public Model playerModel;
 
-    private void OnTriggerStay(Collider other)
-    {
-        if (!IsValidTarget(other)) return;
-        _playerInside = true; // mantenemos vivo el flag
-    }
+        [Header("Ralentización (ahogo)")]
+        [Tooltip("Tiempo para pasar de 1 a minMultiplier dentro del humo.")]
+        [Min(0.1f)] public float slowdownDuration = 1.2f;
 
-    private void OnTriggerExit(Collider other)
-    {
-        if (!IsValidTarget(other)) return;
+        [Tooltip("Valor mínimo al que llegamos (nunca bajamos de esto).")]
+        [Range(0.01f, 0.3f)] public float minMultiplier = 0.05f;
 
-        _playerInside = false;
-        StopSlowdownAndRestore();
-    }
+        [Tooltip("Por debajo de este valor empezamos a contar tiempo de muerte.")]
+        [Range(0.05f, 0.5f)] public float deathMultiplierThreshold = 0.2f;
 
-    private bool IsValidTarget(Collider other)
-    {
-        if (requireTag && !other.CompareTag(targetTag)) return false;
+        [Header("Muerte diferida")]
+        [Tooltip("Tiempo que debe permanecer por debajo del umbral antes de morir.")]
+        [Min(0f)] public float deathDelay = 0.8f;
 
-        if (playerLayers.value != 0)
+        [Tooltip("Cooldown entre muertes para evitar múltiples disparos.")]
+        [Min(0f)] public float repeatCooldown = 0.25f;
+
+        [Header("Comportamiento al salir del humo")]
+        [Tooltip("Si el jugador sale del humo antes de morir, restaurar el multiplicador a 1.")]
+        public bool resetMultiplierOnExit = true;
+
+        [Header("Freno al entrar")]
+        [Tooltip("Aplicar un freno inmediato a la velocidad horizontal al entrar en el humo.")]
+        public bool applyEntryBrake = true;
+
+        [Tooltip("Factor de velocidad horizontal al entrar (1 = sin cambio, 0.5 = mitad).")]
+        [Range(0f, 1f)] public float entryHorizontalVelocityScale = 0.75f;
+
+        private bool _playerInside;
+        private Coroutine _slowRoutine;
+        private float _nextAllowedDeathTime;
+
+        private void Reset()
         {
-            if ((playerLayers.value & (1 << other.gameObject.layer)) == 0)
+            var col = GetComponent<Collider>();
+            col.isTrigger = true;
+        }
+
+        private void Awake()
+        {
+            var col = GetComponent<Collider>();
+            if (!col.isTrigger)
+            {
+                Debug.LogWarning($"[{name}] SmokeHazardTrigger requiere que el Collider sea Trigger. Lo ajusto en runtime.");
+                col.isTrigger = true;
+            }
+
+            if (!playerModel)
+            {
+                Debug.LogWarning($"[{name}] No hay Model asignado en 'playerModel'. Asignalo por inspector.");
+            }
+        }
+
+        private void OnTriggerEnter(Collider other)
+        {
+            if (!IsValidTarget(other)) return;
+            if (!playerModel) return;
+
+            _playerInside = true;
+
+            if (applyEntryBrake)
+                ApplyEntryVelocityBrake();
+
+            StartSlowdownRoutine();
+        }
+
+        private void OnTriggerStay(Collider other)
+        {
+            if (!IsValidTarget(other)) return;
+            _playerInside = true;
+            // La corutina hace el resto.
+        }
+
+        private void OnTriggerExit(Collider other)
+        {
+            if (!IsValidTarget(other)) return;
+
+            _playerInside = false;
+            StopSlowdownAndReset();
+        }
+
+        private bool IsValidTarget(Collider other)
+        {
+            if (requireTag && !other.CompareTag(targetTag))
                 return false;
+
+            if (playerLayers.value != 0)
+            {
+                if ((playerLayers.value & (1 << other.gameObject.layer)) == 0)
+                    return false;
+            }
+
+            return true;
         }
 
-        return true;
-    }
-
-    private void StartSlowdown(Collider other)
-    {
-        if (_slowRoutine != null) return;
-
-        // 1) Referencia a la interfaz
-        if (forcedPlayerModel != null)
+        private void ApplyEntryVelocityBrake()
         {
-            _currentSlowTarget = forcedPlayerModel as IHazardSlowTarget;
-        }
-        else
-        {
-            _currentSlowTarget = other.GetComponentInParent<IHazardSlowTarget>();
-        }
+            if (playerModel == null || playerModel.rb == null) return;
 
-        if (_currentSlowTarget == null)
-        {
-            Debug.LogWarning($"[{name}] No se encontró IHazardSlowTarget en el player. " +
-                             $"Asegúrate de que Model implemente la interfaz y/o arrástralo en 'forcedPlayerModel'.");
-            return;
-        }
-
-        // 2) Freno inmediato de velocidad horizontal (golpe grave)
-        Model model = forcedPlayerModel 
-            ? forcedPlayerModel 
-            : other.GetComponentInParent<Model>();
-
-        if (model != null && model.rb != null)
-        {
-            Vector3 v = model.rb.velocity;
+            Vector3 v = playerModel.rb.velocity;
             Vector3 horizontal = new Vector3(v.x, 0f, v.z);
 
-            // Dejarle un 50–60% de la velocidad que traía en lugar de matarla casi a cero
-            horizontal *= 0.6f;
+            horizontal *= entryHorizontalVelocityScale;
 
-            model.rb.velocity = horizontal + Vector3.up * v.y;
+            playerModel.rb.velocity = horizontal + Vector3.up * v.y;
         }
 
-
-        _slowRoutine = StartCoroutine(SlowdownRoutine());
-    }
-
-
-    private void StopSlowdownAndRestore()
-    {
-        if (_slowRoutine != null)
+        private void StartSlowdownRoutine()
         {
-            StopCoroutine(_slowRoutine);
+            if (_slowRoutine != null) return;
+            if (!playerModel) return;
+
+            _slowRoutine = StartCoroutine(SlowdownRoutine());
+        }
+
+        private void StopSlowdownAndReset()
+        {
+            if (_slowRoutine != null)
+            {
+                StopCoroutine(_slowRoutine);
+                _slowRoutine = null;
+            }
+
+            if (resetMultiplierOnExit && playerModel != null)
+            {
+                playerModel.hazardSpeedMultiplier = 1f;
+            }
+        }
+
+        private System.Collections.IEnumerator SlowdownRoutine()
+        {
+            if (playerModel == null)
+            {
+                _slowRoutine = null;
+                yield break;
+            }
+
+            float t = 0f;
+            float deathTimer = 0f;
+
+            // Empezamos desde el valor actual (por si otro hazard ya había tocado el multiplicador)
+            float start = Mathf.Clamp01(playerModel.hazardSpeedMultiplier);
+            float targetMin = Mathf.Clamp01(minMultiplier);
+
+            while (_playerInside && playerModel != null)
+            {
+                t += Time.deltaTime;
+
+                float normalized = slowdownDuration > 0f
+                    ? Mathf.Clamp01(t / slowdownDuration)
+                    : 1f;
+
+                // Fade lineal desde start hasta targetMin
+                float m = Mathf.Lerp(start, targetMin, normalized);
+                m = Mathf.Clamp01(m);
+
+                playerModel.hazardSpeedMultiplier = m;
+
+                // Empezamos a contar muerte cuando pasamos el umbral
+                if (m <= deathMultiplierThreshold)
+                {
+                    deathTimer += Time.deltaTime;
+
+                    if (deathTimer >= deathDelay)
+                    {
+                        if (GameManager.Instance != null && Time.time >= _nextAllowedDeathTime)
+                        {
+                            GameManager.Instance.PlayerDeath();
+                            _nextAllowedDeathTime = Time.time + repeatCooldown;
+                        }
+                        break;
+                    }
+                }
+                else
+                {
+                    // Si sube por encima del umbral (por salir/entrar), reseteamos el contador
+                    deathTimer = 0f;
+                }
+
+                yield return null;
+            }
+
             _slowRoutine = null;
         }
 
-        if (restoreOnExit && _currentSlowTarget != null)
-        {
-            _currentSlowTarget.SetExternalSpeedMultiplier(1f);
-        }
-
-        _currentSlowTarget = null;
-    }
-
-    // ReSharper disable Unity.PerformanceAnalysis
-    private IEnumerator SlowdownRoutine()
-    {
-        float t = 0f;
-
-        // Fase 1: reducimos movilidad desde 1 hasta 0
-        while (t < slowdownDuration)
-        {
-            if (!_playerInside || _currentSlowTarget == null)
-                yield break;
-
-            float normalizedTime = t / slowdownDuration;
-            float multiplier = slowdownCurve.Evaluate(normalizedTime); // 1 → 0
-
-            _currentSlowTarget.SetExternalSpeedMultiplier(multiplier);
-
-            t += Time.deltaTime;
-            yield return null;
-        }
-
-        // Aseguramos estado final en 0
-        if (_currentSlowTarget != null)
-            _currentSlowTarget.SetExternalSpeedMultiplier(0f);
-
-        // Fase 2: tiempo detenido antes de la muerte
-        float zeroTime = 0f;
-        while (zeroTime < timeAtZeroBeforeDeath)
-        {
-            if (!_playerInside || _currentSlowTarget == null)
-                yield break;
-
-            zeroTime += Time.deltaTime;
-            yield return null;
-        }
-
-        // Ya cumplimos tiempo en 0 dentro del humo: muerte
-        if (Time.time >= _nextAllowedDeathTime && GameManager.Instance != null)
-        {
-            GameManager.Instance.PlayerDeath();
-            _nextAllowedDeathTime = Time.time + repeatCooldown;
-        }
-        else if (GameManager.Instance == null)
-        {
-            Debug.LogWarning($"[{name}] No hay GameManager.Instance en escena.");
-        }
-
-        _slowRoutine = null;
-    }
-
 #if UNITY_EDITOR
-    private void OnDrawGizmosSelected()
-    {
-        Gizmos.color = new Color(1f, 0.2f, 0.2f, 0.25f);
-        var col = GetComponent<Collider>();
-        if (col is BoxCollider b)
+        private void OnDrawGizmosSelected()
         {
-            Gizmos.matrix = transform.localToWorldMatrix;
-            Gizmos.DrawCube(b.center, b.size);
+            Gizmos.color = new Color(0.2f, 0.8f, 1f, 0.25f);
+            var col = GetComponent<Collider>();
+            if (col is BoxCollider b)
+            {
+                Gizmos.matrix = transform.localToWorldMatrix;
+                Gizmos.DrawCube(b.center, b.size);
+            }
+            else if (col is SphereCollider s)
+            {
+                Gizmos.matrix = transform.localToWorldMatrix;
+                Gizmos.DrawSphere(s.center, s.radius);
+            }
+            else
+            {
+                Gizmos.DrawWireSphere(transform.position, 1f);
+            }
         }
-        else
-        {
-            Gizmos.DrawWireSphere(transform.position, 0.25f);
-        }
-    }
 #endif
+    }
 }

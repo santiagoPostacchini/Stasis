@@ -1,21 +1,24 @@
 using UnityEngine;
 
-[RequireComponent(typeof(AudioSource))]
-public class BackgroundMusic : MonoBehaviour
+namespace Scripts_Menu_Folder
 {
-    private AudioSource audioSource;
-
-    void Awake()
+    [RequireComponent(typeof(AudioSource))]
+    public class BackgroundMusic : MonoBehaviour
     {
-        audioSource = GetComponent<AudioSource>();
-        audioSource.loop = true;  
-    }
+        private AudioSource audioSource;
 
-    void Start()
-    {
-        if (!audioSource.isPlaying)
+        void Awake()
         {
-            audioSource.Play();
+            audioSource = GetComponent<AudioSource>();
+            audioSource.loop = true;  
+        }
+
+        void Start()
+        {
+            if (!audioSource.isPlaying)
+            {
+                audioSource.Play();
+            }
         }
     }
 }

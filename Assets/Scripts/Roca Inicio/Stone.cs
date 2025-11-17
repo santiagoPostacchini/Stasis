@@ -1,36 +1,39 @@
 using UnityEngine;
 
-public class Stone : MonoBehaviour
+namespace Roca_Inicio
 {
-    private Animator _animator;
-
-    public GameObject light1;
-    public GameObject light2;
-    private void Awake()
+    public class Stone : MonoBehaviour
     {
-        _animator = GetComponent<Animator>();
-    }
+        private Animator _animator;
+
+        public GameObject light1;
+        public GameObject light2;
+        private void Awake()
+        {
+            _animator = GetComponent<Animator>();
+        }
     
-    // Llamar para activar animación de impacto
-    public void PlayImpactAnimation()
-    {
-        if (_animator != null)
+        // Llamar para activar animaciï¿½n de impacto
+        public void PlayImpactAnimation()
         {
-            _animator.SetTrigger("stoneFall");
+            if (_animator != null)
+            {
+                _animator.SetTrigger("stoneFall");
+            }
         }
-    }
 
-    // Ejemplo de cómo detener una animación si usás bools
-    public void StopAllAnimations()
-    {
-        if (_animator != null)
+        // Ejemplo de cï¿½mo detener una animaciï¿½n si usï¿½s bools
+        public void StopAllAnimations()
         {
-            _animator.Play("Idle", -1, 0f); // Vuelve a animación Idle o cualquier otra
+            if (_animator != null)
+            {
+                _animator.Play("Idle", -1, 0f); // Vuelve a animaciï¿½n Idle o cualquier otra
+            }
         }
-    }
-    public void ActivateLights()
-    {
-        light1.gameObject.SetActive(true);
-        light2.gameObject.SetActive(true);
+        public void ActivateLights()
+        {
+            light1.gameObject.SetActive(true);
+            light2.gameObject.SetActive(true);
+        }
     }
 }

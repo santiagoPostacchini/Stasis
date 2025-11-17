@@ -2,11 +2,11 @@
 // Volumetric Fog & Mist 2
 // Created by Kronnect
 //------------------------------------------------------------------------------------------------------------------
-using UnityEngine;
+
 using System.Collections.Generic;
+using UnityEngine;
 
-
-namespace VolumetricFogAndMist2 {
+namespace Art.VolumetricFog2.Scripts {
 
 
     public enum MASK_TEXTURE_BRUSH_MODE {

@@ -1,51 +1,54 @@
-using UnityEngine;
 using Player.Stasis;
+using UnityEngine;
 
-public class StasisSensorLaser : MonoBehaviour, IStasis
+namespace Puzzle_Elements.LaserSensor.Scripts
 {
-    private SensorLaser _sensorLaser;
-    public bool IsFreezed => isFreezed;
-    [SerializeField]private bool isFreezed;
-    public StasisEffect StasisEffect { get; private set; }
-
-    public Renderer[] renderers;
-    void Start()
+    public class StasisSensorLaser : MonoBehaviour, IStasis
     {
-        _sensorLaser = GetComponent<SensorLaser>();
-        StasisEffect = new StasisEffect(null, renderers);
-    }
+        private SensorLaser _sensorLaser;
+        public bool IsFreezed => isFreezed;
+        [SerializeField]private bool isFreezed;
+        public StasisEffect StasisEffect { get; private set; }
+
+        public Renderer[] renderers;
+        void Start()
+        {
+            _sensorLaser = GetComponent<SensorLaser>();
+            StasisEffect = new StasisEffect(null, renderers);
+        }
     
-    public void EventSensorLaser()
-    {
-        if (IsFreezed) StatisEffectDeactivate();
-        else StatisEffectActivate();
-    }
-    public void StatisEffectActivate()
-    {
-        FreezeObject();
-        _sensorLaser.CanShootLasers(false);
-    }
+        public void EventSensorLaser()
+        {
+            if (IsFreezed) StatisEffectDeactivate();
+            else StatisEffectActivate();
+        }
+        public void StatisEffectActivate()
+        {
+            FreezeObject();
+            _sensorLaser.CanShootLasers(false);
+        }
 
-    public void StatisEffectDeactivate()
-    {
-        UnfreezeObject();
-        _sensorLaser.CanShootLasers(true);
-    }
+        public void StatisEffectDeactivate()
+        {
+            UnfreezeObject();
+            _sensorLaser.CanShootLasers(true);
+        }
   
 
-    private void FreezeObject()
-    {
-        if (!isFreezed)
+        private void FreezeObject()
         {
-            isFreezed = true;
-            StasisEffect.StasisEffectStart();
+            if (!isFreezed)
+            {
+                isFreezed = true;
+                StasisEffect.StasisEffectStart();
+            }
         }
-    }
 
-    private void UnfreezeObject()
-    {
-        if (!isFreezed) return;
-        isFreezed = false;
-        StasisEffect.StasisEffectStop();
+        private void UnfreezeObject()
+        {
+            if (!isFreezed) return;
+            isFreezed = false;
+            StasisEffect.StasisEffectStop();
+        }
     }
 }

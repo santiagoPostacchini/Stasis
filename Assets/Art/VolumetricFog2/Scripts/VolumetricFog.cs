@@ -294,9 +294,10 @@
 //------------------------------------------------------------------------------------------------------------------
 
 using System.Collections.Generic;
+using Art.VolumetricFog2.Scripts.Managers;
 using UnityEngine;
 
-namespace VolumetricFogAndMist2 {
+namespace Art.VolumetricFog2.Scripts {
 
     public enum VolumetricFogShape {
         Box,
@@ -397,7 +398,7 @@ namespace VolumetricFogAndMist2 {
 
         void OnEnable() {
             // Asegura manager y layer
-            VolumetricFogManager manager = Tools.CheckMainManager();
+            VolumetricFogManager manager = Tools.Tools.CheckMainManager();
             if (manager != null) {
                 gameObject.layer = manager.fogLayer;
             }

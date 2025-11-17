@@ -1,307 +1,310 @@
 using System.Collections;
-using UnityEngine;
 using Unity.Cinemachine;
+using UnityEngine;
 
-public class TutorialCameraSwitcher : MonoBehaviour
+namespace Player.Scripts.Opening_Cinematic
 {
-    [Header("📸 CÁMARAS VIRTUALES")]
-    public CinemachineVirtualCameraBase cameraA;
-    public CinemachineVirtualCameraBase cameraB;
-    public CinemachineVirtualCameraBase cameraC;
-
-    [Header("🧱 OBJETOS QUE CONTIENEN LAS CÁMARAS")]
-    public GameObject objectA;
-    public GameObject objectB;
-    public GameObject objectC;
-
-    [Header("🎥 MAIN CAMERA A DESACTIVAR EN B→C")]
-    public GameObject mainCameraToDisable;
-
-    [Header("⏱️ CONFIGURACIÓN DE TRANSICIONES")]
-    public float blendTime = 1f;
-    public StartCamera startCamera = StartCamera.CameraA;
-
-    [Header("🔁 TRANSICIÓN MANUAL (DEBUG)")]
-    public bool transitionToA;
-    public bool transitionToB;
-    public bool transitionToC;
-
-    [Header("🎭 REFERENCIAS PRINCIPALES")]
-    public RagdollHanger ragdollHanger;
-    public GameObject objectToDeactivate; // opcional
-
-    [Header("🖼️ CANVAS CONFIGURACIÓN")]
-    public CanvasGroup canvasGroup;
-    public float startFadeDelay = 2f;
-    public float startFadeDuration = 5f;
-    public float fadeBlackDelay = 2f;
-    public float fadeBlackDuration = 5f;
-    public Canvas extraCanvas;
-    public float extraCanvasActiveTime = 3f;
-
-    [Header("🎬 ANIMATOR CONFIGURACIÓN")]
-    public Animator targetAnimator;
-    public float animatorStartDelay = 1f;
-    public float transitionAfterAnimatorDelay = 3f; // tiempo antes de pasar de B→C
-
-    [Header("🧩 SCRIPTS A ACTIVAR DESPUÉS DE LA TRANSICIÓN B→C")]
-    public MonoBehaviour[] scriptsToEnable;
-    public float scriptsActivationDelay = 1f; // Delay configurable
-
-    private bool isTransitioning = false;
-    private bool prevA, prevB, prevC;
-    private bool fadeBlackPrev = false;
-
-    // Canvas
-    private bool hasStartedFade = false;
-    private bool hasReappeared = false;
-    private bool hasFadedAfterBlack = false;
-    private bool hasActivatedExtraCanvas = false;
-
-    // Animator
-    private bool animatorStarted = false;
-    public bool animatorActivated = false;
-
-    public enum StartCamera
+    public class TutorialCameraSwitcher : MonoBehaviour
     {
-        CameraA,
-        CameraB,
-        CameraC
-    }
+        [Header("📸 CÁMARAS VIRTUALES")]
+        public CinemachineVirtualCameraBase cameraA;
+        public CinemachineVirtualCameraBase cameraB;
+        public CinemachineVirtualCameraBase cameraC;
 
-    void Start()
-    {
-        // Inicializar cámaras y objetos
-        SetInitialCameraState();
+        [Header("🧱 OBJETOS QUE CONTIENEN LAS CÁMARAS")]
+        public GameObject objectA;
+        public GameObject objectB;
+        public GameObject objectC;
 
-        // 🔸 Desactivar scripts desde el inicio
-        if (scriptsToEnable != null)
+        [Header("🎥 MAIN CAMERA A DESACTIVAR EN B→C")]
+        public GameObject mainCameraToDisable;
+
+        [Header("⏱️ CONFIGURACIÓN DE TRANSICIONES")]
+        public float blendTime = 1f;
+        public StartCamera startCamera = StartCamera.CameraA;
+
+        [Header("🔁 TRANSICIÓN MANUAL (DEBUG)")]
+        public bool transitionToA;
+        public bool transitionToB;
+        public bool transitionToC;
+
+        [Header("🎭 REFERENCIAS PRINCIPALES")]
+        public RagdollHanger ragdollHanger;
+        public GameObject objectToDeactivate; // opcional
+
+        [Header("🖼️ CANVAS CONFIGURACIÓN")]
+        public CanvasGroup canvasGroup;
+        public float startFadeDelay = 2f;
+        public float startFadeDuration = 5f;
+        public float fadeBlackDelay = 2f;
+        public float fadeBlackDuration = 5f;
+        public Canvas extraCanvas;
+        public float extraCanvasActiveTime = 3f;
+
+        [Header("🎬 ANIMATOR CONFIGURACIÓN")]
+        public Animator targetAnimator;
+        public float animatorStartDelay = 1f;
+        public float transitionAfterAnimatorDelay = 3f; // tiempo antes de pasar de B→C
+
+        [Header("🧩 SCRIPTS A ACTIVAR DESPUÉS DE LA TRANSICIÓN B→C")]
+        public MonoBehaviour[] scriptsToEnable;
+        public float scriptsActivationDelay = 1f; // Delay configurable
+
+        private bool isTransitioning = false;
+        private bool prevA, prevB, prevC;
+        private bool fadeBlackPrev = false;
+
+        // Canvas
+        private bool hasStartedFade = false;
+        private bool hasReappeared = false;
+        private bool hasFadedAfterBlack = false;
+        private bool hasActivatedExtraCanvas = false;
+
+        // Animator
+        private bool animatorStarted = false;
+        public bool animatorActivated = false;
+
+        public enum StartCamera
         {
+            CameraA,
+            CameraB,
+            CameraC
+        }
+
+        void Start()
+        {
+            // Inicializar cámaras y objetos
+            SetInitialCameraState();
+
+            // 🔸 Desactivar scripts desde el inicio
+            if (scriptsToEnable != null)
+            {
+                foreach (var script in scriptsToEnable)
+                    if (script != null)
+                        script.enabled = false;
+            }
+
+            // Inicializar canvas
+            if (canvasGroup != null)
+            {
+                canvasGroup.alpha = 1f;
+                if (extraCanvas != null)
+                    extraCanvas.gameObject.SetActive(false);
+                StartCoroutine(FadeOutAfterDelay());
+            }
+
+            // Desactivar animator
+            if (targetAnimator != null)
+                targetAnimator.enabled = false;
+        }
+
+        void Update()
+        {
+            if (ragdollHanger == null)
+                return;
+
+            HandleCameraTransitions();
+            HandleCanvasLogic();
+            HandleAnimatorLogic();
+        }
+
+        #region === CÁMARA ===
+        private void SetInitialCameraState()
+        {
+            if (objectA) objectA.SetActive(true);
+            if (objectB) objectB.SetActive(false);
+            if (objectC) objectC.SetActive(false);
+
+            if (cameraA) cameraA.gameObject.SetActive(true);
+            if (cameraB) cameraB.gameObject.SetActive(true);
+            if (cameraC) cameraC.gameObject.SetActive(true);
+
+            switch (startCamera)
+            {
+                case StartCamera.CameraA: SetPriority(cameraA); break;
+                case StartCamera.CameraB: SetPriority(cameraB); break;
+                case StartCamera.CameraC: SetPriority(cameraC); break;
+            }
+        }
+
+        private void SetPriority(CinemachineVirtualCameraBase activeCam)
+        {
+            foreach (var vcam in FindObjectsOfType<CinemachineVirtualCameraBase>())
+                vcam.Priority = (vcam == activeCam) ? 20 : 5;
+        }
+
+        private void HandleCameraTransitions()
+        {
+            if (transitionToA && !prevA)
+                StartCoroutine(SwitchRoutine(cameraA, "A"));
+            if (transitionToB && !prevB)
+                StartCoroutine(SwitchRoutine(cameraB, "B"));
+            if (transitionToC && !prevC)
+                StartCoroutine(SwitchRoutine(cameraC, "C"));
+
+            prevA = transitionToA;
+            prevB = transitionToB;
+            prevC = transitionToC;
+
+            if (ragdollHanger.fadeBlack && !fadeBlackPrev)
+                StartCoroutine(SwitchRoutine(cameraB, "B"));
+
+            fadeBlackPrev = ragdollHanger.fadeBlack;
+        }
+
+        private IEnumerator SwitchRoutine(CinemachineVirtualCameraBase newCam, string targetCamera)
+        {
+            if (isTransitioning) yield break;
+            isTransitioning = true;
+
+            // Activar objeto destino antes del blend
+            if (targetCamera == "B" && objectB) objectB.SetActive(true);
+            if (targetCamera == "C" && objectC) objectC.SetActive(true);
+
+            foreach (var vcam in FindObjectsOfType<CinemachineVirtualCameraBase>())
+                vcam.Priority = (vcam == newCam) ? 20 : 5;
+
+            yield return new WaitForSeconds(blendTime);
+
+            // Apagar objetos de cámaras previas según transición
+            if (targetCamera == "B")
+            {
+                if (objectA) objectA.SetActive(false);
+                if (objectToDeactivate) objectToDeactivate.SetActive(false);
+            }
+            else if (targetCamera == "C")
+            {
+                if (objectB) objectB.SetActive(false);
+
+                // 🔹 Apagar la cámara principal asignada
+                if (mainCameraToDisable != null)
+                    mainCameraToDisable.SetActive(false);
+
+                // 🔹 Activar scripts desactivados después de la transición B→C con delay
+                if (scriptsToEnable != null && scriptsToEnable.Length > 0)
+                    StartCoroutine(ActivateScriptsWithDelay());
+            }
+
+            isTransitioning = false;
+        }
+
+        private IEnumerator ActivateScriptsWithDelay()
+        {
+            yield return new WaitForSeconds(scriptsActivationDelay);
+
             foreach (var script in scriptsToEnable)
                 if (script != null)
-                    script.enabled = false;
+                    script.enabled = true;
+        }
+        #endregion
+
+        #region === CANVAS ===
+        private void HandleCanvasLogic()
+        {
+            if (canvasGroup == null)
+                return;
+
+            if (ragdollHanger.fadeBlack && extraCanvas != null && extraCanvas.gameObject.activeSelf)
+                extraCanvas.gameObject.SetActive(false);
+
+            if (ragdollHanger.fadeBlack && !hasReappeared)
+            {
+                canvasGroup.alpha = 1f;
+                canvasGroup.interactable = true;
+                canvasGroup.blocksRaycasts = true;
+                hasReappeared = true;
+                StartCoroutine(FadeOutAfterFadeBlack());
+            }
+
+            if (ragdollHanger.hasReleased && !hasActivatedExtraCanvas && extraCanvas != null)
+            {
+                hasActivatedExtraCanvas = true;
+                StartCoroutine(ActivateExtraCanvas());
+            }
         }
 
-        // Inicializar canvas
-        if (canvasGroup != null)
+        private IEnumerator FadeOutAfterDelay()
         {
-            canvasGroup.alpha = 1f;
+            yield return new WaitForSeconds(startFadeDelay);
+            hasStartedFade = true;
+
+            float elapsed = 0f;
+            float startAlpha = canvasGroup.alpha;
+
+            while (elapsed < startFadeDuration)
+            {
+                elapsed += Time.deltaTime;
+                float t = elapsed / startFadeDuration;
+                canvasGroup.alpha = Mathf.SmoothStep(startAlpha, 0f, t);
+                yield return null;
+            }
+
+            canvasGroup.alpha = 0f;
+            canvasGroup.interactable = false;
+            canvasGroup.blocksRaycasts = false;
+        }
+
+        private IEnumerator FadeOutAfterFadeBlack()
+        {
+            yield return new WaitForSeconds(fadeBlackDelay);
+
+            float elapsed = 0f;
+            float startAlpha = canvasGroup.alpha;
+
+            while (elapsed < fadeBlackDuration)
+            {
+                elapsed += Time.deltaTime;
+                float t = elapsed / fadeBlackDuration;
+                canvasGroup.alpha = Mathf.SmoothStep(startAlpha, 0f, t);
+                yield return null;
+            }
+
+            canvasGroup.alpha = 0f;
+            canvasGroup.interactable = false;
+            canvasGroup.blocksRaycasts = false;
+            hasFadedAfterBlack = true;
+        }
+
+        private IEnumerator ActivateExtraCanvas()
+        {
+            extraCanvas.gameObject.SetActive(true);
+            yield return new WaitForSeconds(extraCanvasActiveTime);
+
             if (extraCanvas != null)
                 extraCanvas.gameObject.SetActive(false);
-            StartCoroutine(FadeOutAfterDelay());
         }
+        #endregion
 
-        // Desactivar animator
-        if (targetAnimator != null)
-            targetAnimator.enabled = false;
-    }
-
-    void Update()
-    {
-        if (ragdollHanger == null)
-            return;
-
-        HandleCameraTransitions();
-        HandleCanvasLogic();
-        HandleAnimatorLogic();
-    }
-
-    #region === CÁMARA ===
-    private void SetInitialCameraState()
-    {
-        if (objectA) objectA.SetActive(true);
-        if (objectB) objectB.SetActive(false);
-        if (objectC) objectC.SetActive(false);
-
-        if (cameraA) cameraA.gameObject.SetActive(true);
-        if (cameraB) cameraB.gameObject.SetActive(true);
-        if (cameraC) cameraC.gameObject.SetActive(true);
-
-        switch (startCamera)
+        #region === ANIMATOR ===
+        private void HandleAnimatorLogic()
         {
-            case StartCamera.CameraA: SetPriority(cameraA); break;
-            case StartCamera.CameraB: SetPriority(cameraB); break;
-            case StartCamera.CameraC: SetPriority(cameraC); break;
+            if (targetAnimator == null || animatorStarted)
+                return;
+
+            if (ragdollHanger.fadeBlack)
+            {
+                StartCoroutine(StartAnimatorAfterDelay());
+                animatorStarted = true;
+            }
         }
-    }
 
-    private void SetPriority(CinemachineVirtualCameraBase activeCam)
-    {
-        foreach (var vcam in FindObjectsOfType<CinemachineVirtualCameraBase>())
-            vcam.Priority = (vcam == activeCam) ? 20 : 5;
-    }
-
-    private void HandleCameraTransitions()
-    {
-        if (transitionToA && !prevA)
-            StartCoroutine(SwitchRoutine(cameraA, "A"));
-        if (transitionToB && !prevB)
-            StartCoroutine(SwitchRoutine(cameraB, "B"));
-        if (transitionToC && !prevC)
-            StartCoroutine(SwitchRoutine(cameraC, "C"));
-
-        prevA = transitionToA;
-        prevB = transitionToB;
-        prevC = transitionToC;
-
-        if (ragdollHanger.fadeBlack && !fadeBlackPrev)
-            StartCoroutine(SwitchRoutine(cameraB, "B"));
-
-        fadeBlackPrev = ragdollHanger.fadeBlack;
-    }
-
-    private IEnumerator SwitchRoutine(CinemachineVirtualCameraBase newCam, string targetCamera)
-    {
-        if (isTransitioning) yield break;
-        isTransitioning = true;
-
-        // Activar objeto destino antes del blend
-        if (targetCamera == "B" && objectB) objectB.SetActive(true);
-        if (targetCamera == "C" && objectC) objectC.SetActive(true);
-
-        foreach (var vcam in FindObjectsOfType<CinemachineVirtualCameraBase>())
-            vcam.Priority = (vcam == newCam) ? 20 : 5;
-
-        yield return new WaitForSeconds(blendTime);
-
-        // Apagar objetos de cámaras previas según transición
-        if (targetCamera == "B")
+        private IEnumerator StartAnimatorAfterDelay()
         {
-            if (objectA) objectA.SetActive(false);
-            if (objectToDeactivate) objectToDeactivate.SetActive(false);
+            yield return new WaitForSeconds(animatorStartDelay);
+
+            if (targetAnimator != null)
+            {
+                targetAnimator.enabled = true;
+                animatorActivated = true;
+            }
+
+            // Esperar antes de pasar de cámara B a C
+            yield return new WaitForSeconds(transitionAfterAnimatorDelay);
+            if (cameraC != null)
+                StartCoroutine(SwitchRoutine(cameraC, "C"));
         }
-        else if (targetCamera == "C")
-        {
-            if (objectB) objectB.SetActive(false);
-
-            // 🔹 Apagar la cámara principal asignada
-            if (mainCameraToDisable != null)
-                mainCameraToDisable.SetActive(false);
-
-            // 🔹 Activar scripts desactivados después de la transición B→C con delay
-            if (scriptsToEnable != null && scriptsToEnable.Length > 0)
-                StartCoroutine(ActivateScriptsWithDelay());
-        }
-
-        isTransitioning = false;
+        #endregion
     }
-
-    private IEnumerator ActivateScriptsWithDelay()
-    {
-        yield return new WaitForSeconds(scriptsActivationDelay);
-
-        foreach (var script in scriptsToEnable)
-            if (script != null)
-                script.enabled = true;
-    }
-    #endregion
-
-    #region === CANVAS ===
-    private void HandleCanvasLogic()
-    {
-        if (canvasGroup == null)
-            return;
-
-        if (ragdollHanger.fadeBlack && extraCanvas != null && extraCanvas.gameObject.activeSelf)
-            extraCanvas.gameObject.SetActive(false);
-
-        if (ragdollHanger.fadeBlack && !hasReappeared)
-        {
-            canvasGroup.alpha = 1f;
-            canvasGroup.interactable = true;
-            canvasGroup.blocksRaycasts = true;
-            hasReappeared = true;
-            StartCoroutine(FadeOutAfterFadeBlack());
-        }
-
-        if (ragdollHanger.hasReleased && !hasActivatedExtraCanvas && extraCanvas != null)
-        {
-            hasActivatedExtraCanvas = true;
-            StartCoroutine(ActivateExtraCanvas());
-        }
-    }
-
-    private IEnumerator FadeOutAfterDelay()
-    {
-        yield return new WaitForSeconds(startFadeDelay);
-        hasStartedFade = true;
-
-        float elapsed = 0f;
-        float startAlpha = canvasGroup.alpha;
-
-        while (elapsed < startFadeDuration)
-        {
-            elapsed += Time.deltaTime;
-            float t = elapsed / startFadeDuration;
-            canvasGroup.alpha = Mathf.SmoothStep(startAlpha, 0f, t);
-            yield return null;
-        }
-
-        canvasGroup.alpha = 0f;
-        canvasGroup.interactable = false;
-        canvasGroup.blocksRaycasts = false;
-    }
-
-    private IEnumerator FadeOutAfterFadeBlack()
-    {
-        yield return new WaitForSeconds(fadeBlackDelay);
-
-        float elapsed = 0f;
-        float startAlpha = canvasGroup.alpha;
-
-        while (elapsed < fadeBlackDuration)
-        {
-            elapsed += Time.deltaTime;
-            float t = elapsed / fadeBlackDuration;
-            canvasGroup.alpha = Mathf.SmoothStep(startAlpha, 0f, t);
-            yield return null;
-        }
-
-        canvasGroup.alpha = 0f;
-        canvasGroup.interactable = false;
-        canvasGroup.blocksRaycasts = false;
-        hasFadedAfterBlack = true;
-    }
-
-    private IEnumerator ActivateExtraCanvas()
-    {
-        extraCanvas.gameObject.SetActive(true);
-        yield return new WaitForSeconds(extraCanvasActiveTime);
-
-        if (extraCanvas != null)
-            extraCanvas.gameObject.SetActive(false);
-    }
-    #endregion
-
-    #region === ANIMATOR ===
-    private void HandleAnimatorLogic()
-    {
-        if (targetAnimator == null || animatorStarted)
-            return;
-
-        if (ragdollHanger.fadeBlack)
-        {
-            StartCoroutine(StartAnimatorAfterDelay());
-            animatorStarted = true;
-        }
-    }
-
-    private IEnumerator StartAnimatorAfterDelay()
-    {
-        yield return new WaitForSeconds(animatorStartDelay);
-
-        if (targetAnimator != null)
-        {
-            targetAnimator.enabled = true;
-            animatorActivated = true;
-        }
-
-        // Esperar antes de pasar de cámara B a C
-        yield return new WaitForSeconds(transitionAfterAnimatorDelay);
-        if (cameraC != null)
-            StartCoroutine(SwitchRoutine(cameraC, "C"));
-    }
-    #endregion
 }
 
 

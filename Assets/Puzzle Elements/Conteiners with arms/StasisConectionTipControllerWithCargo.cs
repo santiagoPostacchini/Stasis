@@ -1,60 +1,64 @@
 using System.Collections.Generic;
+using Puzzle_Elements.IK.Scripts;
 using UnityEngine;
 
-public class StasisConectionTipControllerWithCargo : MonoBehaviour
+namespace Puzzle_Elements.Conteiners_with_arms
 {
-    [SerializeField] private List<StasisTipController> _tipControllers;
-    [SerializeField] private StasisConteinerWithArms _stasisConteinerWithArms;
-    public void Notify(bool isTip, bool isFreezed, StasisTipController tip = null, StasisConteinerWithArms conteiner = null)
+    public class StasisConectionTipControllerWithCargo : MonoBehaviour
     {
-        // Seguridad básica
-        if (_tipControllers == null) return;
-
-        if (isTip)
+        [SerializeField] private List<StasisTipController> _tipControllers;
+        [SerializeField] private StasisConteinerWithArms _stasisConteinerWithArms;
+        public void Notify(bool isTip, bool isFreezed, StasisTipController tip = null, StasisConteinerWithArms conteiner = null)
         {
-            if (_stasisConteinerWithArms != null)
+            // Seguridad bï¿½sica
+            if (_tipControllers == null) return;
+
+            if (isTip)
             {
-                if (isFreezed)
+                if (_stasisConteinerWithArms != null)
                 {
-                    if (!_stasisConteinerWithArms.isFreezed)
-                        _stasisConteinerWithArms.FreezeObject();
+                    if (isFreezed)
+                    {
+                        if (!_stasisConteinerWithArms.isFreezed)
+                            _stasisConteinerWithArms.FreezeObject();
+                    }
+                    else
+                    {
+                        if (_stasisConteinerWithArms.isFreezed)
+                            _stasisConteinerWithArms.UnfreezeObject();
+                    }
                 }
-                else
+
+                foreach (var item in _tipControllers)
                 {
-                    if (_stasisConteinerWithArms.isFreezed)
-                        _stasisConteinerWithArms.UnfreezeObject();
+                    if (item == null || item == tip) continue; // no tocar el emisor
+
+                    if (isFreezed)
+                    {
+                        if (!item.IsFreezed) item.FreezeObject();
+                    }
+                    else
+                    {
+                        if (item.IsFreezed) item.UnfreezeObject();
+                    }
                 }
             }
-
-            foreach (var item in _tipControllers)
+            else
             {
-                if (item == null || item == tip) continue; // no tocar el emisor
+                bool desired = isFreezed;
 
-                if (isFreezed)
+                foreach (var item in _tipControllers)
                 {
-                    if (!item.IsFreezed) item.FreezeObject();
-                }
-                else
-                {
-                    if (item.IsFreezed) item.UnfreezeObject();
-                }
-            }
-        }
-        else
-        {
-            bool desired = isFreezed;
+                    if (item == null) continue;
 
-            foreach (var item in _tipControllers)
-            {
-                if (item == null) continue;
-
-                if (desired)
-                {
-                    if (!item.IsFreezed) item.FreezeObject();
-                }
-                else
-                {
-                    if (item.IsFreezed) item.UnfreezeObject();
+                    if (desired)
+                    {
+                        if (!item.IsFreezed) item.FreezeObject();
+                    }
+                    else
+                    {
+                        if (item.IsFreezed) item.UnfreezeObject();
+                    }
                 }
             }
         }

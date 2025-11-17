@@ -1,52 +1,55 @@
-using UnityEngine;
 using Player.Stasis;
-using IKSuite;
+using Puzzle_Elements.IK_OBJECT.Scripts;
+using UnityEngine;
 
-public class StasisPartArmIK : MonoBehaviour,IStasis,IStasisPartIK
+namespace Puzzle_Elements.IK.Scripts
 {
-    public bool IsFreezed => _isFreezed;
-    public StasisEffect StasisEffect { get; }
-    private bool _isFreezed = false;
-    [SerializeField] private StasisTipController _stasisTipController;
+    public class StasisPartArmIK : MonoBehaviour,IStasis,IStasisPartIK
+    {
+        public bool IsFreezed => _isFreezed;
+        public StasisEffect StasisEffect { get; }
+        private bool _isFreezed = false;
+        [SerializeField] private StasisTipController _stasisTipController;
     
-    void Start()
-    {
-        if(_stasisTipController)
+        void Start()
         {
-            _stasisTipController.OnFreezeEvent += StatisEffectActivate;
-            _stasisTipController.OnUnFreezeEvent += StatisEffectDeactivate;
+            if(_stasisTipController)
+            {
+                _stasisTipController.OnFreezeEvent += StatisEffectActivate;
+                _stasisTipController.OnUnFreezeEvent += StatisEffectDeactivate;
+            }
         }
-    }
 
-    public void StatisEffectActivate()
-    {
-        NotifyTipController(true);
-    }
-
-    public void StatisEffectDeactivate()
-    {
-        NotifyTipController(false);
-    }
-
-    public void NotifyTipController(bool a)
-    {
-        if(a == true)
+        public void StatisEffectActivate()
         {
-            _stasisTipController.StatisEffectActivate();
+            NotifyTipController(true);
         }
-        else
-        {
-            _stasisTipController.StatisEffectDeactivate();
-        }
-    }
 
-    public void SetTipController(Component tipController)
-    {
-        var a = tipController.GetComponent<StasisTipController>();
-        if(a!= null)
+        public void StatisEffectDeactivate()
         {
-            _stasisTipController = a;
+            NotifyTipController(false);
         }
+
+        public void NotifyTipController(bool a)
+        {
+            if(a == true)
+            {
+                _stasisTipController.StatisEffectActivate();
+            }
+            else
+            {
+                _stasisTipController.StatisEffectDeactivate();
+            }
+        }
+
+        public void SetTipController(Component tipController)
+        {
+            var a = tipController.GetComponent<StasisTipController>();
+            if(a!= null)
+            {
+                _stasisTipController = a;
+            }
         
+        }
     }
 }

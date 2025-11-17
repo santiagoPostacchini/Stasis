@@ -1,6 +1,7 @@
+using Art.VolumetricFog2.Scripts.Managers;
 using UnityEngine;
 
-namespace VolumetricFogAndMist2 {
+namespace Art.VolumetricFog2.Scripts {
 
     [ExecuteInEditMode]
     public class FogVoid : MonoBehaviour {

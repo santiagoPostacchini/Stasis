@@ -1,44 +1,47 @@
 using UnityEngine;
 
-public class PlayerOnWagon : MonoBehaviour
+namespace Scenes.Level.Lau.Tutorial_Assets
 {
-    [Header("Referencias")]
-    public Transform wagon;          // Transform del vagón
-    public Transform playerRagdoll;  // Transform raíz del ragdoll del jugador
-
-    [Header("Opciones")]
-    public bool followWagon = true;  // Activar/desactivar seguimiento
-    public Vector3 offset = Vector3.zero; // Offset relativo al vagón
-
-    private Quaternion initialRotationOffset;
-
-    void Start()
+    public class PlayerOnWagon : MonoBehaviour
     {
-        if (wagon == null || playerRagdoll == null)
+        [Header("Referencias")]
+        public Transform wagon;          // Transform del vagón
+        public Transform playerRagdoll;  // Transform raíz del ragdoll del jugador
+
+        [Header("Opciones")]
+        public bool followWagon = true;  // Activar/desactivar seguimiento
+        public Vector3 offset = Vector3.zero; // Offset relativo al vagón
+
+        private Quaternion initialRotationOffset;
+
+        void Start()
         {
-            Debug.LogWarning("Faltan referencias en PlayerOnWagon!");
-            return;
+            if (wagon == null || playerRagdoll == null)
+            {
+                Debug.LogWarning("Faltan referencias en PlayerOnWagon!");
+                return;
+            }
+
+            // Calcula la rotación inicial relativa como offset
+            initialRotationOffset = playerRagdoll.rotation * Quaternion.Inverse(wagon.rotation);
+
+            // Coloca el ragdoll en la posición inicial del vagón con offset
+            playerRagdoll.position = wagon.position + offset;
         }
 
-        // Calcula la rotación inicial relativa como offset
-        initialRotationOffset = playerRagdoll.rotation * Quaternion.Inverse(wagon.rotation);
+        void Update()
+        {
+            if (!followWagon || wagon == null || playerRagdoll == null) return;
 
-        // Coloca el ragdoll en la posición inicial del vagón con offset
-        playerRagdoll.position = wagon.position + offset;
-    }
+            // Sincroniza posición y rotación del ragdoll con el vagón, aplicando offset
+            playerRagdoll.position = wagon.position + offset;
+        }
 
-    void Update()
-    {
-        if (!followWagon || wagon == null || playerRagdoll == null) return;
-
-        // Sincroniza posición y rotación del ragdoll con el vagón, aplicando offset
-        playerRagdoll.position = wagon.position + offset;
-    }
-
-    // Función para activar/desactivar el seguimiento
-    public void SetFollow(bool active)
-    {
-        followWagon = active;
+        // Función para activar/desactivar el seguimiento
+        public void SetFollow(bool active)
+        {
+            followWagon = active;
+        }
     }
 }
 

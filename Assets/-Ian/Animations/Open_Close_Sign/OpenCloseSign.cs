@@ -1,16 +1,17 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
-public class OpenCloseSign : MonoBehaviour
+namespace _Ian.Animations.Open_Close_Sign
 {
-    private Animator _anim;
-    // Start is called before the first frame update
-    void Start()
+    public class OpenCloseSign : MonoBehaviour
     {
-        _anim = GetComponent<Animator>();
-    }
+        private Animator _anim;
+        // Start is called before the first frame update
+        void Start()
+        {
+            _anim = GetComponent<Animator>();
+        }
 
-    public void OpenSign() => _anim.SetBool("Open",true);
-    public void CloseSign() => _anim.SetBool("Open",false);
+        public void OpenSign() => _anim.SetBool("Open",true);
+        public void CloseSign() => _anim.SetBool("Open",false);
+    }
 }

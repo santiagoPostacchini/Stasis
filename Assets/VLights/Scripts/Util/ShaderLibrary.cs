@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 
-namespace com.brian.vlights
+namespace VLights.Scripts.Util
 {
     // [CreateAssetMenuAttribute]
     public class ShaderLibrary : ScriptableObject

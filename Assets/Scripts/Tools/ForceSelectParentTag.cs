@@ -1,12 +1,12 @@
 using UnityEngine;
 
-namespace ForceSelect
+namespace Tools
 {
     /// <summary>
     /// Marker to force selecting the parent in the editor.
     /// </summary>
     public class ForceSelectParentTag : MonoBehaviour
     {
-        // vacío, solo marca
+        // vacï¿½o, solo marca
     }
 }

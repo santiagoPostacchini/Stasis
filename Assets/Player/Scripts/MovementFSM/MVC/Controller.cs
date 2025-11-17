@@ -1,4 +1,3 @@
-using Player.FullBody_Scripts.MovementFSM;
 using UnityEngine;
 
 namespace Player.Scripts.MovementFSM.MVC
@@ -39,59 +38,47 @@ namespace Player.Scripts.MovementFSM.MVC
 
         public void OnUpdate()
         {
-            // 1) Input crudo
             float xAxis    = Mathf.Clamp(Input.GetAxis("Horizontal"), -1f, 1f);
-            float zAxis    = Mathf.Clamp(Input.GetAxis("Vertical"), -1f, 1f);
-            
+            float zAxis    = Mathf.Clamp(Input.GetAxis("Vertical"),   -1f, 1f);
             float rawXAxis = Mathf.Clamp(Input.GetAxisRaw("Horizontal"), -1f, 1f);
-            float rawZAxis = Mathf.Clamp(Input.GetAxisRaw("Vertical"), -1f, 1f);
+            float rawZAxis = Mathf.Clamp(Input.GetAxisRaw("Vertical"),   -1f, 1f);
 
-            // 2) Multiplicador externo (humo / hazards)
-            float m = Mathf.Clamp01(_model.hazardSpeedMultiplier); // 1 = normal, 0 = inmóvil
+            float m = Mathf.Clamp01(_model.hazardSpeedMultiplier);
 
-            // Curva suave: al principio casi normal, al final se apaga rápido.
-            // t = 0 -> 1, t = 1 -> 0
+            // Escalado suave del input
             float t = 1f - m;
-            float moveScale = Mathf.SmoothStep(1f, 0f, t); 
+            float moveScale = Mathf.SmoothStep(1f, 0f, t);
 
-            // 3) Solo escalamos el input SUAVE cuando estamos afectados
-            //    (fuera del humo m = 1 => no cambia nada)
-            if (m < 1f)
-            {
-                xAxis    *= moveScale;
-                zAxis    *= moveScale;
-            // Si querés, también:
-                rawXAxis *= moveScale;
-                rawZAxis *= moveScale;
-            }
+            xAxis    *= moveScale;
+            zAxis    *= moveScale;
+            rawXAxis *= moveScale;
+            rawZAxis *= moveScale;
 
             _model.UpdateAxisInput(xAxis, zAxis, rawXAxis, rawZAxis);
 
-            // 4) Correr: si estamos muy "ahogados", bloqueamos el run
+            // Run bloqueado cerca de la muerte (ligado al mismo umbral)
+            float deathThreshold = 0.2f;  // mismo valor que en SmokeHazardTrigger
+    
             bool runKeyPressed = Input.GetKey(_model.runningKey);
-
-            // Solo desactivamos run cuando ya estás bastante ahogado
-            if (m < 0.2f)
-            {
+            if (m <= deathThreshold)
                 runKeyPressed = false;
-            }
 
             _model.UpdateRunKey(runKeyPressed);
 
-
-            // 5) Saltos
-            if (Input.GetKeyDown(_model.jumpKey))
+            // Saltos: no aceptamos nuevos cuando estás en zona de muerte
+            if (m > deathThreshold && Input.GetKeyDown(_model.jumpKey))
             {
                 _model.RegisterJumpDownThisFrame();
                 _model.JumpInput();
-                _model.BufferJumpNow();  
+                _model.BufferJumpNow();
             }
-            
-            // 6) Disparo
+
             if (Input.GetKeyDown(_model.mouseLeft))
             {
                 _model.ShootInput();
             }
         }
+
+
     }
 }

@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace UI.Scripts
+namespace UIScripts
 {
     public class ThrowUISlider : MonoBehaviour
     {

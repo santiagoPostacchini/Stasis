@@ -1,28 +1,29 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
 
-public class VFXController : MonoBehaviour
+namespace Fracture
 {
-    public GameObject dust_cloud;
-    public static VFXController Instance
+    public class VFXController : MonoBehaviour
     {
-        get
+        public GameObject dust_cloud;
+        public static VFXController Instance
         {
-            if (!_instance)
-                _instance = FindObjectOfType<VFXController>();
-            if (!_instance)
-                Debug.LogError("No VFXController in scene");
+            get
+            {
+                if (!_instance)
+                    _instance = FindObjectOfType<VFXController>();
+                if (!_instance)
+                    Debug.LogError("No VFXController in scene");
 
-            return _instance;
+                return _instance;
+            }
         }
-    }
-    private static VFXController _instance;
+        private static VFXController _instance;
     
     
-    public void spawn_dust_cloud(Vector3 position)
-    {
-        if(dust_cloud != null)
-        Instantiate(dust_cloud, position, Quaternion.identity);
+        public void spawn_dust_cloud(Vector3 position)
+        {
+            if(dust_cloud != null)
+                Instantiate(dust_cloud, position, Quaternion.identity);
+        }
     }
 }

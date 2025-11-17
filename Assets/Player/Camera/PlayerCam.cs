@@ -1,5 +1,6 @@
 using UnityEngine;
 using DG.Tweening;
+using UIScripts;
 
 namespace Player.Camera
 {

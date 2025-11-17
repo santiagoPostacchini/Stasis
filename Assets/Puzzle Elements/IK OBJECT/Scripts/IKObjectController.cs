@@ -1,14 +1,12 @@
 using System.Collections.Generic;
 using System.Reflection;
+using Puzzle_Elements.IK.Scripts;
+using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.Animations.Rigging;
 
-#if UNITY_EDITOR
-using UnityEditor;
-using UnityEditor.SceneManagement;
-#endif
-
-namespace IKSuite
+namespace Puzzle_Elements.IK_OBJECT.Scripts
 {
     [ExecuteAlways]
     [DisallowMultipleComponent]

@@ -1,33 +1,36 @@
-using UnityEngine;
 using Unity.Cinemachine;
+using UnityEngine;
 
-public class CameraShakeOnRelease : MonoBehaviour
+namespace Player.Scripts.Opening_Cinematic
 {
-    [Header("Referencias")]
-    public RagdollHanger ragdollHanger;                // Referencia al script del hanger
-    public CinemachineImpulseSource impulseSource;     // Componente de Cinemachine que genera el impulso
-
-    [Header("Configuración")]
-    public float delayBeforeShake = 0f;                // Retraso opcional antes del shake
-
-    private bool hasShaken = false;
-
-    void Update()
+    public class CameraShakeOnRelease : MonoBehaviour
     {
-        if (ragdollHanger == null || impulseSource == null)
-            return;
+        [Header("Referencias")]
+        public RagdollHanger ragdollHanger;                // Referencia al script del hanger
+        public CinemachineImpulseSource impulseSource;     // Componente de Cinemachine que genera el impulso
 
-        // Cuando el hanger hace release (usa el bool hasReleased)
-        if (ragdollHanger.hasReleased && !hasShaken)
+        [Header("Configuración")]
+        public float delayBeforeShake = 0f;                // Retraso opcional antes del shake
+
+        private bool hasShaken = false;
+
+        void Update()
         {
-            hasShaken = true;
-            Invoke(nameof(TriggerShake), delayBeforeShake);
-        }
-    }
+            if (ragdollHanger == null || impulseSource == null)
+                return;
 
-    void TriggerShake()
-    {
-        impulseSource.GenerateImpulse();
+            // Cuando el hanger hace release (usa el bool hasReleased)
+            if (ragdollHanger.hasReleased && !hasShaken)
+            {
+                hasShaken = true;
+                Invoke(nameof(TriggerShake), delayBeforeShake);
+            }
+        }
+
+        void TriggerShake()
+        {
+            impulseSource.GenerateImpulse();
+        }
     }
 }
 

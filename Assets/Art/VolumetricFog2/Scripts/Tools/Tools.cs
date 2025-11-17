@@ -1,8 +1,7 @@
-using System.Collections;
-using System.Collections.Generic;
+using Art.VolumetricFog2.Scripts.Managers;
 using UnityEngine;
 
-namespace VolumetricFogAndMist2 {
+namespace Art.VolumetricFog2.Scripts.Tools {
 
     public static class Tools {
 

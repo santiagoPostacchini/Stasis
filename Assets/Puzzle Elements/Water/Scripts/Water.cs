@@ -2,6 +2,7 @@ using Player.Scripts;
 using Player.Scripts.MovementFSM.MVC;
 using Puzzle_Elements.Hedron.Scripts;
 using System.Collections;
+using Checkpoint;
 using UnityEngine;
 using UnityEngine.Events;
 

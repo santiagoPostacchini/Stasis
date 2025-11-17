@@ -1,7 +1,8 @@
+using Art.VolumetricFog2.Scripts.Managers;
+using Art.VolumetricFog2.Scripts.RenderFeatures;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering.Universal;
-using VolumetricFogAndMist2;
 
 namespace Art.VolumetricFog2.Editor {
 

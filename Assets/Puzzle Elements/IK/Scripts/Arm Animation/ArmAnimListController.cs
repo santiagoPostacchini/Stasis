@@ -1,100 +1,103 @@
 using System.Collections.Generic;
-using UnityEngine;
 using Unity.Mathematics;
+using UnityEngine;
 
-public class ArmAnimListController : MonoBehaviour
+namespace Puzzle_Elements.IK.Scripts.Arm_Animation
 {
-    [Tooltip("Lista de controladores de animación de los brazos.")]
-    public List<ArmAnimController> armList;
-
-    [Tooltip("Posición mínima que puede alcanzar el brazo (valor normalizado entre 0 y 1).")]
-    [Range(0, 1)] public float posMin = 0f;
-
-    [Tooltip("Posición máxima que puede alcanzar el brazo (valor normalizado entre 0 y 1).")]
-    [Range(0, 1)] public float posMax = 1f;
-
-    [Tooltip("Intensidad mínima del efecto de 'shake' (valor normalizado entre 0 y 1).")]
-    [Range(0, 1)] public float shakeMin = 0f;
-
-    [Tooltip("Intensidad máxima del efecto de 'shake' (valor normalizado entre 0 y 1).")]
-    [Range(0, 1)] public float shakeMax = 1f;
-
-    [Tooltip("Separación de fase base entre cada brazo.")]
-    public float offset = 0f;
-
-    [Tooltip("Amplitud adicional de la fase por índice de brazo.")]
-    public float amp = 0f;
-
-    // Tiempo LOCAL por brazo (solo avanza cuando NO está en stasis)
-    private List<float> localTimes = new List<float>();
-
-    private void Start()
+    public class ArmAnimListController : MonoBehaviour
     {
-        offset = (armList != null && armList.Count > 0) ? 1f / armList.Count : 0f;
-        SyncLocalTimes(reset: true);
-    }
+        [Tooltip("Lista de controladores de animaciï¿½n de los brazos.")]
+        public List<ArmAnimController> armList;
 
-    private void OnValidate()
-    {
-        if (!Application.isPlaying) return;
-        SyncLocalTimes();
-    }
+        [Tooltip("Posiciï¿½n mï¿½nima que puede alcanzar el brazo (valor normalizado entre 0 y 1).")]
+        [Range(0, 1)] public float posMin = 0f;
 
-    private void Update()
-    {
-        CalculatePosAndShake();
-    }
+        [Tooltip("Posiciï¿½n mï¿½xima que puede alcanzar el brazo (valor normalizado entre 0 y 1).")]
+        [Range(0, 1)] public float posMax = 1f;
 
-    private void SyncLocalTimes(bool reset = false)
-    {
-        int n = armList != null ? armList.Count : 0;
-        if (reset || localTimes.Count != n)
+        [Tooltip("Intensidad mï¿½nima del efecto de 'shake' (valor normalizado entre 0 y 1).")]
+        [Range(0, 1)] public float shakeMin = 0f;
+
+        [Tooltip("Intensidad mï¿½xima del efecto de 'shake' (valor normalizado entre 0 y 1).")]
+        [Range(0, 1)] public float shakeMax = 1f;
+
+        [Tooltip("Separaciï¿½n de fase base entre cada brazo.")]
+        public float offset = 0f;
+
+        [Tooltip("Amplitud adicional de la fase por ï¿½ndice de brazo.")]
+        public float amp = 0f;
+
+        // Tiempo LOCAL por brazo (solo avanza cuando NO estï¿½ en stasis)
+        private List<float> localTimes = new List<float>();
+
+        private void Start()
         {
-            localTimes.Clear();
-            for (int i = 0; i < n; i++)
+            offset = (armList != null && armList.Count > 0) ? 1f / armList.Count : 0f;
+            SyncLocalTimes(reset: true);
+        }
+
+        private void OnValidate()
+        {
+            if (!Application.isPlaying) return;
+            SyncLocalTimes();
+        }
+
+        private void Update()
+        {
+            CalculatePosAndShake();
+        }
+
+        private void SyncLocalTimes(bool reset = false)
+        {
+            int n = armList != null ? armList.Count : 0;
+            if (reset || localTimes.Count != n)
             {
-                // Arranca alineado con Time.time para mantener la fase inicial
-                localTimes.Add(Time.time);
+                localTimes.Clear();
+                for (int i = 0; i < n; i++)
+                {
+                    // Arranca alineado con Time.time para mantener la fase inicial
+                    localTimes.Add(Time.time);
+                }
             }
         }
-    }
 
-    private void CalculatePosAndShake()
-    {
-        if (armList == null) return;
-        if (localTimes.Count != armList.Count) SyncLocalTimes();
-
-        for (int i = 0; i < armList.Count; i++)
+        private void CalculatePosAndShake()
         {
-            var arm = armList[i];
-            if (!arm) continue;
+            if (armList == null) return;
+            if (localTimes.Count != armList.Count) SyncLocalTimes();
 
-            // Si está staseado: NO avanza tiempo, NO recalcula pos,
-            // y fuerza el shake a 0 para eliminar vibración.
-            if (arm.IsFreezed)
+            for (int i = 0; i < armList.Count; i++)
             {
-                arm.shake = 0f; // <- fix anti-vibración
-                continue;
+                var arm = armList[i];
+                if (!arm) continue;
+
+                // Si estï¿½ staseado: NO avanza tiempo, NO recalcula pos,
+                // y fuerza el shake a 0 para eliminar vibraciï¿½n.
+                if (arm.IsFreezed)
+                {
+                    arm.shake = 0f; // <- fix anti-vibraciï¿½n
+                    continue;
+                }
+
+                // Avanza solo cuando no estï¿½ staseado
+                localTimes[i] += Time.deltaTime;
+
+                // Misma fï¿½rmula que tenï¿½as, pero con tiempo local
+                float t = localTimes[i] + offset;   // si querï¿½s por ï¿½ndice, podrï¿½as usar offset * i
+                t = math.cos(t + amp * i);
+                t = t * 0.5f + 0.5f;
+
+                float shake = math.remap(0f, 1f, shakeMin, shakeMax, t);
+                float pos = math.remap(0f, 1f, posMin, posMax, t);
+
+                UpdateArm(i, shake, pos);
             }
-
-            // Avanza solo cuando no está staseado
-            localTimes[i] += Time.deltaTime;
-
-            // Misma fórmula que tenías, pero con tiempo local
-            float t = localTimes[i] + offset;   // si querés por índice, podrías usar offset * i
-            t = math.cos(t + amp * i);
-            t = t * 0.5f + 0.5f;
-
-            float shake = math.remap(0f, 1f, shakeMin, shakeMax, t);
-            float pos = math.remap(0f, 1f, posMin, posMax, t);
-
-            UpdateArm(i, shake, pos);
         }
-    }
 
-    private void UpdateArm(int index, float shake, float pos)
-    {
-        armList[index].position = pos;
-        armList[index].shake = shake;
+        private void UpdateArm(int index, float shake, float pos)
+        {
+            armList[index].position = pos;
+            armList[index].shake = shake;
+        }
     }
 }

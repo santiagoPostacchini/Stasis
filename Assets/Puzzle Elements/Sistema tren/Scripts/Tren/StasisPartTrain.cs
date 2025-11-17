@@ -1,47 +1,50 @@
 using Player.Stasis;
 using UnityEngine;
 
-public class StasisPartTrain : MonoBehaviour, IStasis
+namespace Puzzle_Elements.Sistema_tren.Scripts.Tren
 {
-    public bool _isFreezed;
-    public bool IsFreezed => _isFreezed;
-    public StasisEffect StasisEffect { get; }
-    private StasisTrain _train;
-
-
-    private void Awake()
+    public class StasisPartTrain : MonoBehaviour, IStasis
     {
-        _train = GetComponentInParent<StasisTrain>();
-    }
+        public bool _isFreezed;
+        public bool IsFreezed => _isFreezed;
+        public StasisEffect StasisEffect { get; }
+        private StasisTrain _train;
 
-    public void StatisEffectActivate()
-    {
-        FreezeObject();
-    }
 
-    public void StatisEffectDeactivate()
-    {
-        UnfreezeObject();
-    }
-
-    private void FreezeObject()
-    {
-        if (!_isFreezed)
+        private void Awake()
         {
-            _train.StatisEffectActivate();
-            _isFreezed = true;
+            _train = GetComponentInParent<StasisTrain>();
         }
-        
-    }
 
-    private void UnfreezeObject()
-    {
-        if (_isFreezed)
+        public void StatisEffectActivate()
         {
-            _train.StatisEffectDeactivate();
-            _isFreezed = false;
+            FreezeObject();
         }
+
+        public void StatisEffectDeactivate()
+        {
+            UnfreezeObject();
+        }
+
+        private void FreezeObject()
+        {
+            if (!_isFreezed)
+            {
+                _train.StatisEffectActivate();
+                _isFreezed = true;
+            }
         
+        }
+
+        private void UnfreezeObject()
+        {
+            if (_isFreezed)
+            {
+                _train.StatisEffectDeactivate();
+                _isFreezed = false;
+            }
+        
+        }
     }
 }
 

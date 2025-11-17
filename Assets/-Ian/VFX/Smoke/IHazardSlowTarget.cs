@@ -1,6 +1,4 @@
-using UnityEngine;
-
-namespace Player.Scripts.MovementFSM.MVC
+namespace _Ian.VFX.Smoke
 {
     public interface IHazardSlowTarget
     {

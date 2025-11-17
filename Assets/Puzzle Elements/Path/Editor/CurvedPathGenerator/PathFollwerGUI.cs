@@ -15,7 +15,7 @@
 //  2023.11.04 _ KimYC1223
 //=========================================================================================================================================
 
-using CurvedPathGenerator;
+using Puzzle_Elements.Path.CurvedPathGenerator.Scripts;
 using UnityEditor;
 using UnityEngine;
 

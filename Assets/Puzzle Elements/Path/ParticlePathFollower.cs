@@ -1,52 +1,55 @@
-using UnityEngine;
 using System.Collections.Generic;
-using CurvedPathGenerator;
+using Puzzle_Elements.Path.CurvedPathGenerator.Scripts;
+using UnityEngine;
 
-public class ParticlePathFollower : MonoBehaviour
+namespace Puzzle_Elements.Path
 {
-    public PathGenerator pathGenerator;  // Referencia a tu PathGenerator
-    public float speed = 5f;
-
-    private List<Vector3> pathPoints;
-    private int currentPointIndex = 0;
-
-    private void Start()
+    public class ParticlePathFollower : MonoBehaviour
     {
-        if (pathGenerator == null)
+        public PathGenerator pathGenerator;  // Referencia a tu PathGenerator
+        public float speed = 5f;
+
+        private List<Vector3> pathPoints;
+        private int currentPointIndex = 0;
+
+        private void Start()
         {
-            Debug.LogError("No hay PathGenerator asignado.");
-            enabled = false;
-            return;
+            if (pathGenerator == null)
+            {
+                Debug.LogError("No hay PathGenerator asignado.");
+                enabled = false;
+                return;
+            }
+
+            pathPoints = pathGenerator.PathList;
+
+            if (pathPoints == null || pathPoints.Count == 0)
+            {
+                Debug.LogError("La lista PathList estï¿½ vacï¿½a.");
+                enabled = false;
+                return;
+            }
+
+            transform.position = pathPoints[0];  // Empieza en el primer punto
         }
 
-        pathPoints = pathGenerator.PathList;
-
-        if (pathPoints == null || pathPoints.Count == 0)
+        private void Update()
         {
-            Debug.LogError("La lista PathList está vacía.");
-            enabled = false;
-            return;
-        }
+            if (currentPointIndex >= pathPoints.Count)
+            {
+                currentPointIndex = 0;
+                transform.position = pathPoints[0];
+            }
 
-        transform.position = pathPoints[0];  // Empieza en el primer punto
-    }
+            Vector3 target = pathPoints[currentPointIndex];
+            float step = speed * Time.deltaTime;
 
-    private void Update()
-    {
-        if (currentPointIndex >= pathPoints.Count)
-        {
-            currentPointIndex = 0;
-            transform.position = pathPoints[0];
-        }
+            transform.position = Vector3.MoveTowards(transform.position, target, step);
 
-        Vector3 target = pathPoints[currentPointIndex];
-        float step = speed * Time.deltaTime;
-
-        transform.position = Vector3.MoveTowards(transform.position, target, step);
-
-        if (Vector3.Distance(transform.position, target) < 0.01f)
-        {
-            currentPointIndex++;  // Avanza al siguiente punto
+            if (Vector3.Distance(transform.position, target) < 0.01f)
+            {
+                currentPointIndex++;  // Avanza al siguiente punto
+            }
         }
     }
 }

@@ -1,7 +1,8 @@
 // Assets/Scripts/IKSuite/BoneEnd.cs
+
 using UnityEngine;
 
-namespace IKSuite
+namespace Puzzle_Elements.IK_OBJECT.Scripts
 {
     // Ponlo en el prefab de cada bone y arrastra el hijo "end".
     public class BoneEnd : MonoBehaviour

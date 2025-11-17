@@ -2,11 +2,11 @@ using System;
 using Managers.Events;
 using Player.Stasis;
 using Puzzle_Elements.Hedron.Scripts;
-using UI.Scripts;
 using UnityEngine;
 using System.Collections;
 using Player.Scripts.MovementFSM.MVC;
 using Managers.Game;
+using UIScripts;
 
 namespace Player.Scripts.Interactor
 {

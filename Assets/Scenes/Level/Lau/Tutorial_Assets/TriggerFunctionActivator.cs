@@ -1,45 +1,48 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.Events;
-using System.Collections;
 
-public class TriggerEventActivator : MonoBehaviour
+namespace Scenes.Level.Lau.Tutorial_Assets
 {
-    [Header("Evento cuando el Player entra al trigger")]
-    public UnityEvent onEnterEvent;
-
-    [Header("Evento cuando termina el tiempo activo")]
-    public UnityEvent onFinishEvent;
-
-    [Header("Duración del efecto")]
-    public float activeTime = 2f;
-
-    [Header("Tag del Player")]
-    public string playerTag = "Player";
-
-    private bool isRunning = false;
-
-    private void OnTriggerEnter(Collider other)
+    public class TriggerEventActivator : MonoBehaviour
     {
-        if (!isRunning && other.CompareTag(playerTag))
+        [Header("Evento cuando el Player entra al trigger")]
+        public UnityEvent onEnterEvent;
+
+        [Header("Evento cuando termina el tiempo activo")]
+        public UnityEvent onFinishEvent;
+
+        [Header("Duración del efecto")]
+        public float activeTime = 2f;
+
+        [Header("Tag del Player")]
+        public string playerTag = "Player";
+
+        private bool isRunning = false;
+
+        private void OnTriggerEnter(Collider other)
         {
-            StartCoroutine(ActivationRoutine());
+            if (!isRunning && other.CompareTag(playerTag))
+            {
+                StartCoroutine(ActivationRoutine());
+            }
         }
-    }
 
-    private IEnumerator ActivationRoutine()
-    {
-        isRunning = true;
+        private IEnumerator ActivationRoutine()
+        {
+            isRunning = true;
 
-        // Evento al entrar
-        onEnterEvent?.Invoke();
+            // Evento al entrar
+            onEnterEvent?.Invoke();
 
-        // Tiempo activo
-        yield return new WaitForSeconds(activeTime);
+            // Tiempo activo
+            yield return new WaitForSeconds(activeTime);
 
-        // Evento al terminar
-        onFinishEvent?.Invoke();
+            // Evento al terminar
+            onFinishEvent?.Invoke();
 
-        isRunning = false;
+            isRunning = false;
+        }
     }
 }
 

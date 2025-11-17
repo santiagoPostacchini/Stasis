@@ -1,22 +1,23 @@
-using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
 using Player.Stasis;
+using UnityEngine;
 
-public class StasisPlatformMovement : MonoBehaviour, IStasis
+namespace Puzzle_Elements.PlatformMovement
 {
-    public void StatisEffectActivate()
+    public class StasisPlatformMovement : MonoBehaviour, IStasis
     {
-        throw new System.NotImplementedException();
-    }
+        public void StatisEffectActivate()
+        {
+            throw new System.NotImplementedException();
+        }
 
-    public void StatisEffectDeactivate()
-    {
-        throw new System.NotImplementedException();
-    }
+        public void StatisEffectDeactivate()
+        {
+            throw new System.NotImplementedException();
+        }
 
-    public bool IsFreezed => _isFreezed;
-    private bool _isFreezed = false;
-    public StasisEffect StasisEffect { get; }
+        public bool IsFreezed => _isFreezed;
+        private bool _isFreezed = false;
+        public StasisEffect StasisEffect { get; }
     
+    }
 }

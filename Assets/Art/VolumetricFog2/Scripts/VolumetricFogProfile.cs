@@ -83,11 +83,9 @@
 //     }
 // }
 
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
-namespace VolumetricFogAndMist2 {
+namespace Art.VolumetricFog2.Scripts {
 
     public delegate void OnSettingsChanged();
 

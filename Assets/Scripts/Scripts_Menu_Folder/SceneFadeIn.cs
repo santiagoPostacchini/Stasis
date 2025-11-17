@@ -1,57 +1,60 @@
-using UnityEngine;
 using System.Collections;
+using UnityEngine;
 
-public class SceneFadeIn : MonoBehaviour
+namespace Scripts_Menu_Folder
 {
-    [Header("Black Screen Settings")]
-    [Tooltip("Canvas o GameObject con el BlackScreen")]
-    public GameObject blackScreen;
-
-    [Header("Fade Settings")]
-    [Tooltip("Duración total del fade en segundos")]
-    public float fadeDuration = 1.5f;
-
-    [Tooltip("Velocidad de cambio de alfa")]
-    public float fadeSpeed = 1.0f;
-
-    private CanvasGroup canvasGroup;
-
-    void Awake()
+    public class SceneFadeIn : MonoBehaviour
     {
-        if (blackScreen == null)
+        [Header("Black Screen Settings")]
+        [Tooltip("Canvas o GameObject con el BlackScreen")]
+        public GameObject blackScreen;
+
+        [Header("Fade Settings")]
+        [Tooltip("Duración total del fade en segundos")]
+        public float fadeDuration = 1.5f;
+
+        [Tooltip("Velocidad de cambio de alfa")]
+        public float fadeSpeed = 1.0f;
+
+        private CanvasGroup canvasGroup;
+
+        void Awake()
         {
-            Debug.LogError("No se asignó el BlackScreen en " + gameObject.name);
-            return;
+            if (blackScreen == null)
+            {
+                Debug.LogError("No se asignó el BlackScreen en " + gameObject.name);
+                return;
+            }
+
+            canvasGroup = blackScreen.GetComponent<CanvasGroup>();
+            if (canvasGroup == null)
+            {
+                canvasGroup = blackScreen.AddComponent<CanvasGroup>();
+            }
+
+            canvasGroup.alpha = 1f;
+            canvasGroup.blocksRaycasts = true; 
         }
 
-        canvasGroup = blackScreen.GetComponent<CanvasGroup>();
-        if (canvasGroup == null)
+        void Start()
         {
-            canvasGroup = blackScreen.AddComponent<CanvasGroup>();
+            StartCoroutine(FadeIn());
         }
 
-        canvasGroup.alpha = 1f;
-        canvasGroup.blocksRaycasts = true; 
-    }
-
-    void Start()
-    {
-        StartCoroutine(FadeIn());
-    }
-
-    IEnumerator FadeIn()
-    {
-        float elapsedTime = 0f;
-
-        while (elapsedTime < fadeDuration)
+        IEnumerator FadeIn()
         {
-            elapsedTime += Time.deltaTime * fadeSpeed;
-            canvasGroup.alpha = Mathf.Lerp(1f, 0f, elapsedTime / fadeDuration);
-            yield return null;
-        }
+            float elapsedTime = 0f;
 
-        canvasGroup.alpha = 0f;
-        canvasGroup.blocksRaycasts = false; 
+            while (elapsedTime < fadeDuration)
+            {
+                elapsedTime += Time.deltaTime * fadeSpeed;
+                canvasGroup.alpha = Mathf.Lerp(1f, 0f, elapsedTime / fadeDuration);
+                yield return null;
+            }
+
+            canvasGroup.alpha = 0f;
+            canvasGroup.blocksRaycasts = false; 
+        }
     }
 }
 

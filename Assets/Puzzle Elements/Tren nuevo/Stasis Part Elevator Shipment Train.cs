@@ -1,42 +1,43 @@
 using Player.Stasis;
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
-public class StasisPartElevatorShipmentTrain : MonoBehaviour, IStasis
+namespace Puzzle_Elements.Tren_nuevo
 {
-    [SerializeField] private ElevatorShipmentTrain _elevatorShipmentTrain;
-    public bool IsFreezed => isFreezed;
-    public bool isFreezed = false;
-    public StasisEffect StasisEffect => throw new System.NotImplementedException();
-
-    void Start()
+    public class StasisPartElevatorShipmentTrain : MonoBehaviour, IStasis
     {
-        _elevatorShipmentTrain = GetComponentInParent<ElevatorShipmentTrain>();
-    }
+        [SerializeField] private ElevatorShipmentTrain _elevatorShipmentTrain;
+        public bool IsFreezed => isFreezed;
+        public bool isFreezed = false;
+        public StasisEffect StasisEffect => throw new System.NotImplementedException();
+
+        void Start()
+        {
+            _elevatorShipmentTrain = GetComponentInParent<ElevatorShipmentTrain>();
+        }
     
-    public void StatisEffectActivate()
-    {
-        if (isFreezed)
+        public void StatisEffectActivate()
         {
-            _elevatorShipmentTrain.StatisEffectDeactivate();
+            if (isFreezed)
+            {
+                _elevatorShipmentTrain.StatisEffectDeactivate();
+            }
+            else
+            {
+                _elevatorShipmentTrain.StatisEffectActivate();
+            }
         }
-        else
-        {
-            _elevatorShipmentTrain.StatisEffectActivate();
-        }
-    }
 
-    public void StatisEffectDeactivate()
-    {
-        if (isFreezed)
+        public void StatisEffectDeactivate()
         {
-            _elevatorShipmentTrain.StatisEffectDeactivate();
+            if (isFreezed)
+            {
+                _elevatorShipmentTrain.StatisEffectDeactivate();
+            }
+            else
+            {
+                _elevatorShipmentTrain.StatisEffectActivate();
+            }
         }
-        else
-        {
-            _elevatorShipmentTrain.StatisEffectActivate();
-        }
-    }
 
+    }
 }

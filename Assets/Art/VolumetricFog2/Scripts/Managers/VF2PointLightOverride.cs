@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace VolumetricFogAndMist2 {
+namespace Art.VolumetricFog2.Scripts.Managers {
     [DisallowMultipleComponent]
     public class VF2PointLightOverride : MonoBehaviour {
         [Header("Overrides (Opcionales)")]

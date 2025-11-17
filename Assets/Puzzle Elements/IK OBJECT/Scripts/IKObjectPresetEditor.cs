@@ -1,8 +1,7 @@
 #if UNITY_EDITOR
 using UnityEditor;
-using UnityEngine;
 
-namespace IKSuite
+namespace Puzzle_Elements.IK_OBJECT.Scripts
 {
     [CustomEditor(typeof(IKObjectPreset))]
     public class IKObjectPresetEditor : Editor

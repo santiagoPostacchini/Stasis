@@ -3,7 +3,7 @@ using Unity.Cinemachine;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace UI.IUI_System
+namespace UIScripts
 {
     public class SensitivityUIController : MonoBehaviour
     {

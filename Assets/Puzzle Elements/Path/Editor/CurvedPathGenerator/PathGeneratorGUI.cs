@@ -18,7 +18,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using CurvedPathGenerator;
+using Puzzle_Elements.Path.CurvedPathGenerator.Scripts;
 using UnityEditor;
 using UnityEngine;
 

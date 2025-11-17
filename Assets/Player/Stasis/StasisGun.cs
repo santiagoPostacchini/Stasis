@@ -6,7 +6,9 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Player.Scripts.MovementFSM.MVC;
+using Puzzle_Elements;
 using Puzzle_Elements.Hedron.Scripts;
+using UIScripts.FeedBack_UI.Crosshair;
 
 namespace Player.Stasis
 {

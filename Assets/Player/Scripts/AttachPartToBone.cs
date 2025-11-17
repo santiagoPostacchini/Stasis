@@ -1,24 +1,27 @@
 using UnityEngine;
 
-public class AttachPartToBone : MonoBehaviour
+namespace Player.Scripts
 {
-    [Header("References")]
-    [SerializeField] private Transform bone; // El hueso donde se va a pegar
-
-    [Header("Options")]
-    [SerializeField] private bool keepWorldPosition = false; 
-    // true = mantiene la posición global actual
-    // false = adopta la posición local del hueso
-
-    private void Start()
+    public class AttachPartToBone : MonoBehaviour
     {
-        if (bone == null)
-        {
-            Debug.LogWarning($"[AttachPartToBone] No se asignó un hueso en {gameObject.name}");
-            return;
-        }
+        [Header("References")]
+        [SerializeField] private Transform bone; // El hueso donde se va a pegar
 
-        transform.SetParent(bone, keepWorldPosition);
+        [Header("Options")]
+        [SerializeField] private bool keepWorldPosition = false; 
+        // true = mantiene la posición global actual
+        // false = adopta la posición local del hueso
+
+        private void Start()
+        {
+            if (bone == null)
+            {
+                Debug.LogWarning($"[AttachPartToBone] No se asignó un hueso en {gameObject.name}");
+                return;
+            }
+
+            transform.SetParent(bone, keepWorldPosition);
+        }
     }
 }
 

@@ -3,7 +3,6 @@ using UnityEngine;
 using UnityEngine.Events;
 using TMPro;
 using Managers.Events;
-using Player.FullBody_Scripts.MovementFSM;
 using Player.Scripts.MovementFSM;
 using Player.Scripts.MovementFSM.MVC;
 using System.Threading.Tasks;

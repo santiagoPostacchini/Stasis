@@ -1,6 +1,7 @@
-﻿using UnityEngine;
+﻿using Puzzle_Elements.Path.CurvedPathGenerator.Scripts;
+using UnityEngine;
 
-namespace CurvedPathGenerator
+namespace Puzzle_Elements.PlatformMovement
 {
     [RequireComponent(typeof(Rigidbody))]
     public class PathFollower1 : MonoBehaviour

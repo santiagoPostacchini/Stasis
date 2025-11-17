@@ -1,12 +1,15 @@
 using UnityEngine;
 
-public class PausedButtomSound : MonoBehaviour
+namespace Scenes.Level.Lau.Tutorial_Assets
 {
-    public AudioSource uiAudio;
-
-    void Awake()
+    public class PausedButtomSound : MonoBehaviour
     {
-        uiAudio.ignoreListenerPause = true;
+        public AudioSource uiAudio;
+
+        void Awake()
+        {
+            uiAudio.ignoreListenerPause = true;
+        }
     }
 }
 

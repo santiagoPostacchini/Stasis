@@ -1,11 +1,10 @@
-using UnityEngine;
-using System.Collections;
+
 
 /*
  * VLight
  * Copyright Brian Su 2011-2019
 */
-namespace VLights
+namespace VLights.Scripts.Util
 {
 	public static class VLightShaderUtil
 	{

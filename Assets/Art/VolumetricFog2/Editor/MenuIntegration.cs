@@ -1,7 +1,7 @@
+using Art.VolumetricFog2.Scripts.Managers;
 using UnityEditor;
 using UnityEngine;
-using VolumetricFogAndMist2;
-using Tools = VolumetricFogAndMist2.Tools;
+using Tools = Art.VolumetricFog2.Scripts.Tools.Tools;
 
 namespace Art.VolumetricFog2.Editor {
 
@@ -9,7 +9,7 @@ namespace Art.VolumetricFog2.Editor {
 
         [MenuItem("GameObject//Effects/Volumetric Fog 2/Manager", false, 100)]
         public static void CreateManager(MenuCommand menuCommand) {
-            VolumetricFogManager fog2 = Tools.CheckMainManager();
+            VolumetricFogManager fog2 = Scripts.Tools.Tools.CheckMainManager();
             Selection.activeObject = fog2.gameObject;
         }
 

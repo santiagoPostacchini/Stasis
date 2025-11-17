@@ -1,156 +1,160 @@
 using System.Collections;
-using UnityEngine;
 using System.Collections.Generic;
-using Player.Stasis;
+using Fracture.Destruction_System.Refractored;
 using Player.Scripts.Interactor;
+using Player.Stasis;
+using UnityEngine;
 
-public class StasisGunEntity : MonoBehaviour
+namespace StasisGunEntity
 {
-    [Header("Visual Settings")]
-    [SerializeField] private Transform stasisOrigin;
-    [SerializeField] private GameObject stasisBeamPrefab;
-    [SerializeField] private float beamDuration = 0.2f;
-
-    private GameObject _firstFrozenObject;
-    private IStasis _firstStasisComponent;
-
-    private GameObject _secondFrozenObject;
-    private IStasis _secondStasisComponent;
-
-    private StasisBeam _activeBeam;
-    private Coroutine _beamCoroutine;
-
-    private PlayerInteractor _playerInteractor;
-
-    private bool IsGunActive => this.enabled && this.gameObject.activeInHierarchy;
-
-    //public GameObject target;
-    public List<GameObject> targets = new List<GameObject>();
-
-    void Start()
+    public class StasisGunEntity : MonoBehaviour
     {
-        _playerInteractor = GetComponent<PlayerInteractor>();
-    }
+        [Header("Visual Settings")]
+        [SerializeField] private Transform stasisOrigin;
+        [SerializeField] private GameObject stasisBeamPrefab;
+        [SerializeField] private float beamDuration = 0.2f;
 
+        private GameObject _firstFrozenObject;
+        private IStasis _firstStasisComponent;
 
+        private GameObject _secondFrozenObject;
+        private IStasis _secondStasisComponent;
 
+        private StasisBeam _activeBeam;
+        private Coroutine _beamCoroutine;
 
+        private PlayerInteractor _playerInteractor;
 
-    public IEnumerator waiTryStasis(Transform end, DestroyedPieceController part)
-    {
-        yield return new WaitForSeconds(0.5f);
-        TryStasis(end, part);
-    }
-    public void StasisAllObjects()
-    {
-        foreach (var item in targets)
+        private bool IsGunActive => this.enabled && this.gameObject.activeInHierarchy;
+
+        //public GameObject target;
+        public List<GameObject> targets = new List<GameObject>();
+
+        void Start()
         {
-            TryStasis(item.transform);
+            _playerInteractor = GetComponent<PlayerInteractor>();
         }
-    }
-    public void TryStasis(Transform end)
-    {
-        Vector3 direction = (end.position - transform.position).normalized;
 
-        if (Physics.Raycast(transform.position, direction, out RaycastHit hit, Mathf.Infinity))
+
+
+
+
+        public IEnumerator waiTryStasis(Transform end, DestroyedPieceController part)
         {
-
-            bool stasisHit = false;
-            GameObject hitObject = hit.collider.gameObject;
-            if (hitObject.TryGetComponent<IStasis>(out var stasisComponent))
+            yield return new WaitForSeconds(0.5f);
+            TryStasis(end, part);
+        }
+        public void StasisAllObjects()
+        {
+            foreach (var item in targets)
             {
-
-                stasisComponent.StatisEffectActivate();
-                //ApplyStasisEffect(hitObject, stasisComponent);
-                stasisHit = true;
+                TryStasis(item.transform);
             }
-
-
-            GameObject beamInstance = Instantiate(stasisBeamPrefab, stasisOrigin.position, Quaternion.LookRotation(direction)  // Rotación que apunta hacia la dirección del rayo
-  );
-            beamInstance.transform.localScale *= 2f;
-
-            _activeBeam = beamInstance.GetComponent<StasisBeam>();
-            _activeBeam.SetBeam(stasisOrigin.position, hit.point, stasisHit);
-
-            // AudioManager.Instance?.PlaySfx("LaserFX");
-
-            if (_beamCoroutine != null)
-                StopCoroutine(_beamCoroutine);
-
-            _beamCoroutine = StartCoroutine(DisableBeamAfterDuration(beamDuration));
         }
-    }
-
-
-
-
-    public void TryStasis(Transform end, DestroyedPieceController part)
-    {
-        Vector3 direction = (end.position - transform.position).normalized;
-
-        if (Physics.Raycast(transform.position, direction, out RaycastHit hit, Mathf.Infinity))
+        public void TryStasis(Transform end)
         {
-            if (part.gameObject.name != hit.collider.gameObject.name)
+            Vector3 direction = (end.position - transform.position).normalized;
+
+            if (Physics.Raycast(transform.position, direction, out RaycastHit hit, Mathf.Infinity))
             {
-                IStasis stasisPart = part.GetComponent<IStasis>();
-                if(stasisPart != null)
+
+                bool stasisHit = false;
+                GameObject hitObject = hit.collider.gameObject;
+                if (hitObject.TryGetComponent<IStasis>(out var stasisComponent))
                 {
-                    stasisPart.StatisEffectActivate();
-                    Debug.Log("Stasis");
+
+                    stasisComponent.StatisEffectActivate();
+                    //ApplyStasisEffect(hitObject, stasisComponent);
+                    stasisHit = true;
                 }
+
+
+                GameObject beamInstance = Instantiate(stasisBeamPrefab, stasisOrigin.position, Quaternion.LookRotation(direction)  // Rotaciï¿½n que apunta hacia la direcciï¿½n del rayo
+                );
+                beamInstance.transform.localScale *= 2f;
+
+                _activeBeam = beamInstance.GetComponent<StasisBeam>();
+                _activeBeam.SetBeam(stasisOrigin.position, hit.point, stasisHit);
+
+                // AudioManager.Instance?.PlaySfx("LaserFX");
+
+                if (_beamCoroutine != null)
+                    StopCoroutine(_beamCoroutine);
+
+                _beamCoroutine = StartCoroutine(DisableBeamAfterDuration(beamDuration));
             }
-            bool stasisHit = false;
-            GameObject hitObject = hit.collider.gameObject;
-            if (hitObject.TryGetComponent<IStasis>(out var stasisComponent))
-            {
-
-                stasisComponent.StatisEffectActivate();
-                //ApplyStasisEffect(hitObject, stasisComponent);
-                stasisHit = true;
-            }
-
-
-            GameObject beamInstance = Instantiate(stasisBeamPrefab, stasisOrigin.position, Quaternion.LookRotation(direction)  // Rotación que apunta hacia la dirección del rayo
-  );
-            beamInstance.transform.localScale *= 2f;
-
-            _activeBeam = beamInstance.GetComponent<StasisBeam>();
-            _activeBeam.SetBeam(stasisOrigin.position, hit.point, stasisHit);
-
-            // AudioManager.Instance?.PlaySfx("LaserFX");
-
-            if (_beamCoroutine != null)
-                StopCoroutine(_beamCoroutine);
-
-            _beamCoroutine = StartCoroutine(DisableBeamAfterDuration(beamDuration));
         }
-    }
-   
-    private IEnumerator DisableBeamAfterDuration(float duration)
-    {
-        yield return new WaitForSeconds(duration);
 
-        if (_activeBeam)
+
+
+
+        public void TryStasis(Transform end, DestroyedPieceController part)
         {
-            Destroy(_activeBeam.gameObject);
-            _activeBeam = null;
+            Vector3 direction = (end.position - transform.position).normalized;
+
+            if (Physics.Raycast(transform.position, direction, out RaycastHit hit, Mathf.Infinity))
+            {
+                if (part.gameObject.name != hit.collider.gameObject.name)
+                {
+                    IStasis stasisPart = part.GetComponent<IStasis>();
+                    if(stasisPart != null)
+                    {
+                        stasisPart.StatisEffectActivate();
+                        Debug.Log("Stasis");
+                    }
+                }
+                bool stasisHit = false;
+                GameObject hitObject = hit.collider.gameObject;
+                if (hitObject.TryGetComponent<IStasis>(out var stasisComponent))
+                {
+
+                    stasisComponent.StatisEffectActivate();
+                    //ApplyStasisEffect(hitObject, stasisComponent);
+                    stasisHit = true;
+                }
+
+
+                GameObject beamInstance = Instantiate(stasisBeamPrefab, stasisOrigin.position, Quaternion.LookRotation(direction)  // Rotaciï¿½n que apunta hacia la direcciï¿½n del rayo
+                );
+                beamInstance.transform.localScale *= 2f;
+
+                _activeBeam = beamInstance.GetComponent<StasisBeam>();
+                _activeBeam.SetBeam(stasisOrigin.position, hit.point, stasisHit);
+
+                // AudioManager.Instance?.PlaySfx("LaserFX");
+
+                if (_beamCoroutine != null)
+                    StopCoroutine(_beamCoroutine);
+
+                _beamCoroutine = StartCoroutine(DisableBeamAfterDuration(beamDuration));
+            }
         }
-    }
+   
+        private IEnumerator DisableBeamAfterDuration(float duration)
+        {
+            yield return new WaitForSeconds(duration);
 
-    //private void OnDisable()
-    //{
-    //    UnfreezeAllObjects();
-    //}
+            if (_activeBeam)
+            {
+                Destroy(_activeBeam.gameObject);
+                _activeBeam = null;
+            }
+        }
 
-    private void UnfreezeAllObjects()
-    {
-        _firstStasisComponent?.StatisEffectDeactivate();
-        _secondStasisComponent?.StatisEffectDeactivate();
+        //private void OnDisable()
+        //{
+        //    UnfreezeAllObjects();
+        //}
 
-        _firstFrozenObject = null;
-        _secondFrozenObject = null;
-        _firstStasisComponent = null;
-        _secondStasisComponent = null;
+        private void UnfreezeAllObjects()
+        {
+            _firstStasisComponent?.StatisEffectDeactivate();
+            _secondStasisComponent?.StatisEffectDeactivate();
+
+            _firstFrozenObject = null;
+            _secondFrozenObject = null;
+            _firstStasisComponent = null;
+            _secondStasisComponent = null;
+        }
     }
 }

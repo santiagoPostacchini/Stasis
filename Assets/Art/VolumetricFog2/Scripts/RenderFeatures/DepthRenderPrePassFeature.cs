@@ -1,9 +1,9 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
-using System.Collections.Generic;
 
-namespace VolumetricFogAndMist2 {
+namespace Art.VolumetricFog2.Scripts.RenderFeatures {
     public class DepthRenderPrePassFeature : ScriptableRendererFeature {
 
         public class DepthRenderPass : ScriptableRenderPass {

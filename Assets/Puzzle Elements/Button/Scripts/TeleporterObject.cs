@@ -1,19 +1,21 @@
-using System.Collections;
-using System.Collections.Generic;
+using Puzzle_Elements.Hedron.VFX;
 using UnityEngine;
 
-public class TeleporterObject : MonoBehaviour
+namespace Puzzle_Elements.Button.Scripts
 {
-    [SerializeField] private GameObject objectToTeleport;
-    [SerializeField] private Transform pos;
-
-    public void Teleport()
+    public class TeleporterObject : MonoBehaviour
     {
-        VFXHedro particlesHedro = objectToTeleport.GetComponent<VFXHedro>();
-        if(particlesHedro != null)
+        [SerializeField] private GameObject objectToTeleport;
+        [SerializeField] private Transform pos;
+
+        public void Teleport()
         {
-            //particlesHedro.DecreaseChildrenScale
+            VFXHedro particlesHedro = objectToTeleport.GetComponent<VFXHedro>();
+            if(particlesHedro != null)
+            {
+                //particlesHedro.DecreaseChildrenScale
+            }
+            objectToTeleport.transform.position = pos.position;
         }
-        objectToTeleport.transform.position = pos.position;
     }
 }

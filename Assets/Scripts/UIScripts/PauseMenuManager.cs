@@ -1,11 +1,8 @@
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-#if UNITY_EDITOR
-using UnityEditor;
-#endif
-
-namespace Player.Camera
+namespace UIScripts
 {
     public class PauseMenuManager : MonoBehaviour
     {

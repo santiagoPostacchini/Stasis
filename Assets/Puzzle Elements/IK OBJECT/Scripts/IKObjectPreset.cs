@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace IKSuite
+namespace Puzzle_Elements.IK_OBJECT.Scripts
 {
     public enum IKSystemType
     {

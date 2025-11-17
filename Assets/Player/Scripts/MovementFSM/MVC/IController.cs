@@ -1,4 +1,4 @@
-namespace Player.FullBody_Scripts.MovementFSM
+namespace Player.Scripts.MovementFSM.MVC
 {
     public interface IController
     {

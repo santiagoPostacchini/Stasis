@@ -112,11 +112,10 @@
 //
 // }
 
-using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace VolumetricFogAndMist2 {
+namespace Art.VolumetricFog2.Scripts.Managers {
 
     [ExecuteInEditMode]
     [DisallowMultipleComponent]
@@ -293,7 +292,7 @@ namespace VolumetricFogAndMist2 {
             if (trackingCenter != null) return;
 
             if (_cachedCam == null) {
-                Tools.CheckCamera(ref _cachedCam);
+                Tools.Tools.CheckCamera(ref _cachedCam);
                 if (_cachedCam == null) _cachedCam = Camera.main;
             }
             trackingCenter = _cachedCam ? _cachedCam.transform : transform;

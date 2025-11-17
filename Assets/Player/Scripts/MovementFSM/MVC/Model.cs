@@ -1,6 +1,6 @@
 using System;
+using _Ian.VFX.Smoke;
 using Audio.Scripts;
-using Player.FullBody_Scripts.MovementFSM;
 using Player.Scripts.Interactor;
 using Player.Scripts.MovementFSM.Player.Scripts.MovementFSM;
 using Unity.Cinemachine;

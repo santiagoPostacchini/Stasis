@@ -1,12 +1,13 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
-public class LaserTest : MonoBehaviour
+namespace Puzzle_Elements.LaserSensor.Scripts
 {
-    public void Test()
+    public class LaserTest : MonoBehaviour
     {
-        Debug.Log("Evento iniciado ");
-    }
+        public void Test()
+        {
+            Debug.Log("Evento iniciado ");
+        }
 
+    }
 }

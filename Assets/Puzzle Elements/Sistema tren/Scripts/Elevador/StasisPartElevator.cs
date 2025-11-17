@@ -1,45 +1,48 @@
 using Player.Stasis;
 using UnityEngine;
-using UnityEngine.Splines;
-public class StasisPartElevator : MonoBehaviour, IStasis
+
+namespace Puzzle_Elements.Sistema_tren.Scripts.Elevador
 {
-    public bool _isFreezed;
-    public bool IsFreezed => _isFreezed;
-    public StasisEffect StasisEffect { get; }
-
-    private StasisElevator _elevator;
-
-
-    private void Awake()
+    public class StasisPartElevator : MonoBehaviour, IStasis
     {
-        _elevator = GetComponentInParent<StasisElevator>();
-    }
+        public bool _isFreezed;
+        public bool IsFreezed => _isFreezed;
+        public StasisEffect StasisEffect { get; }
 
-    public void StatisEffectActivate()
-    {
-        FreezeObject();
-    }
+        private StasisElevator _elevator;
 
-    public void StatisEffectDeactivate()
-    {
-        UnfreezeObject();
-    }
 
-    private void FreezeObject()
-    {
-        if (!_isFreezed)
+        private void Awake()
         {
-            _elevator.StatisEffectActivate();
+            _elevator = GetComponentInParent<StasisElevator>();
         }
-    }
 
-    private void UnfreezeObject()
-    {
-
-        if (_isFreezed)
+        public void StatisEffectActivate()
         {
-            _elevator.StatisEffectDeactivate();
-            _isFreezed = false;
+            FreezeObject();
+        }
+
+        public void StatisEffectDeactivate()
+        {
+            UnfreezeObject();
+        }
+
+        private void FreezeObject()
+        {
+            if (!_isFreezed)
+            {
+                _elevator.StatisEffectActivate();
+            }
+        }
+
+        private void UnfreezeObject()
+        {
+
+            if (_isFreezed)
+            {
+                _elevator.StatisEffectDeactivate();
+                _isFreezed = false;
+            }
         }
     }
 }

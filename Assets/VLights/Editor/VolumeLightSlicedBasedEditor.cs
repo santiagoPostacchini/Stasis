@@ -1,5 +1,6 @@
 using UnityEditor;
 using UnityEngine;
+using VLights.Scripts.VLight;
 
 namespace VLights.Editor
 {

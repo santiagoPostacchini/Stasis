@@ -1,7 +1,7 @@
+using Art.VolumetricFog2.Scripts.RenderFeatures;
 using UnityEngine;
-using UnityEngine.Rendering.Universal;
 
-namespace VolumetricFogAndMist2 {
+namespace Art.VolumetricFog2.Scripts.Managers {
 
     [ExecuteInEditMode]
     public class VolumetricFogManager : MonoBehaviour, IVolumetricFogManager {
@@ -30,7 +30,7 @@ namespace VolumetricFogAndMist2 {
         public static VolumetricFogManager instance {
             get {
                 if (_instance == null) {
-                    _instance = Tools.CheckMainManager();
+                    _instance = Tools.Tools.CheckMainManager();
                 }
                 return _instance;
             }
@@ -38,14 +38,14 @@ namespace VolumetricFogAndMist2 {
 
         public static PointLightManager pointLightManager {
             get {
-                Tools.CheckManager(ref _pointLightManager);
+                Tools.Tools.CheckManager(ref _pointLightManager);
                 return _pointLightManager;
             }
         }
 
         public static FogVoidManager fogVoidManager {
             get {
-                Tools.CheckManager(ref _fogVoidManager);
+                Tools.Tools.CheckManager(ref _fogVoidManager);
                 return _fogVoidManager;
             }
         }
@@ -54,8 +54,8 @@ namespace VolumetricFogAndMist2 {
             SetupCamera();
             SetupLights();
             SetupDepthPrePass();
-            Tools.CheckManager(ref _pointLightManager);
-            Tools.CheckManager(ref _fogVoidManager);
+            Tools.Tools.CheckManager(ref _pointLightManager);
+            Tools.Tools.CheckManager(ref _fogVoidManager);
         }
 
         void OnValidate() {
@@ -63,7 +63,7 @@ namespace VolumetricFogAndMist2 {
         }
 
         void SetupCamera() {
-            Tools.CheckCamera(ref mainCamera);
+            Tools.Tools.CheckCamera(ref mainCamera);
             if (mainCamera != null) {
                 mainCamera.depthTextureMode |= DepthTextureMode.Depth;
             }

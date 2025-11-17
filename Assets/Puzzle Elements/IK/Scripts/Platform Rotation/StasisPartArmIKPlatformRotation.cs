@@ -1,57 +1,58 @@
-using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
 using Player.Stasis;
-using IKSuite;
+using Puzzle_Elements.IK_OBJECT.Scripts;
+using UnityEngine;
 
-public class StasisPartArmIKPlatformRotation : MonoBehaviour, IStasis, IStasisPartIK
+namespace Puzzle_Elements.IK.Scripts.Platform_Rotation
 {
-    public bool IsFreezed => _isFreezed;
-    private bool _isFreezed = false;
-    [SerializeField] private StasisTipControllerPlatformRotation _stasisTipControllerPlatformRotation;
-    public StasisEffect StasisEffect { get; }
-
-
-    // Start is called before the first frame update
-    void Start()
+    public class StasisPartArmIKPlatformRotation : MonoBehaviour, IStasis, IStasisPartIK
     {
-        if(_stasisTipControllerPlatformRotation == null)
+        public bool IsFreezed => _isFreezed;
+        private bool _isFreezed = false;
+        [SerializeField] private StasisTipControllerPlatformRotation _stasisTipControllerPlatformRotation;
+        public StasisEffect StasisEffect { get; }
+
+
+        // Start is called before the first frame update
+        void Start()
         {
-            _stasisTipControllerPlatformRotation = GetComponentInParent<StasisTipControllerPlatformRotation>();
+            if(_stasisTipControllerPlatformRotation == null)
+            {
+                _stasisTipControllerPlatformRotation = GetComponentInParent<StasisTipControllerPlatformRotation>();
+            }
+            _stasisTipControllerPlatformRotation.OnFreezeEvent += StatisEffectActivate;
+            _stasisTipControllerPlatformRotation.OnUnFreezeEvent += StatisEffectDeactivate;
         }
-        _stasisTipControllerPlatformRotation.OnFreezeEvent += StatisEffectActivate;
-        _stasisTipControllerPlatformRotation.OnUnFreezeEvent += StatisEffectDeactivate;
-    }
 
 
-    public void StatisEffectActivate()
-    {
-        NotifyTipController(true);
-    }
-
-    public void StatisEffectDeactivate()
-    {
-        NotifyTipController(false);
-    }
-
-    public void NotifyTipController(bool a)
-    {
-        if (a == true)
+        public void StatisEffectActivate()
         {
-            _stasisTipControllerPlatformRotation.StatisEffectActivate();
+            NotifyTipController(true);
         }
-        else
-        {
-            _stasisTipControllerPlatformRotation.StatisEffectDeactivate();
-        }
-    }
 
-    public void SetTipController(Component tipController)
-    {
-        var a = tipController.GetComponent<StasisTipControllerPlatformRotation>();
-        if (a != null)
+        public void StatisEffectDeactivate()
         {
-            _stasisTipControllerPlatformRotation = a;
+            NotifyTipController(false);
+        }
+
+        public void NotifyTipController(bool a)
+        {
+            if (a == true)
+            {
+                _stasisTipControllerPlatformRotation.StatisEffectActivate();
+            }
+            else
+            {
+                _stasisTipControllerPlatformRotation.StatisEffectDeactivate();
+            }
+        }
+
+        public void SetTipController(Component tipController)
+        {
+            var a = tipController.GetComponent<StasisTipControllerPlatformRotation>();
+            if (a != null)
+            {
+                _stasisTipControllerPlatformRotation = a;
+            }
         }
     }
 }

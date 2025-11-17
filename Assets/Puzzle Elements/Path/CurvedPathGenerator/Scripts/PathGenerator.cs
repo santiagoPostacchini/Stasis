@@ -16,12 +16,12 @@
 //=========================================================================================================================================
 
 using System.Collections.Generic;
-#if UNITY_EDITOR
 using UnityEditor;
-#endif
 using UnityEngine;
+#if UNITY_EDITOR
+#endif
 
-namespace CurvedPathGenerator
+namespace Puzzle_Elements.Path.CurvedPathGenerator.Scripts
 {
     [RequireComponent(typeof(MeshFilter))]
     [RequireComponent(typeof(MeshRenderer))]
@@ -218,7 +218,7 @@ namespace CurvedPathGenerator
         private void OnDrawGizmosSelected()
         {
 #if UNITY_EDITOR
-            Tools.hidden = (EditMode != 0);
+            UnityEditor.Tools.hidden = (EditMode != 0);
 
             // Keep icons following the parent in Editor as well
             RebuildWorldFromLocal();
@@ -260,7 +260,7 @@ namespace CurvedPathGenerator
         public void ResetTools()
         {
 #if UNITY_EDITOR
-            Tools.hidden = false;
+            UnityEditor.Tools.hidden = false;
 #endif
         }
 

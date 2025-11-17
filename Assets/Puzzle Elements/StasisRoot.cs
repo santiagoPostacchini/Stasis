@@ -1,8 +1,9 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
-public class StasisRoot : MonoBehaviour
+namespace Puzzle_Elements
 {
+    public class StasisRoot : MonoBehaviour
+    {
     
+    }
 }

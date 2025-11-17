@@ -1,28 +1,31 @@
-using UnityEngine;
 using System.Collections.Generic;
+using UnityEngine;
 
-public class LinearCheckpointSystem : MonoBehaviour
+namespace Checkpoint
 {
-    public Transform player;
-    public List<Transform> checkpoints;
-    public float activationDistance = 4f;
-
-    [SerializeField] private int currentCheckpoint = 0;
-
-    void Update()
+    public class LinearCheckpointSystem : MonoBehaviour
     {
-        if (currentCheckpoint >= checkpoints.Count) return;
+        public Transform player;
+        public List<Transform> checkpoints;
+        public float activationDistance = 4f;
 
-        float dist = Vector3.Distance(player.position, checkpoints[currentCheckpoint].position);
-        if (dist <= activationDistance)
+        [SerializeField] private int currentCheckpoint = 0;
+
+        void Update()
         {
-            currentCheckpoint++;
-        }
-    }
+            if (currentCheckpoint >= checkpoints.Count) return;
 
-    public Vector3 CurrentCheckpointPos()
-    {
-        int idx = Mathf.Clamp(currentCheckpoint - 1, 0, checkpoints.Count - 1);
-        return checkpoints[idx].position;
+            float dist = Vector3.Distance(player.position, checkpoints[currentCheckpoint].position);
+            if (dist <= activationDistance)
+            {
+                currentCheckpoint++;
+            }
+        }
+
+        public Vector3 CurrentCheckpointPos()
+        {
+            int idx = Mathf.Clamp(currentCheckpoint - 1, 0, checkpoints.Count - 1);
+            return checkpoints[idx].position;
+        }
     }
 }

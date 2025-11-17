@@ -1,67 +1,70 @@
 using UnityEngine;
 
-public class CamHolderRotationReset : MonoBehaviour
+namespace Player.Scripts.Opening_Cinematic
 {
-    [Header("Rotación inicial (en grados)")]
-    public Vector3 initialRotation = new Vector3(15f, 0f, 0f);
-
-    [Header("Tiempo antes de iniciar el Lerp (segundos)")]
-    public float waitTime = 2f;
-
-    [Header("Duración del Lerp (segundos)")]
-    public float lerpDuration = 1.5f;
-
-    [Header("Curva de transición (0 a 1)")]
-    public AnimationCurve transitionCurve = AnimationCurve.EaseInOut(0, 0, 1, 1);
-
-    [Header("Referencia al TutorialCameraSwitcher")]
-    public TutorialCameraSwitcher tutorialCameraSwitcher;
-
-    private Quaternion startRotation;
-    private Quaternion targetRotation = Quaternion.identity;
-    private bool isLerping = false;
-    private float lerpTimer = 0f;
-    private bool hasTriggeredLerp = false;
-
-    void Start()
+    public class CamHolderRotationReset : MonoBehaviour
     {
-        // Aplicar rotación inicial
-        transform.localRotation = Quaternion.Euler(initialRotation);
-        startRotation = transform.localRotation;
-    }
+        [Header("Rotación inicial (en grados)")]
+        public Vector3 initialRotation = new Vector3(15f, 0f, 0f);
 
-    void Update()
-    {
-        if (tutorialCameraSwitcher == null)
-            return;
+        [Header("Tiempo antes de iniciar el Lerp (segundos)")]
+        public float waitTime = 2f;
 
-        // Esperar a que el Animator del TutorialCameraSwitcher se active
-        if (tutorialCameraSwitcher.animatorActivated && !hasTriggeredLerp)
+        [Header("Duración del Lerp (segundos)")]
+        public float lerpDuration = 1.5f;
+
+        [Header("Curva de transición (0 a 1)")]
+        public AnimationCurve transitionCurve = AnimationCurve.EaseInOut(0, 0, 1, 1);
+
+        [Header("Referencia al TutorialCameraSwitcher")]
+        public TutorialCameraSwitcher tutorialCameraSwitcher;
+
+        private Quaternion startRotation;
+        private Quaternion targetRotation = Quaternion.identity;
+        private bool isLerping = false;
+        private float lerpTimer = 0f;
+        private bool hasTriggeredLerp = false;
+
+        void Start()
         {
-            hasTriggeredLerp = true;
-            Invoke(nameof(BeginLerp), waitTime);
+            // Aplicar rotación inicial
+            transform.localRotation = Quaternion.Euler(initialRotation);
+            startRotation = transform.localRotation;
         }
 
-        if (!isLerping)
-            return;
+        void Update()
+        {
+            if (tutorialCameraSwitcher == null)
+                return;
 
-        lerpTimer += Time.deltaTime;
-        float t = Mathf.Clamp01(lerpTimer / lerpDuration);
-        float curvedT = transitionCurve.Evaluate(t);
+            // Esperar a que el Animator del TutorialCameraSwitcher se active
+            if (tutorialCameraSwitcher.animatorActivated && !hasTriggeredLerp)
+            {
+                hasTriggeredLerp = true;
+                Invoke(nameof(BeginLerp), waitTime);
+            }
 
-        transform.localRotation = Quaternion.Lerp(startRotation, targetRotation, curvedT);
+            if (!isLerping)
+                return;
 
-        if (t >= 1f)
-            isLerping = false;
-    }
+            lerpTimer += Time.deltaTime;
+            float t = Mathf.Clamp01(lerpTimer / lerpDuration);
+            float curvedT = transitionCurve.Evaluate(t);
 
-    void BeginLerp()
-    {
-        // Reiniciar rotación y comenzar Lerp
-        transform.localRotation = Quaternion.Euler(initialRotation);
-        startRotation = transform.localRotation;
-        lerpTimer = 0f;
-        isLerping = true;
+            transform.localRotation = Quaternion.Lerp(startRotation, targetRotation, curvedT);
+
+            if (t >= 1f)
+                isLerping = false;
+        }
+
+        void BeginLerp()
+        {
+            // Reiniciar rotación y comenzar Lerp
+            transform.localRotation = Quaternion.Euler(initialRotation);
+            startRotation = transform.localRotation;
+            lerpTimer = 0f;
+            isLerping = true;
+        }
     }
 }
 

@@ -1,10 +1,13 @@
 using Puzzle_Elements.AllInterfaces;
 using UnityEngine;
 
-public class HedronDropper : MonoBehaviour, IButtonActivator
+namespace Puzzle_Elements.Hedron_Dropper.Scripts
 {
-    public void OnPressed()
+    public class HedronDropper : MonoBehaviour, IButtonActivator
     {
-        //destroys last hedron, drops hedron new, generates another one
+        public void OnPressed()
+        {
+            //destroys last hedron, drops hedron new, generates another one
+        }
     }
 }

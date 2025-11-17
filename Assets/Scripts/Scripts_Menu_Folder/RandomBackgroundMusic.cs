@@ -1,54 +1,57 @@
-using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
+using UnityEngine;
 
-[RequireComponent(typeof(AudioSource))]
-public class RandomBackgroundMusic : MonoBehaviour
+namespace Scripts_Menu_Folder
 {
-    [Header("Audio Clips")]
-    [Tooltip("Lista de audios para reproducir aleatoriamente")]
-    public List<AudioClip> audioClips = new List<AudioClip>();
-
-    [Header("Intervalo de Tiempo (segundos)")]
-    [Tooltip("Tiempo mínimo entre cada audio")]
-    public float minInterval = 5f;
-    [Tooltip("Tiempo máximo entre cada audio")]
-    public float maxInterval = 10f;
-
-    private AudioSource audioSource;
-
-    void Awake()
+    [RequireComponent(typeof(AudioSource))]
+    public class RandomBackgroundMusic : MonoBehaviour
     {
-        audioSource = GetComponent<AudioSource>();
-        audioSource.loop = false; 
-    }
+        [Header("Audio Clips")]
+        [Tooltip("Lista de audios para reproducir aleatoriamente")]
+        public List<AudioClip> audioClips = new List<AudioClip>();
 
-    void Start()
-    {
-        if (audioClips.Count > 0)
+        [Header("Intervalo de Tiempo (segundos)")]
+        [Tooltip("Tiempo mínimo entre cada audio")]
+        public float minInterval = 5f;
+        [Tooltip("Tiempo máximo entre cada audio")]
+        public float maxInterval = 10f;
+
+        private AudioSource audioSource;
+
+        void Awake()
         {
-            StartCoroutine(PlayRandomClips());
+            audioSource = GetComponent<AudioSource>();
+            audioSource.loop = false; 
         }
-        else
+
+        void Start()
         {
-            Debug.LogWarning("No hay AudioClips asignados en " + gameObject.name);
+            if (audioClips.Count > 0)
+            {
+                StartCoroutine(PlayRandomClips());
+            }
+            else
+            {
+                Debug.LogWarning("No hay AudioClips asignados en " + gameObject.name);
+            }
         }
-    }
 
-    IEnumerator PlayRandomClips()
-    {
-        float initialDelay = Random.Range(minInterval, maxInterval);
-        yield return new WaitForSeconds(initialDelay);
-
-        while (true)
+        IEnumerator PlayRandomClips()
         {
-            AudioClip clip = audioClips[Random.Range(0, audioClips.Count)];
+            float initialDelay = Random.Range(minInterval, maxInterval);
+            yield return new WaitForSeconds(initialDelay);
 
-            audioSource.clip = clip;
-            audioSource.Play();
+            while (true)
+            {
+                AudioClip clip = audioClips[Random.Range(0, audioClips.Count)];
 
-            float waitTime = clip.length + Random.Range(minInterval, maxInterval);
-            yield return new WaitForSeconds(waitTime);
+                audioSource.clip = clip;
+                audioSource.Play();
+
+                float waitTime = clip.length + Random.Range(minInterval, maxInterval);
+                yield return new WaitForSeconds(waitTime);
+            }
         }
     }
 }
