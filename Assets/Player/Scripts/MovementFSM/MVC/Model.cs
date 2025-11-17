@@ -8,7 +8,7 @@ using UnityEngine;
 
 namespace Player.Scripts.MovementFSM.MVC
 {
-    public class Model : MonoBehaviour, ISoundPlayer
+    public class Model : MonoBehaviour, ISoundPlayer, IHazardSlowTarget
     {
         public event Action<bool, float, float> OnGroundedChanged = delegate { };
         public event Action<float, float> OnMove = delegate { };
@@ -42,19 +42,23 @@ namespace Player.Scripts.MovementFSM.MVC
         
         public StairStepper StairStepper => _stair;
 
-        [Header("References")] public Rigidbody rb;
+        [Header("References")] 
+        public Rigidbody rb;
         public Transform cameraHolderTransform;
         public CinemachineBrain cinemachineBrain;
         public ParkourProbe probe;
 
-        [Header("Movement Keys")] public KeyCode runningKey = KeyCode.LeftShift;
+        [Header("Movement Keys")] 
+        public KeyCode runningKey = KeyCode.LeftShift;
         public KeyCode jumpKey = KeyCode.Space;
         public KeyCode crouchKey = KeyCode.LeftControl;
 
-        [Header("Mouse Keys")] public KeyCode mouseLeft = KeyCode.Mouse0;
+        [Header("Mouse Keys")] 
+        public KeyCode mouseLeft = KeyCode.Mouse0;
         public KeyCode mouseRight = KeyCode.Mouse1;
 
-        [Header("Layers")] public LayerMask groundMask;
+        [Header("Layers")] 
+        public LayerMask groundMask;
         public LayerMask wallMask;
         
         [Header("Parkour Tags (usar en colliders)")]
@@ -71,13 +75,15 @@ namespace Player.Scripts.MovementFSM.MVC
 
         [HideInInspector] public bool isRunningRuntime;
 
-        [Header("Jump Assist")] public float coyoteTime = 0.12f;
+        [Header("Jump Assist")] 
+        public float coyoteTime = 0.12f;
         public float jumpBufferTime = 0.12f;
 
         [Range(0f, 80f), Tooltip("Desde qué pendiente permitimos deslizar y NO forzamos vel.Y=0.")]
         public float slideFromSlopeDeg = 30f;
 
-        [Header("Air Control")] public bool airEnteredFromGround;
+        [Header("Air Control")] 
+        public bool airEnteredFromGround;
         public float airMaxSpeed = 6f;
         public float airAcceleration = 12f;
         public float minAirTime = 0.08f;
@@ -97,7 +103,8 @@ namespace Player.Scripts.MovementFSM.MVC
         [HideInInspector] public float lastLandingTime = -999f;
         [HideInInspector] public float speedCapUntil = -999f;
         
-        [Header("Vault")] public float vaultRegrabCooldown = 0.25f;
+        [Header("Vault")] 
+        public float vaultRegrabCooldown = 0.25f;
         [HideInInspector] public float blockVaultUntil = -999f;
 
         [Header("Climb")]
@@ -118,7 +125,8 @@ namespace Player.Scripts.MovementFSM.MVC
         public float climbLeapSideForce = 3f;
         [HideInInspector] public float blockClimbUntil = -999f;
 
-        [Header("Wallrun")] public float wallRunMaxSpeed = 8.0f;
+        [Header("Wallrun")] 
+        public float wallRunMaxSpeed = 8.0f;
         public float wallRunAccel = 30.0f;
         public float wallCruiseSpeed = 4.0f;
         public float wallCruiseAccel = 18.0f;
@@ -144,7 +152,8 @@ namespace Player.Scripts.MovementFSM.MVC
 
         [HideInInspector] public float blockWallrunUntil = -999f;
 
-        [Header("Jump/Ground Timing Guards")] public float groundedIgnoreAfterJump = 0.08f;
+        [Header("Jump/Ground Timing Guards")] 
+        public float groundedIgnoreAfterJump = 0.08f;
         [HideInInspector] public float groundedIgnoreUntil = -999f;
 
         [Tooltip("Tiempo máximo en pared (s).")]
@@ -165,7 +174,8 @@ namespace Player.Scripts.MovementFSM.MVC
         [Tooltip("Contrafuerza de gravedad durante wallrun.")]
         public float gravityCounterForce = 14f;
 
-        [Header("Runtime / Shared")] [HideInInspector]
+        [Header("Runtime / Shared")] 
+        [HideInInspector]
         public float lastJumpPressedTime = -999f;
         
         [Tooltip("Tiempo sin poder reengancharse a paredes después de un walljump")]
@@ -186,6 +196,11 @@ namespace Player.Scripts.MovementFSM.MVC
         public bool canRun = true;
 
         [HideInInspector] public bool jumpDownThisFrame;
+
+        [Header("External / Hazard Modifiers")]
+        [Range(0f, 1f)]
+        [Tooltip("Multiplicador externo aplicado por hazards (humo, slow, etc.). 1 = normal, 0 = totalmente frenado.")]
+        public float hazardSpeedMultiplier = 1f;
 
         private void Start()
         {
@@ -274,6 +289,7 @@ namespace Player.Scripts.MovementFSM.MVC
         public void ClearJumpBuffer() => lastJumpPressedTime = -999f;
 
         public void RegisterJumpDownThisFrame() => jumpDownThisFrame = true;
+
         // ReSharper disable Unity.PerformanceAnalysis
         public void ShootInput() => OnShoot?.Invoke();
 
@@ -372,6 +388,30 @@ namespace Player.Scripts.MovementFSM.MVC
         {
             dir = (dir >= 0) ? +1 : -1;
             OnTurnYaw(dir);
+        }
+
+        // ========================
+        // IHazardSlowTarget
+        // ========================
+        public void SetExternalSpeedMultiplier(float multiplier)
+        {
+            hazardSpeedMultiplier = Mathf.Clamp01(multiplier);
+        }
+
+        public float GetExternalSpeedMultiplier()
+        {
+            return hazardSpeedMultiplier;
+        }
+
+        // Helpers opcionales por si querés usarlos en tus estados:
+        public float GetModifiedWalkingSpeed()
+        {
+            return walkingSpeed * hazardSpeedMultiplier;
+        }
+
+        public float GetModifiedRunningSpeed()
+        {
+            return runningSpeed * hazardSpeedMultiplier;
         }
     }
 }
