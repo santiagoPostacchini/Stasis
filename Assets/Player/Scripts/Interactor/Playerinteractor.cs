@@ -47,7 +47,7 @@ namespace Player.Scripts.Interactor
             _releaseAimUntil = Time.time + releaseAimWindow;
         }
 
-        private PhysicsBox _objectGrabbable;
+        public PhysicsBox _objectGrabbable;
 
         [Header("Environment")]
         [Tooltip("Capas de entorno sólidas. Los interactuables serán ignorados en LOS.")]
