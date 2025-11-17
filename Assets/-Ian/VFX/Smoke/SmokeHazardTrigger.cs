@@ -100,7 +100,10 @@ namespace _Ian.VFX.Smoke
             _playerInside = false;
             StopSlowdownAndReset();
         }
-
+        private void Start()
+        {
+            
+        }
         private bool IsValidTarget(Collider other)
         {
             if (requireTag && !other.CompareTag(targetTag))
@@ -204,7 +207,6 @@ namespace _Ian.VFX.Smoke
 
             _slowRoutine = null;
         }
-
 #if UNITY_EDITOR
         private void OnDrawGizmosSelected()
         {

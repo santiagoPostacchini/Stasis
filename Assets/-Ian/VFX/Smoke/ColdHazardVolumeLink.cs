@@ -10,6 +10,10 @@ namespace _Ian.VFX.Smoke
     [RequireComponent(typeof(Volume))]
     public class ColdHazardVolumeLink : MonoBehaviour
     {
+        public float value;
+        public float potencia;
+        public float weight;
+        public float vign;
         [Header("Referencia al Player")]
         [Tooltip("Arrastrá el Model del jugador aquí.")]
         public Model playerModel;
@@ -90,7 +94,8 @@ namespace _Ian.VFX.Smoke
             float m = Mathf.Clamp01(playerModel.hazardSpeedMultiplier);
 
             // "danger" = cuánto riesgo tenemos, invertimos m
-            float danger = 1f - m;
+            float danger = 1 - m;
+            value = danger;
 
             // Pasamos por la curva
             float k = dangerToEffect.Evaluate(danger);
@@ -98,11 +103,12 @@ namespace _Ian.VFX.Smoke
             // Exponente para hacerlo más agresivo cerca del final
             if (dangerExponent > 0f)
                 k = Mathf.Pow(k, dangerExponent);
-
+            potencia = k;
             k = Mathf.Clamp01(k);
 
             // Peso del volume
             _volume.weight = maxWeight * k;
+            weight = _volume.weight;
 
             // ---- OVERDRIVES ----
 
@@ -110,7 +116,7 @@ namespace _Ian.VFX.Smoke
             {
                 _vig.intensity.overrideState = true;
                 _vig.intensity.value = Mathf.Lerp(minVignette, maxVignette, k);
-
+                vign = _vig.intensity.value;
                 _vig.color.overrideState = true;
                 _vig.color.value = vignetteColor;
             }
