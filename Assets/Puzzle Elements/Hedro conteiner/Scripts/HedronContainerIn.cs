@@ -374,7 +374,7 @@ namespace Puzzle_Elements.Hedro_conteiner.Scripts
                 if (_box != null)
                 {
                     _box.transform.SetParent(transform, true);
-                    _box.gameObject.SetActive(false); // caja “guardada”
+                  //  _box.gameObject.SetActive(false); // caja “guardada”
                 }
 
                 if (_anim != null && !string.IsNullOrEmpty(closeTrigger))
