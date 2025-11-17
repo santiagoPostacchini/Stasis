@@ -6,15 +6,15 @@ namespace Fracture
 {
     public class DetectorPartsFractures : MonoBehaviour
     {
-        [SerializeField] private StasisGunEntity.StasisGunEntity diosa1;
-        [SerializeField] private StasisGunEntity.StasisGunEntity diosa2;
+        [SerializeField] private StasisGunEntity diosa1;
+        [SerializeField] private StasisGunEntity diosa2;
 
-        [Header("Par�metros de detecci�n")]
+        [Header("Parámetros de detección")]
         [SerializeField] private Vector3 boxHalfExtents = new Vector3(1f, 1f, 1f);
         [SerializeField] private Vector3 boxCenterOffset = new Vector3(0f, 0f, 2f);
         [SerializeField] private LayerMask detectionLayer;
 
-        [SerializeField]private Collider[] hits = new Collider[40];
+        [SerializeField] private Collider[] hits = new Collider[40];
         private HashSet<DestroyedPieceController> alreadyDetected = new HashSet<DestroyedPieceController>();
         private HashSet<int> alreadyDetectedID = new HashSet<int>();
 
@@ -29,10 +29,11 @@ namespace Fracture
                 if (part != null && !alreadyDetectedID.Contains(part.ID))
                 {
                     if (part.is_connected) return;
+
                     ChooseGod(part);
-                    alreadyDetectedID.Add(part.ID); // Solo se llama una vez
+
+                    alreadyDetectedID.Add(part.ID);
                     part.alreadyColision = true;
-                
                 }
             }
         }
@@ -40,20 +41,16 @@ namespace Fracture
         public void ChooseGod(DestroyedPieceController part)
         {
             int randomValue = Random.Range(0, 2);
-        
+
             if (randomValue == 0)
-            {
                 diosa1.TryStasis(part.transform, part);
-            }
             else
-            {
                 diosa2.TryStasis(part.transform, part);
-            }
         }
 
         private void OnDrawGizmosSelected()
         {
-            Gizmos.color = new Color(0f, 1f, 0f, 0.3f); // verde transl�cido
+            Gizmos.color = new Color(0f, 1f, 0f, 0.3f);
 
             Vector3 boxCenter = transform.position + transform.TransformDirection(boxCenterOffset);
             Gizmos.matrix = Matrix4x4.TRS(boxCenter, transform.rotation, Vector3.one);
