@@ -121,15 +121,25 @@ namespace Puzzle_Elements.Fan.Scripts
 
         private void SetRunning(bool running)
         {
+            // Si el estado no cambia, no dispares eventos otra vez
+            if (_isRunning == running)
+                return;
+
             _isRunning = running;
-            if (running)
-            {
+
+            if (_isRunning)
                 OnPlayFan?.Invoke();
+            else
+                OnOffFan?.Invoke();
+
+            if (!_isRunning)
+                _rb.angularVelocity = Vector3.zero;
+
+            if (windParticles)
+            {
+                if (_isRunning) windParticles.Play();
+                else windParticles.Stop();
             }
-            else OnOffFan?.Invoke();
-            if (!running) _rb.angularVelocity = Vector3.zero;
-            if (running && windParticles) windParticles.Play();
-            else if (windParticles) windParticles.Stop();
         }
 
         public bool IsFreezed => _isStasis;
