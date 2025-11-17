@@ -46,8 +46,13 @@ namespace Player.Scripts.MovementFSM
         [Tooltip("Offset vertical para 'asentar' la mano sobre el borde en el mantle (negativo = más abajo)")]
         [SerializeField]
         private float mantleHandYOffset = -0.05f;
+        
+        [Tooltip("Radio de la 'mano' para el SphereCast (para detectar curvas)")] [SerializeField]
+        private float handCastRadius = 0.05f;
 
         private float _climbCycle;
+        private Vector3 _rHandNormal;
+        private Vector3 _lHandNormal;
 
         // Public methods for camera effects
         public float GetClimbCycle() => _climbCycle;
@@ -88,6 +93,11 @@ namespace Player.Scripts.MovementFSM
             LayerMask wallMask = model.wallMask | model.groundMask;
 
             if (wallNormal.sqrMagnitude < 0.1f) return;
+            
+            if (_rHandNormal.sqrMagnitude < 0.1f)
+                _rHandNormal = wallNormal;
+            if (_lHandNormal.sqrMagnitude < 0.1f)
+                _lHandNormal = wallNormal;
 
             _climbCycle += vSpeed * cycleSpeed * Time.deltaTime;
 
@@ -97,8 +107,8 @@ namespace Player.Scripts.MovementFSM
 
             Vector3 playerOnWall = wallPoint + Vector3.ProjectOnPlane(model.rb.position - wallPoint, wallNormal);
 
-            UpdateHandClimb(rHandTarget, -1, _climbCycle, playerOnWall, wallRight, wallNormal, wallMask);
-            UpdateHandClimb(lHandTarget, 1, _climbCycle + Mathf.PI, playerOnWall, wallRight, wallNormal, wallMask);
+            UpdateHandClimb(rHandTarget, -1, _climbCycle, playerOnWall, wallRight, wallNormal, wallMask, ref _rHandNormal);
+            UpdateHandClimb(lHandTarget, 1, _climbCycle + Mathf.PI, playerOnWall, wallRight, wallNormal, wallMask, ref _lHandNormal);
         }
         
         private void HandleMantleIK()
@@ -130,7 +140,7 @@ namespace Player.Scripts.MovementFSM
         }
 
         private void UpdateHandClimb(Transform target, float side, float cycle, Vector3 playerOnWall, Vector3 wallRight,
-            Vector3 wallNormal, LayerMask wallMask)
+            Vector3 wallNormal, LayerMask wallMask, ref Vector3 lastHitNormal)
         {
             float yOffset = Mathf.Sin(cycle) * (stepHeight / 2f);
             float xCycleOffset = Mathf.Cos(cycle) * (handCycleWidth / 2f * side);
@@ -141,20 +151,24 @@ namespace Player.Scripts.MovementFSM
             Vector3 basePos = playerOnWall + wallRight * (xShoulderOffset + xCycleOffset);
             basePos.y = targetY;
 
-            Vector3 targetPosition = basePos + wallNormal * handOffsetFromWall;
+            Vector3 targetPosition;
             Quaternion targetRotation;
 
             Vector3 rayOrigin = basePos + wallNormal * raycastSearchDistance;
+            float castDistance = raycastSearchDistance * 2f;
 
-            if (Physics.Raycast(rayOrigin, -wallNormal, out RaycastHit hit, raycastSearchDistance * 2f, wallMask,
+            if (Physics.SphereCast(rayOrigin, handCastRadius, -wallNormal, out RaycastHit hit, castDistance, wallMask,
                     QueryTriggerInteraction.Ignore))
             {
                 targetPosition = hit.point + hit.normal * handOffsetFromWall;
                 targetRotation = Quaternion.LookRotation(-hit.normal, Vector3.up);
+                
+                lastHitNormal = hit.normal;
             }
             else
             {
-                targetRotation = Quaternion.LookRotation(-wallNormal, Vector3.up);
+                targetPosition = basePos + lastHitNormal * handOffsetFromWall;
+                targetRotation = Quaternion.LookRotation(-lastHitNormal, Vector3.up);
             }
 
             target.position = Vector3.Lerp(target.position, targetPosition, Time.deltaTime * positionLerpSpeed);

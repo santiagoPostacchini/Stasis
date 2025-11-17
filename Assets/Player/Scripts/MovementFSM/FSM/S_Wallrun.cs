@@ -52,6 +52,7 @@ namespace Player.Scripts.MovementFSM
                 {
                     _visualRoot = visualYawFollower.visualRoot;
                 }
+
                 // Disable VisualYawFollower during wallrun so we can manually control rotation
                 visualYawFollower.followEnabled = false;
             }
@@ -65,7 +66,7 @@ namespace Player.Scripts.MovementFSM
             _reorientTween?.Kill();
             AdjustCameraOnEnter();
             ClampInitialWallrunSpeed();
-            
+
             // Check if at bottom of wall and apply upward boost
             CheckAndApplyInitialUpBoost();
         }
@@ -79,9 +80,14 @@ namespace Player.Scripts.MovementFSM
                 return;
             }
 
+            if (_model.zAxis < _model.wallInputThreshold)
+            {
+                _fsm.ChangeState(FSM.States.Air);
+                return;
+            }
+
             var p = _model.probe;
 
-            // Only allow transition to climb on jump, not on input
             if (p.action == ParkourAction.Climb && _model.jumpDownThisFrame)
             {
                 _fsm.ChangeState(FSM.States.Climb);
@@ -97,7 +103,6 @@ namespace Player.Scripts.MovementFSM
                     _fsm.ChangeState(FSM.States.Air);
                     return;
                 }
-                // si estamos dentro del hold, seguimos como si tuviéramos pared (forces en FixedUpdate)
             }
             else
             {
@@ -155,13 +160,13 @@ namespace Player.Scripts.MovementFSM
         public void OnExit()
         {
             _reorientTween?.Kill();
-            
+
             var visualYawFollower = _model.GetComponentInChildren<VisualYawFollower>();
             if (visualYawFollower)
             {
                 visualYawFollower.followEnabled = true;
             }
-            
+
             if (Time.time > _model.wallJustJumpedUntil)
             {
                 float until = Time.time + _model.wallPostJumpNoRegrab;
@@ -228,18 +233,23 @@ namespace Player.Scripts.MovementFSM
                 vHoriz = newDir * vHoriz.magnitude;
             }
 
-            // Ignore key inputs - maintain current speed along wall
+            // --- LÓGICA DE INPUT RESTAURADA ---
+            // Comprueba si el jugador está presionando 'W'
+            bool pushingForward = _model.zAxis > _model.wallInputThreshold;
+
             float curAlong = Vector3.Dot(vHoriz, wallForward);
-            // Maintain speed, but don't accelerate/decelerate based on input
-            float targetAlong = Mathf.Max(_model.wallCruiseSpeed, curAlong);
-            // Only allow slight deceleration if going too fast, but no acceleration from input
-            float maxSpeed = _model.wallRunMaxSpeed;
-            if (curAlong > maxSpeed)
-            {
-                targetAlong = Mathf.Max(maxSpeed, curAlong - _model.wallCruiseAccel * Time.fixedDeltaTime);
-            }
-            float delta = Mathf.Clamp(targetAlong - curAlong, -_model.wallCruiseAccel * Time.fixedDeltaTime,
-                _model.wallCruiseAccel * Time.fixedDeltaTime);
+
+            // Si presionamos 'W', el objetivo es la velocidad máxima.
+            // (Como OnUpdate ya nos saca si soltamos W, 'pushingForward' casi siempre será 'true' aquí,
+            // pero esta lógica es más robusta si decides cambiarlo a "deslizar" en lugar de "salir")
+            float targetAlong = pushingForward ? _model.wallRunMaxSpeed : Mathf.Max(_model.wallCruiseSpeed, curAlong);
+
+            // Si presionamos 'W', usamos la aceleración de 'run'.
+            float accel = pushingForward ? _model.wallRunAccel : _model.wallCruiseAccel;
+
+            float delta = Mathf.Clamp(targetAlong - curAlong, -accel * Time.fixedDeltaTime,
+                accel * Time.fixedDeltaTime);
+            // --- FIN DE LA LÓGICA RESTAURADA ---
 
             Vector3 addAlong = wallForward * delta;
             _rb.AddForce(addAlong, ForceMode.VelocityChange);
@@ -255,32 +265,33 @@ namespace Player.Scripts.MovementFSM
             _rb.AddForce(-n * stick, ForceMode.Force);
 
             float vy = _rb.velocity.y;
-            
-            // Apply gravity counterforce consistently
+
             if (_model.wallUseGravity)
             {
-                // Use full gravity counterforce regardless of blend to prevent inconsistent falling
                 float gravityCounter = _model.gravityCounterForce;
-                // Only reduce counterforce slightly during entry blend to smooth transition
                 if (blend < 1f)
                 {
                     gravityCounter *= Mathf.Lerp(0.7f, 1f, blend);
                 }
+
                 _rb.AddForce(Vector3.up * gravityCounter, ForceMode.Force);
             }
 
-            // Maintain consistent downward glide speed
-            float targetGlideSpeed = -_model.wallGlideDownSpeed;
-            // Smooth transition to glide speed during entry
-            if (blend < 1f)
+            float targetGlideSpeed = !pushingForward ? -_model.wallGlideDownSpeed : 0f;
+
+            if (blend < 1f && !pushingForward)
             {
                 targetGlideSpeed = Mathf.Lerp(vy, -_model.wallGlideDownSpeed, blend);
             }
+            else if (blend < 1f && pushingForward)
+            {
+                targetGlideSpeed = Mathf.Lerp(vy, 0f, blend);
+            }
+
             vy = Mathf.MoveTowards(vy, targetGlideSpeed, 8f * Time.fixedDeltaTime);
 
             _rb.velocity = new Vector3(vHoriz.x + addAlong.x, vy, vHoriz.z + addAlong.z);
 
-            // Disipar “meterse” en la pared suavemente
             float into = Vector3.Dot(_rb.velocity, -n);
             if (into > 0f)
             {
@@ -294,11 +305,10 @@ namespace Player.Scripts.MovementFSM
             _exiting = true;
             _exitTimer = _model.exitWallTime;
 
-            // Lockouts post salto
             float until = Time.time + _model.wallPostJumpNoRegrab;
-            _model.blockWallrunUntil = until; // bloqueo general
-            _model.wallJustJumpedUntil = until; // flag “acabo de saltar”
-            _model.wallSeamDisableUntil = until; // seam-hold OFF el mismo lapso
+            _model.blockWallrunUntil = until;
+            _model.wallJustJumpedUntil = until;
+            _model.wallSeamDisableUntil = until;
             _model.lastWallDetachTime = Time.time;
 
             Vector3 v = _rb.velocity;
@@ -349,14 +359,8 @@ namespace Player.Scripts.MovementFSM
                     float currentYaw = Mathf.LerpAngle(startYaw, targetYaw, percent);
                     panTilt.PanAxis.Value = currentYaw;
                 })
-                .OnComplete(() =>
-                {
-                    _reorientTween = null;
-                })
-                .OnKill(() =>
-                {
-                    _reorientTween = null;
-                });
+                .OnComplete(() => { _reorientTween = null; })
+                .OnKill(() => { _reorientTween = null; });
         }
 
         private void AdjustCameraOnUpdate()
@@ -391,7 +395,7 @@ namespace Player.Scripts.MovementFSM
             float blend = 1f - Mathf.Exp(-_model.wallCameraLerpSpeed * Time.deltaTime);
 
             panTilt.PanAxis.Value = Mathf.LerpAngle(currentYaw, targetYaw, blend);
-            
+
             // Also rotate the visual model to follow the wall direction
             if (_visualRoot != null)
             {
@@ -420,15 +424,15 @@ namespace Player.Scripts.MovementFSM
 
             _rb.velocity = (wallForward * clampedSpeedAlong) + (Vector3.up * vVert);
         }
-        
+
         private void CheckAndApplyInitialUpBoost()
         {
             if (_hasAppliedInitialUpBoost) return;
-            
+
             // Check if we're at the bottom of the wall (low vertical velocity or near ground)
             float vy = _rb.velocity.y;
             bool isNearBottom = vy < 0.5f; // Low or negative vertical velocity
-            
+
             // Also check if we're close to ground
             if (_model.IsGroundedNow())
             {
@@ -447,7 +451,7 @@ namespace Player.Scripts.MovementFSM
                     }
                 }
             }
-            
+
             if (isNearBottom)
             {
                 // Apply upward boost
