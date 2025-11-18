@@ -155,6 +155,7 @@ namespace Player.Scripts.MovementFSM.MVC
                     animator.CrossFade("Player_Leg_Movement", 0.05f);
                     if (!_canInteract)
                     {
+                        if (_isInspecting) return;
                         animator.CrossFade("Player_Arm_Movement", 0.05f);
                     }
                 }
@@ -177,6 +178,7 @@ namespace Player.Scripts.MovementFSM.MVC
             animator.SetBool(IsGrounded, false);
 
             animator.CrossFade("Player_Leg_Jump", 0f);
+            if (_isInspecting) return;
             animator.CrossFade("Player_Arm_Jump", 0f);
         }
 
@@ -307,6 +309,34 @@ namespace Player.Scripts.MovementFSM.MVC
             _canInteract = false;
             animator.SetBool(CanInteract, _canInteract);
             animator.CrossFade("Player_Arm_Interact", 0.1f);
+        }
+
+        private bool _isInspecting = false;
+
+        /// <summary>
+        /// Reproduce Arms_Inspect en la layer de manos, sin interrupciones.
+        /// </summary>
+        public void InspectHands()
+        {
+            if (_isInspecting) return; // evitar spam
+            _isInspecting = true;
+
+            int armsLayer = 1; // <- cambia este índice si tu Arms_Layer es otro
+
+            // Hacer CrossFade SOLO en la capa de brazos
+            animator.CrossFade("Arms_Inspect", 0.1f, armsLayer);
+
+            // Obtener duración real de la animación
+            AnimatorStateInfo st =
+                animator.GetCurrentAnimatorStateInfo(armsLayer);
+
+            float clipLength = st.length;
+
+            // Bloquear todas las animaciones de brazos durante la duración real
+            DOVirtual.DelayedCall(clipLength, () =>
+            {
+                _isInspecting = false;
+            });
         }
     }
 }
