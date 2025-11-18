@@ -17,7 +17,7 @@ public class DisableComponents : MonoBehaviour
     {
         if (_renderer)
             _renderer.enabled = false;
-        gameObject.SetActive(false);
+        //gameObject.SetActive(false);
         if (_collider)
             _collider.enabled = false;
 
