@@ -622,7 +622,6 @@ namespace VLights.Scripts.VLight
             Gizmos.DrawLine(CachedTransform.TransformPoint(_frustrumPoints[2]), CachedTransform.TransformPoint(_frustrumPoints[6]));
             Gizmos.DrawLine(CachedTransform.TransformPoint(_frustrumPoints[6]), CachedTransform.TransformPoint(_frustrumPoints[4]));
             Gizmos.DrawLine(CachedTransform.TransformPoint(_frustrumPoints[4]), CachedTransform.TransformPoint(_frustrumPoints[0]));
-
         }
 
         [HideInInspector]
@@ -632,7 +631,7 @@ namespace VLights.Scripts.VLight
         {
             if (_frustrumPoints == null || forceFrustrumUpdate)
             {
-                if(lightType == LightTypes.Point || lightType == LightTypes.Area)
+                if (lightType == LightTypes.Point || lightType == LightTypes.Area)
                 {
                     VLightGeometryUtil.RecalculateFrustrumPoints(cam.orthographic, pointLightRadius, spotAngle, -pointLightRadius, pointLightRadius, aspect, out _frustrumPoints);
                 }
@@ -676,7 +675,7 @@ namespace VLights.Scripts.VLight
 
             cam.farClipPlane = far;
 
-            if(lightType == LightTypes.Point || lightType == LightTypes.Area)
+            if (lightType == LightTypes.Point || lightType == LightTypes.Area)
             {
                 near = -pointLightRadius;
                 far = pointLightRadius;
@@ -1005,12 +1004,19 @@ namespace VLights.Scripts.VLight
         {
             VLightInterleavedSampling.renderCount++;
 
+            // Usamos una referencia local a Camera.current y la validamos
+            var currentCam = Camera.current;
+            if (currentCam == null)
+            {
+                return;
+            }
+
             if (!VLightInterleavedSampling.renderingInterleaved)
             {
                 UpdateSettings();
-                UpdateViewMatrices(Camera.current);
+                UpdateViewMatrices(currentCam);
                 UpdateLightMatrices();
-                if(!_renderShadowMapInUpdate)
+                if (!_renderShadowMapInUpdate)
                 {
                     RenderShadowMap();
                 }
@@ -1048,7 +1054,7 @@ namespace VLights.Scripts.VLight
             if (_queueRenderShadowMap)
             {
                 _queueRenderShadowMap = false;
-                if(_renderShadowMapInUpdate)
+                if (_renderShadowMapInUpdate)
                 {
                     RenderShadowMap();
                 }
@@ -1089,7 +1095,7 @@ namespace VLights.Scripts.VLight
                 colors[i] = lightGradient.Evaluate(i / (float)GRADIENT_SIZE);
                 colors[i].a *= fallOffCurve.Evaluate(i / (float)GRADIENT_SIZE);
             }
-            FallOffTexture.SetPixels(colors);        
+            FallOffTexture.SetPixels(colors);
             FallOffTexture.Apply();
         }
 
@@ -1202,6 +1208,12 @@ namespace VLights.Scripts.VLight
 
         void UpdateViewMatrices(Camera targetCamera)
         {
+            // Protección contra cámaras nulas (sobre todo en editor / SceneView)
+            if (targetCamera == null)
+            {
+                return;
+            }
+
             _viewWorldToCameraMatrixCached = targetCamera.worldToCameraMatrix;
             _viewCameraToWorldMatrixCached = targetCamera.cameraToWorldMatrix;
 
@@ -1434,4 +1446,3 @@ namespace VLights.Scripts.VLight
         }
     }
 }
-
