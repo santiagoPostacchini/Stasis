@@ -1,3 +1,4 @@
+using Managers.Game;
 using Player.Stasis;
 using Puzzle_Elements.IK_OBJECT.Scripts;
 using UnityEngine;
@@ -8,16 +9,16 @@ namespace Puzzle_Elements.IK.Scripts
     {
         public bool IsFreezed => _isFreezed;
         public StasisEffect StasisEffect { get; }
-        private bool _isFreezed = false;
+        [SerializeField]private bool _isFreezed = false;
         [SerializeField] private StasisTipController _stasisTipController;
     
         void Start()
         {
-            if(_stasisTipController)
-            {
-                _stasisTipController.OnFreezeEvent += StatisEffectActivate;
-                _stasisTipController.OnUnFreezeEvent += StatisEffectDeactivate;
-            }
+            //if(_stasisTipController )
+            //{
+            //    _stasisTipController.OnFreezeEvent += StatisEffectActivate;
+            //    _stasisTipController.OnUnFreezeEvent += StatisEffectDeactivate;
+            //}
         }
 
         public void StatisEffectActivate()

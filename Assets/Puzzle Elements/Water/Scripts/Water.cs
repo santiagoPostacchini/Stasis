@@ -5,6 +5,7 @@ using System.Collections;
 using Checkpoint;
 using UnityEngine;
 using UnityEngine.Events;
+using Managers.Game;
 
 namespace Puzzle_Elements.Water.Scripts
 {
@@ -15,14 +16,16 @@ namespace Puzzle_Elements.Water.Scripts
         Model player;
 
         [SerializeField] private CheckpointSequence _checkpoint;
+
+      //
         private void OnTriggerEnter(Collider other)
         {
             player = other.GetComponent<Model>();
             if(player != null)
             {
-                
-                OnFallInWater?.Invoke();
-               // player.transform.position = _checkpoint.CurrentCheckpointPos();
+
+                GameManager.Instance.PlayerDeath();
+                // player.transform.position = _checkpoint.CurrentCheckpointPos();
                 Rigidbody rb = player.GetComponent<Rigidbody>();
                 if(rb != null)
                 {

@@ -14,7 +14,7 @@ namespace Puzzle_Elements.IK.Scripts
         public StasisConectionTipControllerWithCargo _stasisConection;
         public bool IsFreezed => _isFreezed;
         public StasisEffect StasisEffect { get; }
-        private bool _isFreezed = false;
+        [SerializeField]private bool _isFreezed = false;
         [Header("Stasis")]
         public Material matStasis;
         public readonly string _outlineThicknessName = "_BorderThickness";
@@ -31,23 +31,25 @@ namespace Puzzle_Elements.IK.Scripts
 
         [SerializeField] private Transform _root;
 
+        private float timer = 0;
+        private bool alreadyDesStasis = false;
+     
+
         // Start is called before the first frame update
         void Start()
         {
             _mpb = new MaterialPropertyBlock();
             _followTargetController = GetComponent<FollowTargetController>();
             StartCoroutine(wait());
-            GameManager.Instance.OnDeathPlayer += PlayerDeath;
         }
-        private void PlayerDeath()
-        {
-            StatisEffectDeactivate();
-        }
+       
+
         IEnumerator wait()
         {
             yield return new WaitForSeconds(2f);
             AddElementsToRenderer();
         }
+      
         public void AddElementsToRenderer()
         {
             if (renderers.Count > 4) return;
@@ -80,7 +82,6 @@ namespace Puzzle_Elements.IK.Scripts
         }
         public void StatisEffectActivate()
         {
-
             FreezeObject();
             if(_stasisConection != null)
             {
@@ -92,6 +93,7 @@ namespace Puzzle_Elements.IK.Scripts
 
         public void StatisEffectDeactivate()
         {
+           
             UnfreezeObject();
             if (_stasisConection != null)
             {

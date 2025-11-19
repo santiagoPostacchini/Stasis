@@ -9,6 +9,7 @@ using Player.Scripts.MovementFSM.MVC;
 using Puzzle_Elements;
 using Puzzle_Elements.Hedron.Scripts;
 using UIScripts.FeedBack_UI.Crosshair;
+using Managers.Game;
 
 namespace Player.Stasis
 {
@@ -105,8 +106,19 @@ namespace Player.Stasis
 
             if (!mainCam && debugLogs)
                 Debug.LogWarning("[StasisGun] No se encontró cámara. Asigna una Camera en escena.");
-        }
 
+
+            GameManager.Instance.OnDeathPlayer += PlayerDeath;
+        }
+        private void PlayerDeath()
+        {
+            foreach (var item in _stasisList)
+            {
+                item.stasis.StatisEffectDeactivate();
+               
+            }
+            _stasisList.Clear();
+        }
         private void OnDestroy()
         {
             if (_model)

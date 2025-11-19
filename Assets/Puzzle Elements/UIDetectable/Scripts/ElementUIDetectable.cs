@@ -70,7 +70,6 @@ public class ElementUIDetectable : MonoBehaviour
         if (!_isVisible && dist <= showDistance && !_alreadyTakeByPlayer)
         {
             SetPromptVisible(true);
-            Debug.Log("Es true el setpromtvisible");
 
         }
         else if (_isVisible && dist >= hideDistance)
