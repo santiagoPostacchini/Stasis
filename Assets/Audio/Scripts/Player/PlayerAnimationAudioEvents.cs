@@ -3,10 +3,6 @@ using UnityEngine;
 
 namespace Audio.Scripts.Player
 {
-    /// <summary>
-    /// Bridge entre Animation Events y el sistema de audio (ISoundPlayer).
-    /// Exponer acá los eventos canónicos que querés mapear a sonido.
-    /// </summary>
     public class PlayerAnimationAudioEvents : MonoBehaviour, ISoundPlayer
     {
         public event Action OnStepLeft;

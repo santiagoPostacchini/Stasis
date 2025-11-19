@@ -59,9 +59,17 @@ namespace Audio.Scripts
         // ---------- Sync de inspector (no suscribe) ----------
         public void SyncEventConfigListWithReflectedMembers(IEnumerable<string> detectedKeys)
         {
-            var detectedKeyList = detectedKeys as string[] ?? detectedKeys.ToArray();
-            // 1. Crear un diccionario de las configuraciones existentes para búsqueda rápida
-            var existingConfigs = events.ToDictionary(e => e.eventKey, e => e);
+            var detectedKeyList = detectedKeys.Distinct().ToList();
+
+            var existingConfigs = new Dictionary<string, EventConfig>();
+            foreach (var evt in events)
+            {
+                if (!string.IsNullOrEmpty(evt.eventKey) && !existingConfigs.ContainsKey(evt.eventKey))
+                {
+                    existingConfigs.Add(evt.eventKey, evt);
+                }
+            }
+            
             var newEventList = new List<EventConfig>();
             foreach (var key in detectedKeyList)
             {
@@ -77,15 +85,12 @@ namespace Audio.Scripts
 
                 if (existingConfigs.TryGetValue(key, out var existingConfig))
                 {
-                    // 3. ¡La key existe! Preservamos la configuración antigua.
-                    //    Actualizamos el display/event name por si cambió.
                     existingConfig.displayName = display;
                     existingConfig.eventName = member;
                     newEventList.Add(existingConfig);
                 }
                 else
                 {
-                    // 4. La key es nueva. Creamos una configuración por defecto.
                     newEventList.Add(new EventConfig { eventKey = key, eventName = member, displayName = display });
                 }
             }
