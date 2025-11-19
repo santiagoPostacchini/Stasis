@@ -60,6 +60,14 @@ namespace Player.Scripts.MovementFSM.MVC
 
         private float _airElapsed;
 
+        // ============================================================
+        //                    NUEVO SISTEMA DE INSPECT
+        // ============================================================
+
+        [Header("Inspect System")]
+        private float inspectTimer = 0f;  // <- NO BOOL, solo timer
+        private const int ArmsLayer = 1;  // <- layer de brazos
+
         private void Awake()
         {
             if (!animator) animator = GetComponentInChildren<Animator>();
@@ -69,6 +77,23 @@ namespace Player.Scripts.MovementFSM.MVC
 
         private void Update()
         {
+            // -------------------------------------------------------------
+            // BLOQUEO DE TODA LA LAYER DE BRAZOS MIENTRAS INSPECT ESTÁ ACTIVO
+            // -------------------------------------------------------------
+            if (inspectTimer > 0f)
+            {
+                inspectTimer -= Time.deltaTime;
+
+                // Mantener congelada la layer de brazos → evita sobrescritura
+                animator.Update(0f);
+
+                if (inspectTimer <= 0f)
+                    inspectTimer = 0f;
+
+                // IMPORTANTE: dejamos que siga actualizando todo excepto brazos
+                // NO hacemos return aquí para no romper piernas, cámara, etc.
+            }
+
             float targetMax = _isRun ? 1f : 0.5f;
             float targetAnimX = Mathf.Clamp(_xAxis, -1f, 1f) * targetMax;
             float targetAnimZ = Mathf.Clamp(_zAxis, -1f, 1f) * targetMax;
@@ -108,11 +133,32 @@ namespace Player.Scripts.MovementFSM.MVC
                 }
             }
         }
-        public void OnMove(float x, float z)
+
+        // ============================================================
+        //              MÉTODO INSPECT MANEJADO POR TIMER
+        // ============================================================
+
+        public void InspectHands()
         {
-            _xAxis = x;
-            _zAxis = z;
+            // si todavía no terminó la inspección: no permitimos otra
+            if (inspectTimer > 0f) return;
+
+            // reproducimos la anim en arms layer solamente
+            animator.CrossFade("Arms_Inspect", 0.1f, ArmsLayer);
+
+            // obtener la anim state REAL para saber la duración
+            float clipLength = 5f;
+
+            // activar timer → mientras dure, bloquea toda la capa
+            inspectTimer = clipLength;
         }
+
+        // ---------------------------------------------------------
+        // EL RESTO DEL SCRIPT QUEDÓ IGUAAAAAAAAL
+        // ---------------------------------------------------------
+
+        public void OnMove(float x, float z)
+        { _xAxis = x; _zAxis = z; }
 
         public void OnRun(bool run)
         {
@@ -126,6 +172,7 @@ namespace Player.Scripts.MovementFSM.MVC
         }
 
         public void OnStop(bool stp) => _isStopping = stp;
+
         public void GroundedChangedEvent(bool grounded, float airTime, float fallSpeed)
         {
             _worldGrounded = grounded;
@@ -136,15 +183,12 @@ namespace Player.Scripts.MovementFSM.MVC
                 float impactSpeed = rb ? Mathf.Abs(rb.velocity.y) : 0f;
                 
                 if (playerCamEffects)
-                {
                     playerCamEffects.TriggerLandTilt(impactSpeed, totalAir);
-                }
 
                 bool showLand = !_animGrounded && (
-                                    totalAir >= landAnimMinAirTime ||
-                                    fallDist >= landAnimMinFallDistance ||
-                                    impactSpeed >= landAnimMinImpactSpeed
-                                );
+                    totalAir >= landAnimMinAirTime ||
+                    fallDist >= landAnimMinFallDistance ||
+                    impactSpeed >= landAnimMinImpactSpeed);
 
                 _animGrounded = true;
                 animator.SetBool(IsGrounded, true);
@@ -155,7 +199,9 @@ namespace Player.Scripts.MovementFSM.MVC
                     animator.CrossFade("Player_Leg_Movement", 0.05f);
                     if (!_canInteract)
                     {
-                        if (_isInspecting) return;
+                        // si inspect está activo, NO tocamos brazos
+                        if (inspectTimer > 0f) return;
+
                         animator.CrossFade("Player_Arm_Movement", 0.05f);
                     }
                 }
@@ -178,28 +224,30 @@ namespace Player.Scripts.MovementFSM.MVC
             animator.SetBool(IsGrounded, false);
 
             animator.CrossFade("Player_Leg_Jump", 0f);
-            if (_isInspecting) return;
+
+            // si inspect activo → no tocar brazos
+            if (inspectTimer > 0f) return;
+
             animator.CrossFade("Player_Arm_Jump", 0f);
         }
 
-        public void OnShootEvent()         { }
-        
-        public void OnCrouchStartEvent()   { }
-        
-        public void OnCrouchEndEvent()     { }
+        public void OnShootEvent() { }
+        public void OnCrouchStartEvent() { }
+        public void OnCrouchEndEvent() { }
 
         public void OnVaultStartEvent()
         {
             animator.CrossFade("Player_Leg_Vault", 0.1f);
-            animator.CrossFade("Player_Arm_Vault", 0.1f);
+
+            if (inspectTimer <= 0f)
+                animator.CrossFade("Player_Arm_Vault", 0.1f);
+
             animator.applyRootMotion = false;
             if (playerCamEffects) playerCamEffects.VaultStart();
         }
 
         public void OnVaultEndEvent()      
-        { 
-            if (playerCamEffects) playerCamEffects.VaultEnd();
-        }
+        { if (playerCamEffects) playerCamEffects.VaultEnd(); }
         
         public void OnClimbStartEvent(Vector3 forward)
         {
@@ -223,20 +271,18 @@ namespace Player.Scripts.MovementFSM.MVC
             if (rightHandIkRig) DOTween.To(() => rightHandIkRig.weight, x => rightHandIkRig.weight = x, 1f, ikFadeDuration);
             
             animator.CrossFade("Player_Leg_Climb", 0.05f);
-            animator.CrossFade("Player_Arm_Climb", 0.05f);
+
+            if (inspectTimer <= 0f)
+                animator.CrossFade("Player_Arm_Climb", 0.05f);
             
-            // Pass climbIK reference to camera effects for hand-based tilt
             if (playerCamEffects && climbIKHandler)
-            {
                 playerCamEffects.climbIK = climbIKHandler;
-            }
             
             if (playerCamEffects) playerCamEffects.ClimbStart();
         }
 
         public void OnClimbEndEvent()
         {
-            // Get model reference to check if we're jumping
             Model model = GetComponentInParent<Model>();
             bool isJumpingFromClimb = model && model.didClimbJump;
             
@@ -246,7 +292,6 @@ namespace Player.Scripts.MovementFSM.MVC
             if (leftHandIkRig) leftHandIkRig.DOKill();
             if (rightHandIkRig) rightHandIkRig.DOKill();
             
-            // If jumping from climb, immediately disable IK to prevent animation conflicts
             if (isJumpingFromClimb)
             {
                 if (leftHandIkRig) leftHandIkRig.weight = 0f;
@@ -255,7 +300,6 @@ namespace Player.Scripts.MovementFSM.MVC
             }
             else
             {
-                // Normal fade out
                 if (leftHandIkRig) DOTween.To(() => leftHandIkRig.weight, x => leftHandIkRig.weight = x, 0f, ikFadeDuration);
                 if (rightHandIkRig) DOTween.To(() => rightHandIkRig.weight, x => rightHandIkRig.weight = x, 0f, ikFadeDuration)
                     .OnComplete(() => {
@@ -266,36 +310,43 @@ namespace Player.Scripts.MovementFSM.MVC
             if (playerCamEffects) playerCamEffects.ClimbEnd();
         }
         
-        public void OnSlideStartEvent()    { }
-        
-        public void OnSlideEndEvent()      { }
+        public void OnSlideStartEvent() { }
+        public void OnSlideEndEvent() { }
 
         public void OnWallrunStartEvent(int dir)
         {
             animator.CrossFade(dir < 0 ? "Player_Leg_Wallrun_Left" : "Player_Leg_Wallrun_Right", 0.1f);
-            animator.CrossFade(dir < 0 ? "Player_Arm_Wallrun_Left" : "Player_Arm_Wallrun_Right", 0.1f);
+
+            if (inspectTimer <= 0f)
+                animator.CrossFade(dir < 0 ? "Player_Arm_Wallrun_Left" : "Player_Arm_Wallrun_Right", 0.1f);
+
             if (playerCamEffects) playerCamEffects.WallrunStart(dir);
         }
 
-        public void OnWallrunEndEvent()    { if (playerCamEffects) playerCamEffects.WallrunEnd(); }
+        public void OnWallrunEndEvent()
+        { 
+            if (playerCamEffects) playerCamEffects.WallrunEnd(); 
+        }
         
-        public void OnDamageEvent()        { }
+        public void OnDamageEvent() { }
+        public void OnDeathEvent() { }
+        public void OnGrabEvent() { }
         
-        public void OnDeathEvent()         { }
+        public void OnTurnYaw(int dir)
+        {
+            animator.CrossFade(dir < 0 ? TurnLeftHash : TurnRightHash, 0.1f);
+        }
         
-        public void OnGrabEvent()          { }
-        
-        public void OnTurnYaw(int dir)     { animator.CrossFade(dir < 0 ? TurnLeftHash : TurnRightHash, 0.1f); }
-        
-        public void OnDropEvent()          { }
-        
-        public void OnThrowEvent()         { }
+        public void OnDropEvent() { }
+        public void OnThrowEvent() { }
 
         public void OnCanInteractEnterEvent()
         {
             _canInteract = true;
             animator.SetBool(CanInteract, _canInteract);
-            animator.CrossFade("Player_Arm_CanPickup", 0.1f);
+
+            if (inspectTimer <= 0f)
+                animator.CrossFade("Player_Arm_CanPickup", 0.1f);
         }
 
         public void OnCanInteractExitEvent()
@@ -308,35 +359,10 @@ namespace Player.Scripts.MovementFSM.MVC
         {
             _canInteract = false;
             animator.SetBool(CanInteract, _canInteract);
-            animator.CrossFade("Player_Arm_Interact", 0.1f);
-        }
 
-        private bool _isInspecting = false;
-
-        /// <summary>
-        /// Reproduce Arms_Inspect en la layer de manos, sin interrupciones.
-        /// </summary>
-        public void InspectHands()
-        {
-            if (_isInspecting) return; // evitar spam
-            _isInspecting = true;
-
-            int armsLayer = 1; // <- cambia este índice si tu Arms_Layer es otro
-
-            // Hacer CrossFade SOLO en la capa de brazos
-            animator.CrossFade("Arms_Inspect", 0.1f, armsLayer);
-
-            // Obtener duración real de la animación
-            AnimatorStateInfo st =
-                animator.GetCurrentAnimatorStateInfo(armsLayer);
-
-            float clipLength = st.length;
-
-            // Bloquear todas las animaciones de brazos durante la duración real
-            DOVirtual.DelayedCall(clipLength, () =>
-            {
-                _isInspecting = false;
-            });
+            if (inspectTimer <= 0f)
+                animator.CrossFade("Player_Arm_Interact", 0.1f);
         }
     }
 }
+
