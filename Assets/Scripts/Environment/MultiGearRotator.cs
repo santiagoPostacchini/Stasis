@@ -80,7 +80,7 @@ namespace Environment
         public void PauseAll() => paused = true;
         public void ResumeAll() => paused = false;
 
-        private void Update()
+        private void FixedUpdate()
         {
 #if UNITY_EDITOR
             if (!Application.isPlaying && !runInEditMode) return;
