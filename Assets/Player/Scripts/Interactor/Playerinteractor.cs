@@ -138,7 +138,6 @@ namespace Player.Scripts.Interactor
         {
             if (!_objectGrabbable) return;
 
-            // pared a la izquierda (dir < 0) => pasar a palma derecha; pared a la derecha (dir > 0) => palma izquierda
             Transform targetPalm = (dir < 0f) ? (rightPalmTransform ?? _currentPalm)
                 : (dir > 0f) ? (leftPalmTransform ?? _currentPalm)
                 : _currentPalm;
@@ -311,18 +310,10 @@ namespace Player.Scripts.Interactor
         private bool TryResolveTarget(Transform fromHit, out TargetHit target)
         {
             target = default;
-
-            // --- 1) Interactuable: padres -> hijos inmediatos -> todo el árbol (incluye inactivos)
-            IInteractable ia =
-                fromHit.GetComponentInParent<IInteractable>() ??
-                fromHit.GetComponentInChildren<IInteractable>();
-
-            if (ia == null)
-            {
-                var root = fromHit.root;
-                var all = root.GetComponentsInChildren<IInteractable>(true); // incluye inactivos
-                if (all is { Length: > 0 }) ia = all[0];
-            }
+            
+            IInteractable ia = fromHit.GetComponentInParent<IInteractable>();
+    
+            if (ia == null) ia = fromHit.GetComponentInChildren<IInteractable>();
 
             if (ia != null)
             {
@@ -332,22 +323,15 @@ namespace Player.Scripts.Interactor
                 return true;
             }
 
-            PhysicsBox pb =
-                fromHit.GetComponentInParent<PhysicsBox>() ??
-                fromHit.GetComponentInChildren<PhysicsBox>();
+            PhysicsBox pb = fromHit.GetComponentInParent<PhysicsBox>();
 
-            if (!pb)
-            {
-                var root = fromHit.root;
-                var all = root.GetComponentsInChildren<PhysicsBox>(true);
-                if (all is { Length: > 0 }) pb = all[0];
-            }
-
+            if (!pb) pb = fromHit.GetComponentInChildren<PhysicsBox>();
+            
             if (!pb) return false;
+
             target.Go = pb.gameObject;
             target.Box = pb;
             return true;
-
         }
 
         private GameObject GetBestInteractable(out float distance, out float angleDeg)
