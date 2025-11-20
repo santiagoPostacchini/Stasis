@@ -107,7 +107,7 @@ namespace Player.Scripts.MovementFSM
         public void OnExit()
         {
             _model.OnJump -= OnJumpPressed;
-            if (_model && _model.rb) _model.rb.useGravity = true;
+            if (_model && _model.rb && !_model.blockUseGravity) _model.rb.useGravity = true;
         }
 
         public void OnLateUpdate()
@@ -279,11 +279,11 @@ namespace Player.Scripts.MovementFSM
             var scanner = _model.Scanner;
             if (!scanner || !_model.IsGroundedNow() || Time.time < _model.groundedIgnoreUntil)
             {
-                if (_model.rb.useGravity == false) _model.rb.useGravity = true;
+                if (_model.rb.useGravity == false && !_model.blockUseGravity) _model.rb.useGravity = true;
                 return;
             }
 
-            if (_model.rb.useGravity == false) _model.rb.useGravity = true;
+            if (_model.rb.useGravity == false && !_model.blockUseGravity) _model.rb.useGravity = true;
 
             float slope = scanner.CurrentGroundSlopeDeg;
             bool allowSlide = slope >= _model.slideFromSlopeDeg;
@@ -301,7 +301,7 @@ namespace Player.Scripts.MovementFSM
             }
             else
             {
-                if (_model.rb.useGravity == false) _model.rb.useGravity = true;
+                if (_model.rb.useGravity == false && !_model.blockUseGravity) _model.rb.useGravity = true;
             }
         }
     }

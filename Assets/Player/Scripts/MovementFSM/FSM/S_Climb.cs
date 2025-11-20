@@ -370,10 +370,14 @@ namespace Player.Scripts.MovementFSM
             
             _rb.velocity = vCleaned;
 
-            _rb.AddForce(velChange, ForceMode.VelocityChange); 
-            
+            _rb.AddForce(velChange, ForceMode.VelocityChange);
+
             // Restore gravity and movement
-            _rb.useGravity = true;
+            if (!_m.blockUseGravity)
+            {
+                _rb.useGravity = true;
+            }
+           
             _m.canMove = true;
             _rb.drag = _prevDrag;
 
@@ -456,7 +460,10 @@ namespace Player.Scripts.MovementFSM
             _m.mantleLedgePoint = ledgeP;
             _m.climbWallNormal = _planarNormal;
 
-            _rb.useGravity = true;
+            if (!_m.blockUseGravity)
+            {
+                _rb.useGravity = true;
+            }
 
             Vector3 vPlanar = Vector3.ProjectOnPlane(_rb.velocity, Vector3.up);
             if (vPlanar.sqrMagnitude > 1e-6f)

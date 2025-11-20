@@ -44,6 +44,7 @@ namespace Player.Scripts.MovementFSM.MVC
 
         [Header("References")] 
         public Rigidbody rb;
+        public bool blockUseGravity= false;
         public Transform cameraHolderTransform;
         public CinemachineBrain cinemachineBrain;
         public ParkourProbe probe;

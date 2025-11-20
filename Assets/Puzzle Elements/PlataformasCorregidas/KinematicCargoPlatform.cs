@@ -1,4 +1,5 @@
 using System.Collections;
+using Player.Scripts.MovementFSM.MVC;
 using Puzzle_Elements.Tren_nuevo;
 using UnityEngine;
 using UnityEngine.Events;
@@ -9,6 +10,10 @@ namespace Puzzle_Elements.PlataformasCorregidas
     [RequireComponent(typeof(Rigidbody))]
     public class KinematicCargoPlatform : MonoBehaviour
     {
+        public Model player;
+
+        Vector3 _lastPosition;
+        public Vector3 platformVelocity;
         public enum Mode { PingPong, Loop, Once }
         private enum Phase { Idle, Accel, Cruise, Decel, Dwell }
 
@@ -47,8 +52,10 @@ namespace Puzzle_Elements.PlataformasCorregidas
             _rb = GetComponent<Rigidbody>();
             _rb.isKinematic = true;
             _elevatorShipmentTrain = GetComponentInParent<ElevatorShipmentTrain>();
-        }
 
+            _lastPosition = _rb.position;
+            platformVelocity = Vector3.zero;
+        }
         void OnEnable()
         {
             if (!pointA || !pointB)
@@ -134,6 +141,27 @@ namespace Puzzle_Elements.PlataformasCorregidas
         public void ActivateKinematic() => _rb.isKinematic = true;
         public void DesactivateKinematic() => _rb.isKinematic = false;
 
+        private void OnTriggerEnter(Collider other)
+        {
+            Model model = other.GetComponent<Model>();
+            if(model != null)
+            {
+                player = model;
+                player.blockUseGravity = true;
+            }
+        }
+        private void OnTriggerExit(Collider other)
+        {
+            Model model = other.GetComponent<Model>();
+            if (model != null)
+            {
+                model.blockUseGravity = false;
+                model.rb.useGravity = true;
+                player = null;
+                
+            }
+        }
+
         // -----------------------------
         void FixedUpdate()
         {
@@ -142,6 +170,13 @@ namespace Puzzle_Elements.PlataformasCorregidas
             if (_phase == Phase.Idle) return;
 
             float dt = Time.fixedDeltaTime;
+
+
+
+
+            // 1) Calcular velocidad de la plataforma (antes de moverla este frame)
+            platformVelocity = (_rb.position - _lastPosition) / Mathf.Max(dt, 0.0001f);
+            _lastPosition = _rb.position;
 
             float dAccel = (cruiseSpeed * cruiseSpeed) / (2f * Mathf.Max(acceleration, 1e-4f));
             float dDecel = dAccel;
@@ -197,6 +232,20 @@ namespace Puzzle_Elements.PlataformasCorregidas
                         _phase = Phase.Accel;
                     }
                     break;
+            }
+
+
+
+            if(player !=null )
+            {
+                Debug.Log("Esta el player y la plataforma esta bajando");
+                Vector3 v = player.rb.velocity;
+
+                if (v.y <= 0f)
+                {
+                    v.y = platformVelocity.y;
+                    player.rb.velocity = v;
+                }
             }
         }
 

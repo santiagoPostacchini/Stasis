@@ -574,6 +574,7 @@ namespace Puzzle_Elements.Hedro_conteiner.Scripts
             {
                 _rb.isKinematic = false;
                 _rb.useGravity = true;
+
                 _rb.WakeUp();
 
                 if (ejectTorque > 0f)

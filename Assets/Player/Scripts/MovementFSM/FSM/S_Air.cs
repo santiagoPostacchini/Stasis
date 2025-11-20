@@ -22,7 +22,11 @@ namespace Player.Scripts.MovementFSM
 
         public void OnEnter()
         {
-            _model.rb.useGravity = true;
+            if (!_model.blockUseGravity)
+            {
+                _model.rb.useGravity = true;
+            }
+           
             _model.OnJump += OnJumpPressed;
             _model.StairStepper?.CancelStep();
             _enteredFromGround = _model.airEnteredFromGround;

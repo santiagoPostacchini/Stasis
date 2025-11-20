@@ -138,7 +138,11 @@ namespace Player.Scripts.MovementFSM
             {
                 if (!_gravityRestored)
                 {
-                    _rb.useGravity = true;
+                    if (!_m.blockUseGravity)
+                    {
+                        _rb.useGravity = true;
+                    }
+
                     _gravityRestored = true;
                     if (LogOn) Debug.Log($"[VaultState] Gravity ON at t={_t:F2}");
                 }
@@ -271,7 +275,10 @@ namespace Player.Scripts.MovementFSM
 
         private void ExitToGrounded()
         {
-            _rb.useGravity = true;
+            if (!_m.blockUseGravity)
+            {
+                _rb.useGravity = true;
+            }
 
             var v = _rb.velocity;
             if (float.IsNaN(v.x) || float.IsNaN(v.y) || float.IsNaN(v.z)) v = Vector3.zero;
