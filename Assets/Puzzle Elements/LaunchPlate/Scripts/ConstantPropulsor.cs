@@ -4,9 +4,6 @@ namespace Puzzle_Elements.LaunchPlate.Scripts
 {
     public class ConstantPropulsor : MonoBehaviour
     {
-        [Header("Player a impulsar")]
-        public Rigidbody playerRb;
-
         [Header("Punto de salida del impulso")]
         public Transform launchPoint;
 
@@ -22,6 +19,9 @@ namespace Puzzle_Elements.LaunchPlate.Scripts
 
         private bool useCurve = false;
 
+        // Ahora se obtiene automáticamente
+        private Rigidbody playerRb;
+
         void Start()
         {
             if (forceCurve != null && forceCurve.keys.Length > 1)
@@ -30,8 +30,14 @@ namespace Puzzle_Elements.LaunchPlate.Scripts
 
         void OnTriggerEnter(Collider other)
         {
+            // Comprueba el tag Player
+            if (!other.CompareTag("Player")) return;
+
+            // Busca el Rigidbody del Player si no lo teníamos guardado
+            if (!playerRb)
+                playerRb = other.attachedRigidbody;
+
             if (!playerRb) return;
-            if (other.attachedRigidbody != playerRb) return;
 
             Launch();
         }
@@ -65,14 +71,13 @@ namespace Puzzle_Elements.LaunchPlate.Scripts
             {
                 float mult = forceCurve.Evaluate(t / duration);
 
-                // ✔ Esto reemplaza la velocidad en vez de sumarla
+                // Reemplaza la velocidad según la curva
                 playerRb.velocity = dir * (force * mult);
 
                 t += Time.fixedDeltaTime;
                 yield return new WaitForFixedUpdate();
             }
 
-            // Al final, dejá la velocidad fija según la curva en 1.0
             playerRb.velocity = dir * (force * forceCurve.Evaluate(1f));
         }
     }
