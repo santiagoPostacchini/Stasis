@@ -27,9 +27,14 @@ namespace Puzzle_Elements.Hedro_conteiner.Scripts
 
         public UnityEvent events;
 
+        public UnityEvent eventsTrainOn;
+
         // MaterialPropertyBlocks para NO modificar el material original
         private MaterialPropertyBlock _leftBlock;
         private MaterialPropertyBlock _rightBlock;
+
+
+        private bool _canTrainMove = false;
 
         void Awake()
         {
@@ -51,7 +56,7 @@ namespace Puzzle_Elements.Hedro_conteiner.Scripts
             //{
             //    LeftActivatorFalse();
             //}
-    
+
             UpdateIndicators();
             TryEvent();
         }
@@ -66,6 +71,21 @@ namespace Puzzle_Elements.Hedro_conteiner.Scripts
             TryEvent();
         }
 
+        public void CanTrainMove()
+        {
+            _canTrainMove = true;
+            TryEventOn();
+        }
+        public void CantTrainMove()
+        {
+            _canTrainMove = false;
+        }
+
+        public void TryEventOn()
+        {
+            if (!_canTrainMove) return;
+            eventsTrainOn?.Invoke();
+        }
         public void TryEvent()
         {
             if (!_rightActivate || !_leftActivate) return;
@@ -92,9 +112,5 @@ namespace Puzzle_Elements.Hedro_conteiner.Scripts
             }
         }
 
-        void Update()
-        {
-            // vac�o a prop�sito
-        }
     }
 }
