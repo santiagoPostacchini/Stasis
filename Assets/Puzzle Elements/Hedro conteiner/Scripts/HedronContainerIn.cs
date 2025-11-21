@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using Player.Scripts.Interactor;
 using Puzzle_Elements.Hedron.Scripts;
 using TMPro;
@@ -276,7 +277,7 @@ namespace Puzzle_Elements.Hedro_conteiner.Scripts
             }
 
             _openingTimer += Time.deltaTime;
-
+            ShowPhysicsBox();
             // Cuando termina la anim de apertura (aprox), pasamos a ejecting
             if (_openingTimer >= openToEjectDelay)
             {
@@ -307,7 +308,7 @@ namespace Puzzle_Elements.Hedro_conteiner.Scripts
 
             // Rotación “show” en sentido contrario
             t.Rotate(Vector3.up, -180f * Time.deltaTime, Space.World);
-
+           
             // Escala de targetScale -> Vector3.one
             if (scaleUpSeconds > 0.01f)
             {
@@ -382,7 +383,7 @@ namespace Puzzle_Elements.Hedro_conteiner.Scripts
 
                 if (_button != null)
                     _button.SetText(_button.E, buttonExtractionText);
-
+                StartCoroutine(waitDontShowBox());
                 StartGlowOnce();
                 ActivatePanel();
             }
@@ -390,9 +391,26 @@ namespace Puzzle_Elements.Hedro_conteiner.Scripts
             _attracting = false;
             _state = ContainerState.Docked;
         }
-
+        IEnumerator waitDontShowBox()
+        {
+            yield return new WaitForSeconds(1.5f);
+            DontShowPhysicsBox();
+        }
         // ================== TRIGGERS ==================
-
+        public void DontShowPhysicsBox()
+        {
+            if(_box != null)
+            {
+                _box.gameObject.SetActive(false);
+            }
+        }
+        public void ShowPhysicsBox()
+        {
+            if(_box != null)
+            {
+                _box.gameObject.SetActive(true);
+            }
+        }
         void OnTriggerEnter(Collider other)
         {
             if (_current != null) return;
@@ -566,7 +584,7 @@ namespace Puzzle_Elements.Hedro_conteiner.Scripts
             {
                 EnableAllColliders(t, true);
             }
-
+           
             if (_rb == null)
                 _rb = t.GetComponent<Rigidbody>();
 
@@ -589,6 +607,11 @@ namespace Puzzle_Elements.Hedro_conteiner.Scripts
 
             _isEjecting = false;
             ResetToIdle();
+        }
+        IEnumerator waitShowBox()
+        {
+            yield return new WaitForSeconds(1.5f);
+            ShowPhysicsBox();
         }
 
         // ================== TIMERS, GLOW, UTILIDADES ==================
