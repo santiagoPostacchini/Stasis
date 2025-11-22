@@ -4,6 +4,7 @@ using UnityEngine;
 
 namespace Environment
 {
+    
     [AddComponentMenu("Gameplay/MultiGearRotator (rotación de múltiples engranajes)")]
     public class MultiGearRotator : MonoBehaviour
     {
@@ -50,6 +51,16 @@ namespace Environment
 
             [Tooltip("Si está activo, el engranaje oscilará entre -maxAngleAbs y +maxAngleAbs (modo ping-pong).")]
             public bool usePingPong = false;
+
+            [Header("Easing cerca del límite")]
+            [Tooltip("Suaviza la velocidad al acercarse al ángulo máximo (aplica a modo limitado y ping-pong).")]
+            public bool useEaseNearLimit = false;
+
+            [Tooltip("Fracción del recorrido donde empieza a frenar (0.25 = último 25%).")]
+            [Range(0.01f, 1f)] public float easePortion = 0.25f;
+
+            [Tooltip("Factor mínimo de velocidad en el borde (1 = sin freno, 0.1 = muy suave al final).")]
+            [Range(0.05f, 1f)] public float minEaseFactor = 0.2f;
 
             [NonSerialized] internal Vector3 cachedAxis = Vector3.up;
             [NonSerialized] internal bool axisValid = true;
@@ -171,7 +182,7 @@ namespace Environment
         /// <summary>
         /// Aplica la rotación a todos los items que correspondan a este tipo de paso (Update o FixedUpdate).
         /// </summary>
-       private void RotateItems(bool isFixedStep)
+        private void RotateItems(bool isFixedStep)
         {
             int count = items != null ? items.Count : 0;
             for (int i = 0; i < count; i++)
@@ -181,9 +192,11 @@ namespace Environment
                 if (_pausedItems.Contains(it.target)) continue;
                 if (!it.axisValid) continue;
 
+                // Tipo de paso
                 if (it.useFixedUpdate != isFixedStep) continue;
                 if (Mathf.Abs(it.speed) < 0.0001f) continue;
 
+                // Delta de tiempo
                 float dt;
                 if (it.timeMode == TimeMode.Scaled)
                     dt = isFixedStep ? Time.fixedDeltaTime : Time.deltaTime;
@@ -197,8 +210,18 @@ namespace Environment
 
                     float absSpeed = Mathf.Abs(it.speed);
                     float range = it.maxAngleAbs * 2f;
-                    float t = Mathf.PingPong(it.pingPongTime * absSpeed, range);
-                    float targetAngle = t - it.maxAngleAbs;
+
+                    // PingPong lineal en [0, range]
+                    float raw = Mathf.PingPong(it.pingPongTime * absSpeed, range); // 0..2*max
+                    float norm = (range > 0f) ? (raw / range) : 0f;                 // 0..1
+
+                    // Si queremos easing, aplicamos SmoothStep al parámetro
+                    float easedNorm = it.useEaseNearLimit
+                        ? Mathf.SmoothStep(0f, 1f, norm)
+                        : norm;
+
+                    // Mapeamos de 0..1 a -max..+max
+                    float targetAngle = Mathf.Lerp(-it.maxAngleAbs, it.maxAngleAbs, easedNorm);
 
                     it.accumulatedAngle = targetAngle;
 
@@ -212,6 +235,7 @@ namespace Environment
                     continue;
                 }
 
+                // ================== RESTO DE MODOS ==================
                 float angleStep = it.speed * dt;
 
                 // ================== MODO LIBRE (SIN LÍMITE) ==================
@@ -224,8 +248,7 @@ namespace Environment
                     else
                         it.target.Rotate(it.cachedAxis, angleStep, Space.World);
 
-                    // ANTES: return;
-                    continue; // <-- ESTO ES LO CORRECTO
+                    continue;
                 }
 
                 // ================== MODO LIMITADO UNA VEZ ==================
@@ -235,6 +258,28 @@ namespace Environment
                 if (remainingAbs <= 0f) continue;
 
                 float stepAbs = Mathf.Abs(angleStep);
+
+                // --- EASING CERCA DEL LÍMITE ---
+                if (it.useEaseNearLimit && it.maxAngleAbs > 0f)
+                {
+                    float progress = usedAbs / it.maxAngleAbs; // 0..1 de cuánto ya giró
+                    float easeStart = 1f - it.easePortion;     // p.ej. 0.75 si easePortion=0.25
+
+                    float tEase = Mathf.InverseLerp(easeStart, 1f, progress); // 0 fuera de la zona, 1 en el borde
+                    float easeFactor = 1f;
+
+                    if (tEase > 0f)
+                    {
+                        float smooth = Mathf.SmoothStep(0f, 1f, tEase);
+                        easeFactor = Mathf.Lerp(1f, it.minEaseFactor, smooth);
+                    }
+
+                    stepAbs *= easeFactor;
+                    angleStep = Mathf.Sign(angleStep) * stepAbs;
+                }
+
+                // Nos aseguramos de no pasarnos del límite en este frame
+                stepAbs = Mathf.Abs(angleStep);
                 if (stepAbs > remainingAbs)
                     angleStep = Mathf.Sign(angleStep) * remainingAbs;
 
@@ -248,7 +293,6 @@ namespace Environment
                 it.accumulatedAngle += angleStep;
             }
         }
-
 
         // ===================== Helpers =====================
 
