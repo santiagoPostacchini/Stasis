@@ -4,7 +4,6 @@ using UnityEngine;
 
 namespace Environment
 {
-    
     [AddComponentMenu("Gameplay/MultiGearRotator (rotación de múltiples engranajes)")]
     public class MultiGearRotator : MonoBehaviour
     {
@@ -18,14 +17,14 @@ namespace Environment
         [Serializable]
         public class RotatorItem
         {
-            [Header("Objeto a rotar")]
+            [Header("Objeto a rotar / mover")]
             public Transform target;
 
             [Header("Eje de rotación")]
             public Axis axis = Axis.Y;
             public Vector3 customAxis = Vector3.up;
 
-            [Header("Velocidad"), Range(-720f, 720f)]
+            [Header("Velocidad de rotación"), Range(-720f, 720f)]
             [Tooltip("Velocidad base en grados/segundo. En Ping-Pong se usa el valor absoluto.")]
             public float speed = 90f;
 
@@ -52,7 +51,7 @@ namespace Environment
             [Tooltip("Si está activo, el engranaje oscilará entre -maxAngleAbs y +maxAngleAbs (modo ping-pong).")]
             public bool usePingPong = false;
 
-            [Header("Easing cerca del límite")]
+            [Header("Easing cerca del límite (rotación)")]
             [Tooltip("Suaviza la velocidad al acercarse al ángulo máximo (aplica a modo limitado y ping-pong).")]
             public bool useEaseNearLimit = false;
 
@@ -62,19 +61,42 @@ namespace Environment
             [Tooltip("Factor mínimo de velocidad en el borde (1 = sin freno, 0.1 = muy suave al final).")]
             [Range(0.05f, 1f)] public float minEaseFactor = 0.2f;
 
+            [Header("Movimiento (plataforma entre 2 waypoints)")]
+            [Tooltip("Si está activo, el target se moverá entre waypointA y waypointB en ping-pong.")]
+            public bool usePositionPingPong = false;
+
+            public Transform waypointA;
+            public Transform waypointB;
+
+            [Tooltip("Velocidad de movimiento en unidades/segundo.")]
+            [Min(0f)] public float positionSpeed = 2f;
+
+            [Tooltip("Aplica easing al acercarse a los extremos A/B.")]
+            public bool positionUseEase = true;
+
+            [Tooltip("Fracción del trayecto donde empieza a frenar (0.25 = último 25%).")]
+            [Range(0.01f, 1f)] public float positionEasePortion = 0.25f;
+
+            [Tooltip("Factor mínimo de velocidad en los extremos (0.1 = muy suave, 1 = sin easing).")]
+            [Range(0.05f, 1f)] public float positionMinEaseFactor = 0.2f;
+
             [NonSerialized] internal Vector3 cachedAxis = Vector3.up;
             [NonSerialized] internal bool axisValid = true;
             [NonSerialized] internal bool initialized = false;
 
-            // Para modos limitados:
-            [NonSerialized] internal float accumulatedAngle = 0f; // ángulo relativo actual (para limitado y ping-pong)
+            // Rotación limitada / ping-pong (ángulo relativo)
+            [NonSerialized] internal float accumulatedAngle = 0f;
 
-            // Para ping-pong:
-            [NonSerialized] internal float pingPongTime = 0f;     // tiempo acumulado para la función PingPong
-            [NonSerialized] internal Quaternion baseRotation;     // rotación base desde la cual se aplica el ángulo relativo
+            // Ping-pong de rotación
+            [NonSerialized] internal float pingPongTime = 0f;
+            [NonSerialized] internal Quaternion baseRotation;
+
+            // Movimiento entre waypoints (posición)
+            [NonSerialized] internal float positionT = 0f;       // 0..1
+            [NonSerialized] internal bool positionForward = true; // true: A→B, false: B→A
         }
 
-        [Header("Lista de engranajes a rotar")]
+        [Header("Lista de engranajes / plataformas a controlar")]
         public List<RotatorItem> items = new List<RotatorItem>();
 
         [Header("Opciones globales")]
@@ -82,7 +104,7 @@ namespace Environment
         public bool runInEditMode = false;
 
         [Header("Runtime Control")]
-        [Tooltip("Si está activo, pausa TODAS las rotaciones gestionadas por este componente.")]
+        [Tooltip("Si está activo, pausa TODAS las rotaciones y movimientos gestionados por este componente.")]
         public bool paused = false;
 
         private readonly HashSet<Transform> _pausedItems = new HashSet<Transform>(); // per-item
@@ -106,7 +128,7 @@ namespace Environment
         // ===================== API pública per-item =====================
 
         /// <summary>
-        /// Pausa la rotación de un engranaje específico.
+        /// Pausa la rotación/movimiento de un item específico.
         /// </summary>
         public bool PauseItem(Transform t)
         {
@@ -121,7 +143,7 @@ namespace Environment
         }
 
         /// <summary>
-        /// Reanuda la rotación de un engranaje específico.
+        /// Reanuda la rotación/movimiento de un item específico.
         /// </summary>
         public bool ResumeItem(Transform t)
         {
@@ -130,7 +152,8 @@ namespace Environment
         }
 
         /// <summary>
-        /// Resetea el ángulo relativo de un engranaje (útil para modo limitado/ping-pong).
+        /// Resetea el ángulo relativo de un engranaje (útil para modo limitado/ping-pong de rotación).
+        /// No toca la posición entre waypoints.
         /// </summary>
         public bool ResetItemAngle(Transform t)
         {
@@ -143,7 +166,6 @@ namespace Environment
             it.accumulatedAngle = 0f;
             it.pingPongTime = 0f;
 
-            // Volvemos a la rotación base almacenada
             if (it.space == SpaceMode.Local)
                 it.target.localRotation = it.baseRotation;
             else
@@ -164,8 +186,7 @@ namespace Environment
 #endif
             if (paused) return;
 
-            // false = este frame es de Update normal
-            RotateItems(isFixedStep: false);
+            RotateAndMoveItems(isFixedStep: false);
         }
 
         private void FixedUpdate()
@@ -175,14 +196,13 @@ namespace Environment
 #endif
             if (paused) return;
 
-            // true = este frame es del paso de física
-            RotateItems(isFixedStep: true);
+            RotateAndMoveItems(isFixedStep: true);
         }
 
         /// <summary>
-        /// Aplica la rotación a todos los items que correspondan a este tipo de paso (Update o FixedUpdate).
+        /// Aplica rotación y movimiento a todos los items que correspondan a este tipo de paso.
         /// </summary>
-        private void RotateItems(bool isFixedStep)
+        private void RotateAndMoveItems(bool isFixedStep)
         {
             int count = items != null ? items.Count : 0;
             for (int i = 0; i < count; i++)
@@ -190,108 +210,169 @@ namespace Environment
                 var it = items[i];
                 if (it == null || it.target == null) continue;
                 if (_pausedItems.Contains(it.target)) continue;
-                if (!it.axisValid) continue;
+                if (!it.axisValid && !it.usePositionPingPong) continue; // si no tiene eje válido y tampoco usa movimiento, skip
 
-                // Tipo de paso
                 if (it.useFixedUpdate != isFixedStep) continue;
-                if (Mathf.Abs(it.speed) < 0.0001f) continue;
 
-                // Delta de tiempo
+                // Delta de tiempo según modo
                 float dt;
                 if (it.timeMode == TimeMode.Scaled)
                     dt = isFixedStep ? Time.fixedDeltaTime : Time.deltaTime;
                 else
                     dt = isFixedStep ? Time.fixedUnscaledDeltaTime : Time.unscaledDeltaTime;
 
-                // ================== MODO PING-PONG ==================
-                if (it.useAngleLimit && it.usePingPong && it.maxAngleAbs > 0f)
+                // --- ROTACIÓN ---
+                if (it.axisValid && Mathf.Abs(it.speed) > 0.0001f)
                 {
-                    it.pingPongTime += dt;
-
-                    float absSpeed = Mathf.Abs(it.speed);
-                    float range = it.maxAngleAbs * 2f;
-
-                    // PingPong lineal en [0, range]
-                    float raw = Mathf.PingPong(it.pingPongTime * absSpeed, range); // 0..2*max
-                    float norm = (range > 0f) ? (raw / range) : 0f;                 // 0..1
-
-                    // Si queremos easing, aplicamos SmoothStep al parámetro
-                    float easedNorm = it.useEaseNearLimit
-                        ? Mathf.SmoothStep(0f, 1f, norm)
-                        : norm;
-
-                    // Mapeamos de 0..1 a -max..+max
-                    float targetAngle = Mathf.Lerp(-it.maxAngleAbs, it.maxAngleAbs, easedNorm);
-
-                    it.accumulatedAngle = targetAngle;
-
-                    Quaternion rotOffset = Quaternion.AngleAxis(targetAngle, it.cachedAxis);
-
-                    if (it.space == SpaceMode.Local)
-                        it.target.localRotation = it.baseRotation * rotOffset;
-                    else
-                        it.target.rotation = it.baseRotation * rotOffset;
-
-                    continue;
+                    ApplyRotation(it, dt);
                 }
 
-                // ================== RESTO DE MODOS ==================
-                float angleStep = it.speed * dt;
-
-                // ================== MODO LIBRE (SIN LÍMITE) ==================
-                if (!it.useAngleLimit || it.maxAngleAbs <= 0f)
+                // --- MOVIMIENTO ENTRE WAYPOINTS ---
+                if (it.usePositionPingPong && it.waypointA != null && it.waypointB != null && it.positionSpeed > 0f)
                 {
-                    if (Mathf.Approximately(angleStep, 0f)) continue;
-
-                    if (it.space == SpaceMode.Local)
-                        it.target.Rotate(it.cachedAxis, angleStep, Space.Self);
-                    else
-                        it.target.Rotate(it.cachedAxis, angleStep, Space.World);
-
-                    continue;
+                    ApplyPositionPingPong(it, dt);
                 }
+            }
+        }
 
-                // ================== MODO LIMITADO UNA VEZ ==================
-                float usedAbs = Mathf.Abs(it.accumulatedAngle);
-                float remainingAbs = it.maxAngleAbs - usedAbs;
+        // ===================== Lógica de Rotación =====================
 
-                if (remainingAbs <= 0f) continue;
+        private void ApplyRotation(RotatorItem it, float dt)
+        {
+            // ----- MODO PING-PONG DE ROTACIÓN -----
+            if (it.useAngleLimit && it.usePingPong && it.maxAngleAbs > 0f)
+            {
+                it.pingPongTime += dt;
 
-                float stepAbs = Mathf.Abs(angleStep);
+                float absSpeed = Mathf.Abs(it.speed);
+                float range = it.maxAngleAbs * 2f;
 
-                // --- EASING CERCA DEL LÍMITE ---
-                if (it.useEaseNearLimit && it.maxAngleAbs > 0f)
-                {
-                    float progress = usedAbs / it.maxAngleAbs; // 0..1 de cuánto ya giró
-                    float easeStart = 1f - it.easePortion;     // p.ej. 0.75 si easePortion=0.25
+                float raw = Mathf.PingPong(it.pingPongTime * absSpeed, range);  // 0..2*max
+                float norm = (range > 0f) ? (raw / range) : 0f;                  // 0..1
 
-                    float tEase = Mathf.InverseLerp(easeStart, 1f, progress); // 0 fuera de la zona, 1 en el borde
-                    float easeFactor = 1f;
+                float easedNorm = it.useEaseNearLimit
+                    ? Mathf.SmoothStep(0f, 1f, norm)
+                    : norm;
 
-                    if (tEase > 0f)
-                    {
-                        float smooth = Mathf.SmoothStep(0f, 1f, tEase);
-                        easeFactor = Mathf.Lerp(1f, it.minEaseFactor, smooth);
-                    }
+                float targetAngle = Mathf.Lerp(-it.maxAngleAbs, it.maxAngleAbs, easedNorm);
 
-                    stepAbs *= easeFactor;
-                    angleStep = Mathf.Sign(angleStep) * stepAbs;
-                }
+                it.accumulatedAngle = targetAngle;
 
-                // Nos aseguramos de no pasarnos del límite en este frame
-                stepAbs = Mathf.Abs(angleStep);
-                if (stepAbs > remainingAbs)
-                    angleStep = Mathf.Sign(angleStep) * remainingAbs;
+                Quaternion rotOffset = Quaternion.AngleAxis(targetAngle, it.cachedAxis);
 
-                if (Mathf.Approximately(angleStep, 0f)) continue;
+                if (it.space == SpaceMode.Local)
+                    it.target.localRotation = it.baseRotation * rotOffset;
+                else
+                    it.target.rotation = it.baseRotation * rotOffset;
+
+                return;
+            }
+
+            // ----- RESTO DE MODOS (LIBRE / LIMITADO UNA VEZ) -----
+            float angleStep = it.speed * dt;
+
+            // Modo libre (sin límite)
+            if (!it.useAngleLimit || it.maxAngleAbs <= 0f)
+            {
+                if (Mathf.Approximately(angleStep, 0f)) return;
 
                 if (it.space == SpaceMode.Local)
                     it.target.Rotate(it.cachedAxis, angleStep, Space.Self);
                 else
                     it.target.Rotate(it.cachedAxis, angleStep, Space.World);
 
-                it.accumulatedAngle += angleStep;
+                return;
             }
+
+            // Modo limitado una sola vez
+            float usedAbs = Mathf.Abs(it.accumulatedAngle);
+            float remainingAbs = it.maxAngleAbs - usedAbs;
+            if (remainingAbs <= 0f) return;
+
+            float stepAbs = Mathf.Abs(angleStep);
+
+            // Easing cerca del límite
+            if (it.useEaseNearLimit && it.maxAngleAbs > 0f)
+            {
+                float progress = usedAbs / it.maxAngleAbs;      // 0..1
+                float easeStart = 1f - it.easePortion;          // p.ej. 0.75
+
+                float tEase = Mathf.InverseLerp(easeStart, 1f, progress);
+                float easeFactor = 1f;
+
+                if (tEase > 0f)
+                {
+                    float smooth = Mathf.SmoothStep(0f, 1f, tEase);
+                    easeFactor = Mathf.Lerp(1f, it.minEaseFactor, smooth);
+                }
+
+                stepAbs *= easeFactor;
+                angleStep = Mathf.Sign(angleStep) * stepAbs;
+            }
+
+            // No pasar el límite en este frame
+            stepAbs = Mathf.Abs(angleStep);
+            if (stepAbs > remainingAbs)
+                angleStep = Mathf.Sign(angleStep) * remainingAbs;
+
+            if (Mathf.Approximately(angleStep, 0f)) return;
+
+            if (it.space == SpaceMode.Local)
+                it.target.Rotate(it.cachedAxis, angleStep, Space.Self);
+            else
+                it.target.Rotate(it.cachedAxis, angleStep, Space.World);
+
+            it.accumulatedAngle += angleStep;
+        }
+
+        // ===================== Lógica de Movimiento entre Waypoints =====================
+
+        private void ApplyPositionPingPong(RotatorItem it, float dt)
+        {
+            Vector3 a = it.waypointA.position;
+            Vector3 b = it.waypointB.position;
+            float dist = Vector3.Distance(a, b);
+            if (dist < 1e-4f) return;
+
+            // Paso base en términos de t (0..1)
+            float baseStep = (it.positionSpeed * dt) / dist;
+            if (baseStep <= 0f) return;
+
+            // Easing cerca de los extremos
+            if (it.positionUseEase)
+            {
+                float edgeProgress = it.positionForward ? it.positionT : 1f - it.positionT; // qué tan cerca del extremo hacia el que va
+                float easeStart = 1f - it.positionEasePortion;                              // p.ej. 0.75
+
+                float tEase = Mathf.InverseLerp(easeStart, 1f, edgeProgress);               // 0..1
+                if (tEase > 0f)
+                {
+                    float smooth = Mathf.SmoothStep(0f, 1f, tEase);
+                    float easeFactor = Mathf.Lerp(1f, it.positionMinEaseFactor, smooth);
+                    baseStep *= easeFactor;
+                }
+            }
+
+            // Actualizamos T según la dirección
+            if (it.positionForward)
+                it.positionT += baseStep;
+            else
+                it.positionT -= baseStep;
+
+            // Manejo de límites y cambio de dirección (ping-pong)
+            if (it.positionT >= 1f)
+            {
+                it.positionT = 1f;
+                it.positionForward = false;
+            }
+            else if (it.positionT <= 0f)
+            {
+                it.positionT = 0f;
+                it.positionForward = true;
+            }
+
+            // Aplicamos posición interpolada
+            it.target.position = Vector3.Lerp(a, b, it.positionT);
         }
 
         // ===================== Helpers =====================
@@ -328,18 +409,18 @@ namespace Environment
 
         private void InitializeRandomStarts()
         {
-            int count = items != null ? items.Count : 0;
-            for (int i = 0; i < count; i++)
+            var count = items?.Count ?? 0;
+            for (var i = 0; i < count; i++)
             {
-                var it = items[i];
+                var it = items?[i];
                 if (it == null || it.target == null) continue;
                 if (it.initialized) continue;
 
-                // Reset de ángulos relativos
+                // Rotación: reset de ángulos relativos
                 it.accumulatedAngle = 0f;
                 it.pingPongTime = 0f;
 
-                // Rotación inicial aleatoria si corresponde
+                // Random start de rotación si corresponde
                 if (it.randomizeStartAngle && it.axisValid)
                 {
                     float startAngle = UnityEngine.Random.Range(0f, 360f);
@@ -349,11 +430,12 @@ namespace Environment
                         it.target.Rotate(it.cachedAxis, startAngle, Space.World);
                 }
 
-                // Guardamos la rotación base después de aplicar random start
-                if (it.space == SpaceMode.Local)
-                    it.baseRotation = it.target.localRotation;
-                else
-                    it.baseRotation = it.target.rotation;
+                // Guardamos la rotación base
+                it.baseRotation = it.space == SpaceMode.Local ? it.target.localRotation : it.target.rotation;
+
+                // Movimiento: estado inicial
+                it.positionT = 0f;
+                it.positionForward = true;
 
                 it.initialized = true;
             }
@@ -362,9 +444,10 @@ namespace Environment
         private void RebuildIndex()
         {
             _indexByTarget.Clear();
-            int count = items != null ? items.Count : 0;
-            for (int i = 0; i < count; i++)
+            var count = items?.Count ?? 0;
+            for (var i = 0; i < count; i++)
             {
+                if (items == null) continue;
                 var it = items[i];
                 if (it?.target == null) continue;
 

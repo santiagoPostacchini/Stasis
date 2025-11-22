@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Environment;
 using Player.Stasis;
 using UnityEngine;
@@ -63,13 +64,9 @@ namespace Puzzle_Elements.Gears
 
             if (controlEmission && forceEnableEmissionKeyword && _renders != null)
             {
-                for (int i = 0; i < _renders.Count; i++)
+                foreach (var instancedMat in from r in _renders where r != null select r.material into instancedMat where instancedMat != null && !instancedMat.IsKeywordEnabled(_emissionKeyword) select instancedMat)
                 {
-                    var r = _renders[i];
-                    if (r == null) continue;
-                    var instancedMat = r.material; // instancia por-renderer
-                    if (instancedMat != null && !instancedMat.IsKeywordEnabled(_emissionKeyword))
-                        instancedMat.EnableKeyword(_emissionKeyword);
+                    instancedMat.EnableKeyword(_emissionKeyword);
                 }
             }
 
@@ -77,7 +74,9 @@ namespace Puzzle_Elements.Gears
                 ApplyEmission(emissiveOffColor, emissiveOffIntensity);
         }
 
+        // ReSharper disable Unity.PerformanceAnalysis
         public void StatisEffectActivate() => FreezeObject();
+        // ReSharper disable Unity.PerformanceAnalysis
         public void StatisEffectDeactivate() => UnfreezeObject();
 
         // Permite activar desde un vecino sin encadenar más
