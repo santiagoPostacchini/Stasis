@@ -25,6 +25,7 @@ namespace Environment
             public Vector3 customAxis = Vector3.up;
 
             [Header("Velocidad"), Range(-720f, 720f)]
+            [Tooltip("Velocidad base en grados/segundo. En Ping-Pong se usa el valor absoluto.")]
             public float speed = 90f;
 
             [Header("Espacio & Tiempo")]
@@ -32,6 +33,7 @@ namespace Environment
             public TimeMode timeMode = TimeMode.Scaled;
 
             [Header("Extras")]
+            [Tooltip("Randomiza el ángulo inicial entre 0 y 360 grados.")]
             public bool randomizeStartAngle = false;
 
             [Header("Actualización")]
@@ -39,15 +41,33 @@ namespace Environment
                      "Si está desactivado, se actualiza en Update (ideal para engranajes puramente visuales).")]
             public bool useFixedUpdate = false;
 
+            [Header("Rotación limitada")]
+            [Tooltip("Si está activo, este item usa un ángulo máximo acumulado.")]
+            public bool useAngleLimit = false;
+
+            [Tooltip("Ángulo máximo (valor absoluto) en grados. Ej: 90 para un cuarto de vuelta.")]
+            [Min(0f)] public float maxAngleAbs = 90f;
+
+            [Tooltip("Si está activo, el engranaje oscilará entre -maxAngleAbs y +maxAngleAbs (modo ping-pong).")]
+            public bool usePingPong = false;
+
             [NonSerialized] internal Vector3 cachedAxis = Vector3.up;
             [NonSerialized] internal bool axisValid = true;
             [NonSerialized] internal bool initialized = false;
+
+            // Para modos limitados:
+            [NonSerialized] internal float accumulatedAngle = 0f; // ángulo relativo actual (para limitado y ping-pong)
+
+            // Para ping-pong:
+            [NonSerialized] internal float pingPongTime = 0f;     // tiempo acumulado para la función PingPong
+            [NonSerialized] internal Quaternion baseRotation;     // rotación base desde la cual se aplica el ángulo relativo
         }
 
         [Header("Lista de engranajes a rotar")]
         public List<RotatorItem> items = new List<RotatorItem>();
 
         [Header("Opciones globales")]
+        [Tooltip("Permite que la rotación ocurra también en modo edición (sin Play).")]
         public bool runInEditMode = false;
 
         [Header("Runtime Control")]
@@ -73,6 +93,10 @@ namespace Environment
         }
 
         // ===================== API pública per-item =====================
+
+        /// <summary>
+        /// Pausa la rotación de un engranaje específico.
+        /// </summary>
         public bool PauseItem(Transform t)
         {
             if (t == null) return false;
@@ -85,10 +109,36 @@ namespace Environment
             return true;
         }
 
+        /// <summary>
+        /// Reanuda la rotación de un engranaje específico.
+        /// </summary>
         public bool ResumeItem(Transform t)
         {
             if (t == null) return false;
             return _pausedItems.Remove(t);
+        }
+
+        /// <summary>
+        /// Resetea el ángulo relativo de un engranaje (útil para modo limitado/ping-pong).
+        /// </summary>
+        public bool ResetItemAngle(Transform t)
+        {
+            if (t == null) return false;
+            if (!_indexByTarget.TryGetValue(t, out int index)) return false;
+
+            var it = items[index];
+            if (it == null || it.target == null) return false;
+
+            it.accumulatedAngle = 0f;
+            it.pingPongTime = 0f;
+
+            // Volvemos a la rotación base almacenada
+            if (it.space == SpaceMode.Local)
+                it.target.localRotation = it.baseRotation;
+            else
+                it.target.rotation = it.baseRotation;
+
+            return true;
         }
 
         public void PauseAll() => paused = true;
@@ -121,7 +171,7 @@ namespace Environment
         /// <summary>
         /// Aplica la rotación a todos los items que correspondan a este tipo de paso (Update o FixedUpdate).
         /// </summary>
-        private void RotateItems(bool isFixedStep)
+       private void RotateItems(bool isFixedStep)
         {
             int count = items != null ? items.Count : 0;
             for (int i = 0; i < count; i++)
@@ -129,35 +179,79 @@ namespace Environment
                 var it = items[i];
                 if (it == null || it.target == null) continue;
                 if (_pausedItems.Contains(it.target)) continue;
-
-                // Filtramos por el tipo de actualización elegido para este item
-                if (it.useFixedUpdate != isFixedStep) continue;
-
-                if (Mathf.Abs(it.speed) < 0.0001f) continue;
                 if (!it.axisValid) continue;
 
-                // Elegimos el delta de tiempo según el modo y el tipo de paso
+                if (it.useFixedUpdate != isFixedStep) continue;
+                if (Mathf.Abs(it.speed) < 0.0001f) continue;
+
                 float dt;
                 if (it.timeMode == TimeMode.Scaled)
-                {
                     dt = isFixedStep ? Time.fixedDeltaTime : Time.deltaTime;
-                }
                 else
-                {
                     dt = isFixedStep ? Time.fixedUnscaledDeltaTime : Time.unscaledDeltaTime;
+
+                // ================== MODO PING-PONG ==================
+                if (it.useAngleLimit && it.usePingPong && it.maxAngleAbs > 0f)
+                {
+                    it.pingPongTime += dt;
+
+                    float absSpeed = Mathf.Abs(it.speed);
+                    float range = it.maxAngleAbs * 2f;
+                    float t = Mathf.PingPong(it.pingPongTime * absSpeed, range);
+                    float targetAngle = t - it.maxAngleAbs;
+
+                    it.accumulatedAngle = targetAngle;
+
+                    Quaternion rotOffset = Quaternion.AngleAxis(targetAngle, it.cachedAxis);
+
+                    if (it.space == SpaceMode.Local)
+                        it.target.localRotation = it.baseRotation * rotOffset;
+                    else
+                        it.target.rotation = it.baseRotation * rotOffset;
+
+                    continue;
                 }
 
-                float angle = it.speed * dt;
-                if (Mathf.Approximately(angle, 0f)) continue;
+                float angleStep = it.speed * dt;
+
+                // ================== MODO LIBRE (SIN LÍMITE) ==================
+                if (!it.useAngleLimit || it.maxAngleAbs <= 0f)
+                {
+                    if (Mathf.Approximately(angleStep, 0f)) continue;
+
+                    if (it.space == SpaceMode.Local)
+                        it.target.Rotate(it.cachedAxis, angleStep, Space.Self);
+                    else
+                        it.target.Rotate(it.cachedAxis, angleStep, Space.World);
+
+                    // ANTES: return;
+                    continue; // <-- ESTO ES LO CORRECTO
+                }
+
+                // ================== MODO LIMITADO UNA VEZ ==================
+                float usedAbs = Mathf.Abs(it.accumulatedAngle);
+                float remainingAbs = it.maxAngleAbs - usedAbs;
+
+                if (remainingAbs <= 0f) continue;
+
+                float stepAbs = Mathf.Abs(angleStep);
+                if (stepAbs > remainingAbs)
+                    angleStep = Mathf.Sign(angleStep) * remainingAbs;
+
+                if (Mathf.Approximately(angleStep, 0f)) continue;
 
                 if (it.space == SpaceMode.Local)
-                    it.target.Rotate(it.cachedAxis, angle, Space.Self);
+                    it.target.Rotate(it.cachedAxis, angleStep, Space.Self);
                 else
-                    it.target.Rotate(it.cachedAxis, angle, Space.World);
+                    it.target.Rotate(it.cachedAxis, angleStep, Space.World);
+
+                it.accumulatedAngle += angleStep;
             }
         }
 
+
         // ===================== Helpers =====================
+
         private void RebuildAxisCache()
         {
             int count = items != null ? items.Count : 0;
@@ -197,6 +291,11 @@ namespace Environment
                 if (it == null || it.target == null) continue;
                 if (it.initialized) continue;
 
+                // Reset de ángulos relativos
+                it.accumulatedAngle = 0f;
+                it.pingPongTime = 0f;
+
+                // Rotación inicial aleatoria si corresponde
                 if (it.randomizeStartAngle && it.axisValid)
                 {
                     float startAngle = UnityEngine.Random.Range(0f, 360f);
@@ -205,6 +304,12 @@ namespace Environment
                     else
                         it.target.Rotate(it.cachedAxis, startAngle, Space.World);
                 }
+
+                // Guardamos la rotación base después de aplicar random start
+                if (it.space == SpaceMode.Local)
+                    it.baseRotation = it.target.localRotation;
+                else
+                    it.baseRotation = it.target.rotation;
 
                 it.initialized = true;
             }
