@@ -1,6 +1,8 @@
 using System;
 using System.Collections;
+using Managers.Game;
 using Player.Scripts.Interactor;
+using Player.Scripts.MovementFSM.MVC;
 using Puzzle_Elements.Hedron.Scripts;
 using TMPro;
 using UnityEngine;
@@ -96,7 +98,6 @@ namespace Puzzle_Elements.Hedro_conteiner.Scripts
         private bool canOpenPanel = true;
 
         public Action OnHedroContainerActivate;
-   
 
         // ====== STATE MACHINE ======
         private enum ContainerState
@@ -241,7 +242,7 @@ namespace Puzzle_Elements.Hedro_conteiner.Scripts
             // Movimiento hacia el centro
             _current.position = Vector3.LerpUnclamped(_attractStartPos, _attractEndPos, p);
 
-            // Rotación “show”: se interpola hacia la rot final y además gira sobre Y
+            // Rotación “show”
             Quaternion baseRot = Quaternion.SlerpUnclamped(_attractStartRot, _attractEndRot, r);
             _current.rotation = baseRot;
             _current.Rotate(Vector3.up, 180f * Time.deltaTime, Space.World);
@@ -278,10 +279,24 @@ namespace Puzzle_Elements.Hedro_conteiner.Scripts
 
             _openingTimer += Time.deltaTime;
             ShowPhysicsBox();
+
             // Cuando termina la anim de apertura (aprox), pasamos a ejecting
             if (_openingTimer >= openToEjectDelay)
             {
                 BeginEjectFromCenter();
+            }
+        }
+
+        public void TeleportPhysicsBox()
+        {
+            if (_box != null)
+            {
+                if (Vector3.Distance(transform.position, _box.transform.position) > 5)
+                {
+                    _box.transform.position = transform.position + new Vector3(0, 4, 6);
+                    Rigidbody rb = _box.GetComponent<Rigidbody>();
+                    rb.useGravity = false;
+                }
             }
         }
 
@@ -295,7 +310,7 @@ namespace Puzzle_Elements.Hedro_conteiner.Scripts
 
             Transform t = _box.transform;
             EnableAllColliders(t, false);
-            //EnableAllColliders(t, true);
+
             // Si el player lo agarró y lo movió de jerarquía, salimos limpio
             if (!t.gameObject.activeInHierarchy)
             {
@@ -308,7 +323,7 @@ namespace Puzzle_Elements.Hedro_conteiner.Scripts
 
             // Rotación “show” en sentido contrario
             t.Rotate(Vector3.up, -180f * Time.deltaTime, Space.World);
-           
+
             // Escala de targetScale -> Vector3.one
             if (scaleUpSeconds > 0.01f)
             {
@@ -353,7 +368,7 @@ namespace Puzzle_Elements.Hedro_conteiner.Scripts
                 _rb.isKinematic = true;
             }
 
-            // Desactivar collider principal del hedro
+            // Desactivar collider principal del hedro (si está en el root)
             var mainCol = _current.GetComponent<BoxCollider>();
             if (mainCol != null) mainCol.enabled = false;
 
@@ -375,7 +390,7 @@ namespace Puzzle_Elements.Hedro_conteiner.Scripts
                 if (_box != null)
                 {
                     _box.transform.SetParent(transform, true);
-                  //  _box.gameObject.SetActive(false); // caja “guardada”
+                    // _box.gameObject.SetActive(false); // caja “guardada”
                 }
 
                 if (_anim != null && !string.IsNullOrEmpty(closeTrigger))
@@ -383,6 +398,7 @@ namespace Puzzle_Elements.Hedro_conteiner.Scripts
 
                 if (_button != null)
                     _button.SetText(_button.E, buttonExtractionText);
+
                 StartCoroutine(waitDontShowBox());
                 StartGlowOnce();
                 ActivatePanel();
@@ -391,37 +407,51 @@ namespace Puzzle_Elements.Hedro_conteiner.Scripts
             _attracting = false;
             _state = ContainerState.Docked;
         }
+
         IEnumerator waitDontShowBox()
         {
             yield return new WaitForSeconds(1.5f);
             DontShowPhysicsBox();
         }
+
         // ================== TRIGGERS ==================
         public void DontShowPhysicsBox()
         {
-            if(_box != null)
+            if (_box != null)
             {
                 _box.gameObject.SetActive(false);
             }
         }
+
         public void ShowPhysicsBox()
         {
-            if(_box != null)
+            if (_box != null)
             {
                 _box.gameObject.SetActive(true);
             }
         }
-        void OnTriggerEnter(Collider other)
+
+        void OnTriggerStay(Collider other)
         {
             if (_current != null) return;
             if (!enabled) return;
             if (!canAtracction) return;
             if (pos == null) return;
-            if (((1 << other.gameObject.layer) & acceptMask) == 0) return;
-            if (!HasPhysicsBox(other.gameObject)) return; // setea _box si existe
 
-            _current = other.transform;
-            _rb = other.attachedRigidbody;
+            // Filtro por máscara de capas
+            if (((1 << other.gameObject.layer) & acceptMask) == 0) return;
+
+            // Buscamos un PhysicsBox en el collider o en sus padres
+            if (!HasPhysicsBox(other.gameObject)) return;
+
+            // Si el player tiene algo agarrado, no tocamos nada
+            var interactor = GameManager.Instance.player.GetComponentInChildren<PlayerInteractor>();
+            if (interactor != null && interactor._objectGrabbable != null)
+                return;
+
+            // Atraemos SIEMPRE el root del PhysicsBox
+            _current = _box.transform;
+            _rb = _box.GetComponent<Rigidbody>();
 
             if (_rb != null)
             {
@@ -436,7 +466,9 @@ namespace Puzzle_Elements.Hedro_conteiner.Scripts
 
         void OnTriggerExit(Collider other)
         {
-            if (other.transform == _current && _state == ContainerState.Attracting)
+            // Si estamos atrayendo este mismo PhysicsBox y sale del trigger, reseteamos
+            var box = other.GetComponentInParent<PhysicsBox>();
+            if (box != null && box == _box && _state == ContainerState.Attracting)
             {
                 ResetToIdle();
             }
@@ -444,6 +476,8 @@ namespace Puzzle_Elements.Hedro_conteiner.Scripts
 
         void StartAttraction()
         {
+            Debug.Log("Atrayendo");
+
             if (_current == null || pos == null)
             {
                 ResetToIdle();
@@ -463,6 +497,13 @@ namespace Puzzle_Elements.Hedro_conteiner.Scripts
                 : Mathf.Max(0.05f, Vector3.Distance(_attractStartPos, _attractEndPos) / Mathf.Max(0.01f, attractionSpeed));
 
             _attractTimer = 0f;
+
+            // Deshabilitar MeshCollider del PhysicsBox si existe (en root)
+            MeshCollider mc = _box != null ? _box.GetComponent<MeshCollider>() : null;
+            if (mc != null)
+            {
+                mc.enabled = false;
+            }
 
             _attracting = true;
             _state = ContainerState.Attracting;
@@ -562,7 +603,7 @@ namespace Puzzle_Elements.Hedro_conteiner.Scripts
                 _box.transform.rotation = anchor.rotation;
             }
 
-            // Destino: hacia adelante 2 unidades
+            // Destino: hacia adelante 1 unidad
             _ejectTargetPos = _box.transform.position + _box.transform.forward * 1f;
 
             // Escala inicial: igual targetScale
@@ -580,11 +621,17 @@ namespace Puzzle_Elements.Hedro_conteiner.Scripts
                 return;
             }
 
+            MeshCollider mc = _box != null ? _box.GetComponent<MeshCollider>() : null;
+            if (mc != null)
+            {
+                mc.enabled = true;
+            }
+
             if (reenableColliderOnEject)
             {
                 EnableAllColliders(t, true);
             }
-           
+
             if (_rb == null)
                 _rb = t.GetComponent<Rigidbody>();
 
@@ -592,7 +639,6 @@ namespace Puzzle_Elements.Hedro_conteiner.Scripts
             {
                 _rb.isKinematic = false;
                 _rb.useGravity = true;
-
                 _rb.WakeUp();
 
                 if (ejectTorque > 0f)
@@ -602,12 +648,14 @@ namespace Puzzle_Elements.Hedro_conteiner.Scripts
                 }
             }
 
+            TeleportPhysicsBox();
             onHedronRemoved?.Invoke();
             OnHedroContainerActivate?.Invoke();
 
             _isEjecting = false;
             ResetToIdle();
         }
+
         IEnumerator waitShowBox()
         {
             yield return new WaitForSeconds(1.5f);
@@ -635,8 +683,14 @@ namespace Puzzle_Elements.Hedro_conteiner.Scripts
 
         bool HasPhysicsBox(GameObject go)
         {
-            PhysicsBox box = go.GetComponent<PhysicsBox>();
-            if (box != null) { _box = box; return true; }
+            // Soporta colliders en hijos: buscamos en padres
+            PhysicsBox box = go.GetComponentInParent<PhysicsBox>();
+            if (box != null)
+            {
+                _box = box;
+                return true;
+            }
+
             _box = null;
             return false;
         }

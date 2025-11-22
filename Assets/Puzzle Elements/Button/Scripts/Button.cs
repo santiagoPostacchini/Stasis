@@ -23,7 +23,7 @@ namespace Puzzle_Elements.Button.Scripts
         [SerializeField] private TextMeshProUGUI textInteract;
         public Material yellow, green;
 
-        private bool canCallEvent = true;
+        [SerializeField]private bool canCallEvent = true;
 
         public TextMeshProUGUI E;
         public TextMeshProUGUI text;
@@ -35,7 +35,19 @@ namespace Puzzle_Elements.Button.Scripts
             if (E == null || text == null) return;
             texto.text = message;
         }
-
+        public void CantCallEvent()
+        {
+            StartCoroutine(waitCantCallEvent());
+        }
+        IEnumerator waitCantCallEvent()
+        {
+            yield return new WaitForSeconds(1f);
+            canCallEvent = false;
+        }
+        public void CanCallEvent()
+        {
+            canCallEvent = true;
+        }
         public void Interact()
         {
             Debug.Log("TrayApplyInteract");
@@ -51,7 +63,7 @@ namespace Puzzle_Elements.Button.Scripts
             EventManager.TriggerEvent("Click", gameObject);
             Debug.Log("Evento llamado");
             OnPressedAudio?.Invoke();
-            StartCoroutine(ReturnToIdle());
+            //StartCoroutine(ReturnToIdle());
         }
         IEnumerator ActivateEvent()
         {
