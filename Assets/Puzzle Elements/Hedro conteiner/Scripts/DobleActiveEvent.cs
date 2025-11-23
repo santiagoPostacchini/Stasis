@@ -10,37 +10,24 @@ namespace Puzzle_Elements.Hedro_conteiner.Scripts
         [SerializeField] private bool _rightActivate;
 
         [Header("Feedback visual")]
-        [Tooltip("Renderer de la esfera que representa el activador izquierdo.")]
+        [Tooltip("Renderer del activador izquierdo.")]
         [SerializeField] private Renderer leftIndicator;
 
-        [Tooltip("Renderer de la esfera que representa el activador derecho.")]
+        [Tooltip("Renderer del activador derecho.")]
         [SerializeField] private Renderer rightIndicator;
 
-        [Tooltip("Color cuando el activador est� apagado.")]
-        [SerializeField] private Color offColor = Color.red;
+        [Header("Materiales del activador izquierdo")]
+        [SerializeField] private Material leftOffMaterial;
+        [SerializeField] private Material leftOnMaterial;
 
-        [Tooltip("Color cuando el activador est� encendido.")]
-        [SerializeField] private Color onColor = Color.green;
-
-        [Tooltip("Nombre de la propiedad de color en el shader. En URP suele ser _BaseColor, en shaders est�ndar _Color.")]
-        [SerializeField] private string colorPropertyName = "_BaseColor";
+        [Header("Materiales del activador derecho")]
+        [SerializeField] private Material rightOffMaterial;
+        [SerializeField] private Material rightOnMaterial;
 
         public UnityEvent events;
-
         public UnityEvent eventsTrainOn;
 
-        // MaterialPropertyBlocks para NO modificar el material original
-        private MaterialPropertyBlock _leftBlock;
-        private MaterialPropertyBlock _rightBlock;
-
-
         private bool _canTrainMove = false;
-
-        void Awake()
-        {
-            _leftBlock = new MaterialPropertyBlock();
-            _rightBlock = new MaterialPropertyBlock();
-        }
 
         void Start()
         {
@@ -52,18 +39,10 @@ namespace Puzzle_Elements.Hedro_conteiner.Scripts
         public void ChangeLeftActivator()
         {
             _leftActivate = !_leftActivate;
-            //if (!_leftActivate)
-            //{
-            //    LeftActivatorFalse();
-            //}
-
             UpdateIndicators();
             TryEvent();
         }
-        public void LeftActivatorFalse()
-        {
 
-        }
         public void ChangeRightActivator()
         {
             _rightActivate = !_rightActivate;
@@ -76,6 +55,7 @@ namespace Puzzle_Elements.Hedro_conteiner.Scripts
             _canTrainMove = true;
             TryEventOn();
         }
+
         public void CantTrainMove()
         {
             _canTrainMove = false;
@@ -86,6 +66,7 @@ namespace Puzzle_Elements.Hedro_conteiner.Scripts
             if (!_canTrainMove) return;
             eventsTrainOn?.Invoke();
         }
+
         public void TryEvent()
         {
             if (!_rightActivate || !_leftActivate) return;
@@ -94,23 +75,17 @@ namespace Puzzle_Elements.Hedro_conteiner.Scripts
 
         private void UpdateIndicators()
         {
-
             // Indicador izquierdo
             if (leftIndicator != null)
             {
-                leftIndicator.GetPropertyBlock(_leftBlock);
-                _leftBlock.SetColor(colorPropertyName, _leftActivate ? onColor : offColor);
-                leftIndicator.SetPropertyBlock(_leftBlock);
+                leftIndicator.material = _leftActivate ? leftOnMaterial : leftOffMaterial;
             }
 
             // Indicador derecho
             if (rightIndicator != null)
             {
-                rightIndicator.GetPropertyBlock(_rightBlock);
-                _rightBlock.SetColor(colorPropertyName, _rightActivate ? onColor : offColor);
-                rightIndicator.SetPropertyBlock(_rightBlock);
+                rightIndicator.material = _rightActivate ? rightOnMaterial : rightOffMaterial;
             }
         }
-
     }
 }
