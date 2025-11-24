@@ -283,6 +283,7 @@ namespace Puzzle_Elements.Hedro_conteiner.Scripts
             // Cuando termina la anim de apertura (aprox), pasamos a ejecting
             if (_openingTimer >= openToEjectDelay)
             {
+                _box.transform.position = pos.transform.position;
                 BeginEjectFromCenter();
             }
         }
