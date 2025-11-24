@@ -29,19 +29,13 @@ namespace Player.Scripts.MovementFSM.MVC
         private float _animX, _animZ, _xAxis, _zAxis;
 
         [Header("Air Anim")]
-        [Tooltip("Tiempo en el aire antes de usar la anim de caída al vacío.")]
         [SerializeField] private float deepFallDelay = 0.45f;
-        [Tooltip("Tiempo mínimo en aire para permitir anim 'Air' si no hay salto claro.")]
         [SerializeField] private float airAnimMinTime = 0.3f;
-        [Tooltip("Velocidad vertical mínima (|vy|) para permitir 'Air' inmediata.")]
         [SerializeField] private float airAnimMinFallSpeed = 1.0f;
-        [Tooltip("Tiempo mínimo de aire para permitir 'Land' visible.")]
         [SerializeField] private float landAnimMinAirTime = 0.12f;
-        [Tooltip("Caída mínima (metros) para permitir 'Land' visible.")]
         [SerializeField] private float landAnimMinFallDistance = 0.15f;
-        [Tooltip("Velocidad vertical mínima al impactar para permitir 'Land' visible.")]
         [SerializeField] private float landAnimMinImpactSpeed = 1.0f;
-        
+
         [Header("Climb IK")]
         [SerializeField] private ProceduralClimbIK climbIKHandler;
         [SerializeField] private TwoBoneIKConstraint leftHandIkRig;
@@ -61,12 +55,11 @@ namespace Player.Scripts.MovementFSM.MVC
         private float _airElapsed;
 
         // ============================================================
-        //                    NUEVO SISTEMA DE INSPECT
+        //                    SISTEMA DE INSPECT + SHOOT
         // ============================================================
-
-        [Header("Inspect System")]
-        private float inspectTimer = 0f;  // <- NO BOOL, solo timer
-        private const int ArmsLayer = 1;  // <- layer de brazos
+        private float inspectTimer = 0f;
+        private float shootTimer = 0f;
+        private const int ArmsLayer = 1;
 
         private void Awake()
         {
@@ -77,21 +70,20 @@ namespace Player.Scripts.MovementFSM.MVC
 
         private void Update()
         {
-            // -------------------------------------------------------------
-            // BLOQUEO DE TODA LA LAYER DE BRAZOS MIENTRAS INSPECT ESTÁ ACTIVO
-            // -------------------------------------------------------------
+            // FREEZE ARMS LAYER DURANTE INSPECT
             if (inspectTimer > 0f)
             {
                 inspectTimer -= Time.deltaTime;
-
-                // Mantener congelada la layer de brazos → evita sobrescritura
                 animator.Update(0f);
+                if (inspectTimer <= 0f) inspectTimer = 0f;
+            }
 
-                if (inspectTimer <= 0f)
-                    inspectTimer = 0f;
-
-                // IMPORTANTE: dejamos que siga actualizando todo excepto brazos
-                // NO hacemos return aquí para no romper piernas, cámara, etc.
+            // FREEZE ARMS LAYER DURANTE SHOOT
+            if (shootTimer > 0f)
+            {
+                shootTimer -= Time.deltaTime;
+                animator.Update(0f);
+                if (shootTimer <= 0f) shootTimer = 0f;
             }
 
             float targetMax = _isRun ? 1f : 0.5f;
@@ -135,27 +127,56 @@ namespace Player.Scripts.MovementFSM.MVC
         }
 
         // ============================================================
-        //              MÉTODO INSPECT MANEJADO POR TIMER
+        //                           INSPECT
         // ============================================================
 
         public void InspectHands()
         {
-            // si todavía no terminó la inspección: no permitimos otra
-            if (inspectTimer > 0f) return;
+            if (inspectTimer > 0f || shootTimer > 0f) return;
 
-            // reproducimos la anim en arms layer solamente
             animator.CrossFade("Arms_Inspect", 0.1f, ArmsLayer);
 
-            // obtener la anim state REAL para saber la duración
             float clipLength = 5f;
 
-            // activar timer → mientras dure, bloquea toda la capa
+            foreach (var clip in animator.runtimeAnimatorController.animationClips)
+            {
+                if (clip.name == "Arms_Inspect")
+                {
+                    clipLength = clip.length;
+                    break;
+                }
+            }
+
             inspectTimer = clipLength;
         }
 
-        // ---------------------------------------------------------
-        // EL RESTO DEL SCRIPT QUEDÓ IGUAAAAAAAAL
-        // ---------------------------------------------------------
+        // ============================================================
+        //                           SHOOT
+        // ============================================================
+
+        public void OnShootEvent()
+        {
+            if (shootTimer > 0f || inspectTimer > 0f) return;
+
+            animator.CrossFade("Arms_Shoot", 0.05f, ArmsLayer);
+
+            float clipLength = 0.3f;
+
+            foreach (var clip in animator.runtimeAnimatorController.animationClips)
+            {
+                if (clip.name == "Arms_Shoot")
+                {
+                    clipLength = clip.length;
+                    break;
+                }
+            }
+
+            shootTimer = clipLength;
+        }
+
+        // ============================================================
+        // EL RESTO DEL SCRIPT SIGUE IGUAL
+        // ============================================================
 
         public void OnMove(float x, float z)
         { _xAxis = x; _zAxis = z; }
@@ -199,9 +220,7 @@ namespace Player.Scripts.MovementFSM.MVC
                     animator.CrossFade("Player_Leg_Movement", 0.05f);
                     if (!_canInteract)
                     {
-                        // si inspect está activo, NO tocamos brazos
-                        if (inspectTimer > 0f) return;
-
+                        if (inspectTimer > 0f || shootTimer > 0f) return;
                         animator.CrossFade("Player_Arm_Movement", 0.05f);
                     }
                 }
@@ -225,13 +244,11 @@ namespace Player.Scripts.MovementFSM.MVC
 
             animator.CrossFade("Player_Leg_Jump", 0f);
 
-            // si inspect activo → no tocar brazos
-            if (inspectTimer > 0f) return;
+            if (inspectTimer > 0f || shootTimer > 0f) return;
 
             animator.CrossFade("Player_Arm_Jump", 0f);
         }
 
-        public void OnShootEvent() { }
         public void OnCrouchStartEvent() { }
         public void OnCrouchEndEvent() { }
 
@@ -239,14 +256,14 @@ namespace Player.Scripts.MovementFSM.MVC
         {
             animator.CrossFade("Player_Leg_Vault", 0.1f);
 
-            if (inspectTimer <= 0f)
+            if (inspectTimer <= 0f && shootTimer <= 0f)
                 animator.CrossFade("Player_Arm_Vault", 0.1f);
 
             animator.applyRootMotion = false;
             if (playerCamEffects) playerCamEffects.VaultStart();
         }
 
-        public void OnVaultEndEvent()      
+        public void OnVaultEndEvent()
         { if (playerCamEffects) playerCamEffects.VaultEnd(); }
         
         public void OnClimbStartEvent(Vector3 forward)
@@ -272,7 +289,7 @@ namespace Player.Scripts.MovementFSM.MVC
             
             animator.CrossFade("Player_Leg_Climb", 0.05f);
 
-            if (inspectTimer <= 0f)
+            if (inspectTimer <= 0f && shootTimer <= 0f)
                 animator.CrossFade("Player_Arm_Climb", 0.05f);
             
             if (playerCamEffects && climbIKHandler)
@@ -317,7 +334,7 @@ namespace Player.Scripts.MovementFSM.MVC
         {
             animator.CrossFade(dir < 0 ? "Player_Leg_Wallrun_Left" : "Player_Leg_Wallrun_Right", 0.1f);
 
-            if (inspectTimer <= 0f)
+            if (inspectTimer <= 0f && shootTimer <= 0f)
                 animator.CrossFade(dir < 0 ? "Player_Arm_Wallrun_Left" : "Player_Arm_Wallrun_Right", 0.1f);
 
             if (playerCamEffects) playerCamEffects.WallrunStart(dir);
@@ -345,7 +362,7 @@ namespace Player.Scripts.MovementFSM.MVC
             _canInteract = true;
             animator.SetBool(CanInteract, _canInteract);
 
-            if (inspectTimer <= 0f)
+            if (inspectTimer <= 0f && shootTimer <= 0f)
                 animator.CrossFade("Player_Arm_CanPickup", 0.1f);
         }
 
@@ -360,9 +377,10 @@ namespace Player.Scripts.MovementFSM.MVC
             _canInteract = false;
             animator.SetBool(CanInteract, _canInteract);
 
-            if (inspectTimer <= 0f)
+            if (inspectTimer <= 0f && shootTimer <= 0f)
                 animator.CrossFade("Player_Arm_Interact", 0.1f);
         }
     }
 }
+
 
