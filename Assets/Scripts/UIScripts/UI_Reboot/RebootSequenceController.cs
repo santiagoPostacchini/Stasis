@@ -19,17 +19,16 @@ namespace UIScripts.UI_Reboot
         [SerializeField] private CanvasGroup canvasGroup;
 
         [Header("Control")]
-        [SerializeField] private KeyCode skipKey = KeyCode.Space;   // mantener para saltar tipeo/delays
+        [SerializeField] private KeyCode skipKey = KeyCode.Space;
         [SerializeField] private bool startOnAwake = true;
 
         [Header("Audio (autobind si queda vacío)")]
-        [SerializeField] private AudioSource audioSource; // opcional
+        [SerializeField] private AudioSource audioSource;
 
         [Header("Events")]
         public UnityEvent onSequenceStart;
         public UnityEvent onSequenceEnd;
 
-        // --- Fade final de TEXTO (siempre se ejecuta al terminar la secuencia) ---
         [Header("Fade final de texto")]
         [SerializeField] private bool fadeTextOnEnd = true;
         [SerializeField] private float endFadeDelay = 4f;
@@ -39,7 +38,6 @@ namespace UIScripts.UI_Reboot
 
         private bool _skipping;
 
-        // ---------- LIFECYCLE ----------
         private void Reset()
         {
             TryAutoBind(true);
@@ -61,7 +59,6 @@ namespace UIScripts.UI_Reboot
             if (consoleText != null)
             {
                 consoleText.text = string.Empty;
-                // Asegura visibilidad y estado coherente del renderer
                 consoleText.alpha = 1f;
                 consoleText.canvasRenderer.SetAlpha(1f);
             }
@@ -82,6 +79,16 @@ namespace UIScripts.UI_Reboot
             StopAllCoroutines();
             StartCoroutine(RunSequence());
         }
+
+        // --- AGREGADO ---
+        /// <summary>
+        /// Permite activar la secuencia desde otros scripts, botones o eventos.
+        /// </summary>
+        public void Activate()     // <--- AGREGADO
+        {
+            StartSequence();
+        }
+        // -----------------
 
         // ---------- CORE ----------
         private IEnumerator RunSequence()
@@ -106,7 +113,6 @@ namespace UIScripts.UI_Reboot
 
             Play(asset.finishSfx);
 
-            // 1) SIEMPRE: Fade del TEXTO tras esperar endFadeDelay (por defecto 4s)
             if (fadeTextOnEnd && consoleText != null)
             {
                 yield return StartCoroutine(DelayOrSkip(endFadeDelay));
@@ -116,7 +122,6 @@ namespace UIScripts.UI_Reboot
                 if (deactivateTextGOOnEnd) consoleText.gameObject.SetActive(false);
             }
 
-            // 2) OPCIONAL: luego, si el asset lo pide, fade del Canvas completo
             if (asset.autoFadeOut && canvasGroup != null)
             {
                 yield return StartCoroutine(DelayOrSkip(asset.fadeDelay));
@@ -124,7 +129,7 @@ namespace UIScripts.UI_Reboot
             }
 
             onSequenceEnd?.Invoke();
-            // Al final de RunSequence()
+
             if (canvasGroup != null)
                 canvasGroup.gameObject.SetActive(false);
             else
@@ -184,13 +189,11 @@ namespace UIScripts.UI_Reboot
             cg.alpha = to;
         }
 
-        // --- Fade robusto de TMP usando CanvasRenderer (ignora timeScale y respeta 'skip') ---
         private IEnumerator FadeTMPText(TextMeshProUGUI tmp, float from, float to, float duration)
         {
             if (tmp == null) yield break;
 
-            // Normaliza estado inicial
-            tmp.alpha = 1f; // mantiene colores/material
+            tmp.alpha = 1f;
             tmp.canvasRenderer.SetAlpha(from);
 
             if (duration <= 0f)
@@ -217,14 +220,13 @@ namespace UIScripts.UI_Reboot
             if (audioSource != null && clip != null) audioSource.PlayOneShot(clip);
         }
 
-        // ---------- HELPERS ----------
         private void TryAutoBind(bool inReset)
         {
             if (consoleText == null)
             {
                 consoleText = GetComponentInChildren<TextMeshProUGUI>(true);
                 if (!inReset && consoleText == null)
-                    Debug.LogWarning("[RebootSequenceController] No se encontró TextMeshProUGUI hijo. Asignalo en el Inspector.");
+                    Debug.LogWarning("[RebootSequenceController] No se encontró TextMeshProUGUI hijo.");
             }
 
             if (canvasGroup == null)
@@ -234,7 +236,7 @@ namespace UIScripts.UI_Reboot
                     canvasGroup = GetComponentInChildren<CanvasGroup>(true);
 
                 if (!inReset && canvasGroup == null)
-                    Debug.LogWarning("[RebootSequenceController] No se encontró CanvasGroup. Asignalo en el Inspector (Panel_Backdrop).");
+                    Debug.LogWarning("[RebootSequenceController] No se encontró CanvasGroup.");
             }
 
             if (audioSource == null)
@@ -242,7 +244,6 @@ namespace UIScripts.UI_Reboot
                 audioSource = GetComponent<AudioSource>();
                 if (audioSource == null)
                     audioSource = GetComponentInChildren<AudioSource>(true);
-                // (sin warning: es opcional)
             }
         }
 
@@ -250,15 +251,16 @@ namespace UIScripts.UI_Reboot
         {
             if (asset == null)
             {
-                Debug.LogError("[RebootSequenceController] 'asset' no asignado y no se pudo cargar por Resources. Asigná un BootSequenceAsset.");
+                Debug.LogError("[RebootSequenceController] 'asset' no asignado.");
                 return false;
             }
             if (consoleText == null)
             {
-                Debug.LogError("[RebootSequenceController] 'consoleText' no asignado. Asigná un TextMeshProUGUI en el Canvas.");
+                Debug.LogError("[RebootSequenceController] 'consoleText' no asignado.");
                 return false;
             }
             return true;
         }
     }
 }
+
