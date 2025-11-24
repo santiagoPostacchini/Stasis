@@ -39,9 +39,14 @@ namespace Audio.Scripts
         private void OnEnable()
         {
             AudioEventHub.Instance?.RegisterAgent(this);
+
 #if UNITY_EDITOR
-            if (!Application.isPlaying) // mantener el inspector sincronizado en edit mode
+            // Mantener el inspector sincronizado en Edit Mode,
+            // pero SIN destruir las referencias a clips que ya configuraste.
+            if (!Application.isPlaying)
+            {
                 SyncEventConfigListWithReflectedMembers(EditorDetectedKeys());
+            }
 #endif
         }
 
@@ -57,25 +62,28 @@ namespace Audio.Scripts
         }
 
         // ---------- Sync de inspector (no suscribe) ----------
+        /// <summary>
+        /// Sincroniza la lista 'events' con lo detectado por reflexión,
+        /// intentando siempre REUTILIZAR los EventConfig existentes para no perder clips ni ajustes.
+        /// </summary>
         public void SyncEventConfigListWithReflectedMembers(IEnumerable<string> detectedKeys)
         {
-            var detectedKeyList = detectedKeys.Distinct().ToList();
+            // Keys únicas detectadas
+            var detectedKeyList = detectedKeys
+                .Where(k => !string.IsNullOrEmpty(k))
+                .Distinct()
+                .ToList();
 
-            var existingConfigs = new Dictionary<string, EventConfig>();
-            foreach (var evt in events)
-            {
-                if (!string.IsNullOrEmpty(evt.eventKey) && !existingConfigs.ContainsKey(evt.eventKey))
-                {
-                    existingConfigs.Add(evt.eventKey, evt);
-                }
-            }
-            
-            var newEventList = new List<EventConfig>();
+            // Hacemos una copia de los EventConfig actuales para ir "consumiéndolos"
+            var remainingExisting = new List<EventConfig>(events);
+            var newEventList = new List<EventConfig>(detectedKeyList.Count);
+
             foreach (var key in detectedKeyList)
             {
-                // Generar los nombres amigables desde la nueva key (Ej: "PlayerSounds.OnJump")
+                // Parseamos la key en partes: "Namespace.Type::Member"
                 var parts = key.Split(new[] { "::" }, StringSplitOptions.None);
                 var member = parts.Length > 1 ? parts[1] : key;
+
                 string display = member;
                 if (parts.Length > 1)
                 {
@@ -83,21 +91,54 @@ namespace Audio.Scripts
                     display = $"{typeName}.{member}";
                 }
 
-                if (existingConfigs.TryGetValue(key, out var existingConfig))
+                EventConfig cfg = null;
+
+                // 1) Intentar matchear por eventKey exacto
+                if (!string.IsNullOrEmpty(key))
                 {
-                    existingConfig.displayName = display;
-                    existingConfig.eventName = member;
-                    newEventList.Add(existingConfig);
+                    cfg = remainingExisting.FirstOrDefault(c => c.eventKey == key);
+                }
+
+                // 2) Si no encontró, intentar por eventName o displayName
+                if (cfg == null)
+                {
+                    cfg = remainingExisting.FirstOrDefault(c =>
+                        (!string.IsNullOrEmpty(c.eventName) && c.eventName == member) ||
+                        (!string.IsNullOrEmpty(c.displayName) && c.displayName == display));
+                }
+
+                // 3) Si tampoco, crear uno nuevo
+                if (cfg == null)
+                {
+                    cfg = new EventConfig();
                 }
                 else
                 {
-                    newEventList.Add(new EventConfig { eventKey = key, eventName = member, displayName = display });
+                    // Lo sacamos de la lista de remanentes para no reutilizarlo de nuevo
+                    remainingExisting.Remove(cfg);
                 }
+
+                // Actualizamos la info de UI / key
+                cfg.eventKey = key;
+                cfg.displayName = display;
+                cfg.eventName = member;
+
+                newEventList.Add(cfg);
             }
+
+            // 4) Los EventConfig que quedaron en remainingExisting son "huérfanos":
+            //    ya no aparecen en el código escaneado.
+            //    En lugar de borrarlos (y perder todo), los conservamos deshabilitados.
+            foreach (var leftover in remainingExisting)
+            {
+                leftover.enabled = false;
+                newEventList.Add(leftover);
+            }
+
+            // Reemplazamos la lista manteniendo las referencias a los objetos originales
             events.Clear();
             events.AddRange(newEventList);
         }
-
 
 #if UNITY_EDITOR
         private IEnumerable<string> EditorDetectedKeys()
@@ -114,8 +155,8 @@ namespace Audio.Scripts
         {
             [HideInInspector] public string guid = Guid.NewGuid().ToString();
 
-            // Keys únicas
-            [HideInInspector] public string eventKey;     // agentID::scriptID::member
+            // Keys únicas (internal)
+            [HideInInspector] public string eventKey;     // agentID::scriptID::member (o lo que genere el Hub)
             [HideInInspector] public string displayName;  // Script.Member (UI)
             public string eventName;                      // nombre simple (solo miembro)
 
@@ -137,9 +178,10 @@ namespace Audio.Scripts
 
             [Header("Stop")]
             public StopMode stopMode = StopMode.ByClips;
+
             [Tooltip("Si StopMode = ByEvent, apunta a la 'eventKey' del evento a detener.")]
-            public string   stopTargetEventKey;
-            public bool     fadeOutOnStop = true;
+            public string stopTargetEventKey;
+            public bool fadeOutOnStop = true;
             [Min(0f)] public float fadeOutTime = 0.1f;
 
             [Header("Voice Limiter")]
@@ -156,7 +198,12 @@ namespace Audio.Scripts
             [NonSerialized] public int LastRandomIndex = -1;
         }
 
-        public enum StopMode { ByClips, ByEvent, All }
+        public enum StopMode
+        {
+            ByClips,
+            ByEvent,
+            All
+        }
 
         [Serializable]
         public class ClipConfig
