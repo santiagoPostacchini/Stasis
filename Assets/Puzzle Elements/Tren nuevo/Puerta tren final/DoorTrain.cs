@@ -22,7 +22,7 @@ namespace Puzzle_Elements.Tren_nuevo.Puerta_tren_final
         }
         IEnumerator wait()
         {
-            yield return new WaitForSeconds(5f);
+            yield return new WaitForSeconds(10f);
             _open = true;
             _anim.SetBool("Open", true);
         }
