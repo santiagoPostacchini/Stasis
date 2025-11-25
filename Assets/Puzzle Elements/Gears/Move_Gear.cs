@@ -64,7 +64,8 @@ public class Move_Gear : MonoBehaviour
 
         // Estado inicial
         _item.speed = startRunning ? runningSpeed : stoppedSpeed;
-        NoRun();
+        SetRunning(startRunning);
+      //  NoRun();
     }
 
     private void OnValidate()
