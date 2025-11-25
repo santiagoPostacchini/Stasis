@@ -278,6 +278,7 @@ namespace Puzzle_Elements.Hedro_conteiner.Scripts
             }
 
             _openingTimer += Time.deltaTime;
+            _box.transform.position = pos.transform.position;
             ShowPhysicsBox();
 
             // Cuando termina la anim de apertura (aprox), pasamos a ejecting
