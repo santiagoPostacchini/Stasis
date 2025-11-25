@@ -25,13 +25,15 @@ namespace Editor
             _globalEmitterOverride= serializedObject.FindProperty("globalEmitterOverride");
             _events               = serializedObject.FindProperty("events");
 
-            _scriptsList = new ReorderableList(serializedObject, _targetScripts, true, true, true, true);
-            _scriptsList.DrawHeaderCallback  = rect => EditorGUI.LabelField(rect, "Target Scripts");
-            _scriptsList.DrawElementCallback = (rect, index, active, focused) =>
-            {
-                var el = _targetScripts.GetArrayElementAtIndex(index);
-                EditorGUI.PropertyField(rect, el, GUIContent.none);
-            };
+            _scriptsList = new ReorderableList(serializedObject, _targetScripts, true, true, true, true)
+                {
+                    DrawHeaderCallback = rect => EditorGUI.LabelField(rect, "Target Scripts"),
+                    DrawElementCallback = (rect, index, active, focused) =>
+                    {
+                        var el = _targetScripts.GetArrayElementAtIndex(index);
+                        EditorGUI.PropertyField(rect, el, GUIContent.none);
+                    }
+                };
         }
 
         public override void OnInspectorGUI()
@@ -104,6 +106,9 @@ namespace Editor
             var maxSimultaneous     = ev.FindPropertyRelative("maxSimultaneous");
             var coalesceWindow      = ev.FindPropertyRelative("coalesceWindow");
             var blockSameFrameDupes = ev.FindPropertyRelative("blockSameFrameDuplicates");
+            var spatialMode = ev.FindPropertyRelative("spatialMode");
+            var overrideDistance = ev.FindPropertyRelative("overrideDistance");
+            var customMaxDistance = ev.FindPropertyRelative("customMaxDistance");
 
             EditorGUILayout.BeginVertical("HelpBox");
 
@@ -128,13 +133,36 @@ namespace Editor
                 randomOne.boolValue = EditorGUILayout.ToggleLeft("Usar Random Sound (sin repetir el último)", randomOne.boolValue);
 
                 EditorGUILayout.Space(3);
-                EditorGUILayout.LabelField("Voice Limiter", EditorStyles.boldLabel);
-                EditorGUILayout.PropertyField(maxSimultaneous, new GUIContent("Max Simultaneous (0 = ilimitado)"));
-                EditorGUILayout.PropertyField(coalesceWindow,  new GUIContent("Coalesce Window (s)"));
-                blockSameFrameDupes.boolValue = EditorGUILayout.ToggleLeft("Bloquear duplicados en el mismo frame", blockSameFrameDupes.boolValue);
+                EditorGUILayout.LabelField("Spatial & 3D Settings", EditorStyles.boldLabel);
+                
+                EditorGUILayout.PropertyField(spatialMode, new GUIContent("Modo Espacial"));
+
+                var currentMode = (AudioEventAgent.SpatialMode)spatialMode.enumValueIndex;
+                bool showDistance = currentMode == AudioEventAgent.SpatialMode.Force3D || 
+                                    (currentMode == AudioEventAgent.SpatialMode.UseClipSettings); // Asumimos que clips pueden ser 3D
+
+                if (showDistance)
+                {
+                    EditorGUILayout.BeginHorizontal();
+                    EditorGUILayout.PropertyField(overrideDistance, new GUIContent("Override Radio 3D"));
+                    if (overrideDistance.boolValue)
+                    {
+                        EditorGUILayout.PropertyField(customMaxDistance, GUIContent.none);
+                    }
+                    EditorGUILayout.EndHorizontal();
+                }
+
+                EditorGUILayout.Space(3);
+                EditorGUILayout.LabelField("Behavior", EditorStyles.boldLabel);
+                randomOne.boolValue = EditorGUILayout.ToggleLeft("Randomize Clip Selection", randomOne.boolValue);
+                EditorGUILayout.PropertyField(maxSimultaneous, new GUIContent("Max Voices"));
+                EditorGUILayout.PropertyField(coalesceWindow, new GUIContent("Coalesce (s)"));
+                blockSameFrameDupes.boolValue = EditorGUILayout.ToggleLeft("Block Same Frame", blockSameFrameDupes.boolValue);
 
                 EditorGUILayout.LabelField("Clips", EditorStyles.boldLabel);
-                DrawClipList(clips);
+                // Si forzamos 2D o 3D, ocultamos la opción 'Use 3D' individual del clip para no confundir
+                bool hideClip3D = currentMode != AudioEventAgent.SpatialMode.UseClipSettings;
+                DrawClipList(clips, showLoop: true, hideUse3D: hideClip3D);
             }
             else
             {
@@ -190,7 +218,7 @@ namespace Editor
             EditorGUILayout.EndVertical();
         }
 
-        private void DrawClipList(SerializedProperty listProp, bool showLoop = true)
+        private void DrawClipList(SerializedProperty listProp, bool showLoop = true, bool hideUse3D = false)
         {
             int removeAt = -1;
             for (int i = 0; i < listProp.arraySize; i++)
@@ -200,36 +228,37 @@ namespace Editor
                 var volume = el.FindPropertyRelative("volume");
                 var delay = el.FindPropertyRelative("delay");
                 var loop = el.FindPropertyRelative("loop");
-
                 var use3D = el.FindPropertyRelative("use3D");
 
                 EditorGUILayout.BeginVertical("box");
-
                 EditorGUILayout.BeginHorizontal();
-                EditorGUILayout.PropertyField(clip, new GUIContent("Clip"));
-                if (GUILayout.Button("X", GUILayout.Width(22)))
-                    removeAt = i;
+                EditorGUILayout.PropertyField(clip, GUIContent.none);
+                if (GUILayout.Button("X", GUILayout.Width(20))) removeAt = i;
                 EditorGUILayout.EndHorizontal();
 
                 EditorGUILayout.BeginHorizontal();
-                EditorGUILayout.Slider(volume, 0f, 1f, new GUIContent("Volume"));
-                EditorGUILayout.PropertyField(delay, new GUIContent("Delay"));
+                EditorGUILayout.LabelField("Vol", GUILayout.Width(25));
+                EditorGUILayout.Slider(volume, 0f, 1f, GUIContent.none);
+                EditorGUILayout.LabelField("Dly", GUILayout.Width(25));
+                EditorGUILayout.PropertyField(delay, GUIContent.none, GUILayout.Width(40));
                 EditorGUILayout.EndHorizontal();
 
                 if (showLoop)
+                {
+                    EditorGUILayout.BeginHorizontal();
                     EditorGUILayout.PropertyField(loop, new GUIContent("Loop"));
-
-                EditorGUILayout.PropertyField(use3D, new GUIContent("Usar 3D"));
-
+                    if (!hideUse3D)
+                    {
+                        EditorGUILayout.PropertyField(use3D, new GUIContent("3D"));
+                    }
+                    EditorGUILayout.EndHorizontal();
+                }
                 EditorGUILayout.EndVertical();
             }
-
-            if (removeAt >= 0)
-                listProp.DeleteArrayElementAtIndex(removeAt);
-
-            if (GUILayout.Button("+ Agregar clip"))
-                listProp.InsertArrayElementAtIndex(Mathf.Max(0, listProp.arraySize));
+            if (removeAt >= 0) listProp.DeleteArrayElementAtIndex(removeAt);
+            if (GUILayout.Button("+ Clip")) listProp.InsertArrayElementAtIndex(Mathf.Max(0, listProp.arraySize));
         }
+        
         // ReorderableList mínima
         private class ReorderableList
         {
