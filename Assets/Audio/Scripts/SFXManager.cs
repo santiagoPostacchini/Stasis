@@ -13,10 +13,7 @@ namespace Audio.Scripts
             if (Instance && Instance != this) { Destroy(gameObject); return; }
             Instance = this;
         }
-
-        /// <summary>
-        /// Pide un AudioSource del pool 3D, lo posiciona y lo configura con template + mixer.
-        /// </summary>
+        
         public AudioSource GetSourceAt(Vector3 position, AudioMixerGroup mixerOverride = null, AudioSource template = null)
         {
             var factory = AudioSourceFactory.Instance;
@@ -40,7 +37,6 @@ namespace Audio.Scripts
             return src;
         }
 
-        /// <summary> Devuelve el AudioSource al pool 3D. </summary>
         public void Return(AudioSource src)
         {
             if (!src) return;
@@ -49,10 +45,6 @@ namespace Audio.Scripts
             else src.gameObject.SetActive(false);
         }
 
-        /// <summary>
-        /// Helper: reproduce y (si no es loop) auto-devuelve la instancia.
-        /// Devuelve el AudioSource por si querés pararlo manualmente antes.
-        /// </summary>
         public AudioSource PlayAt(Vector3 position, AudioClip clip, float volume = 1f, float pitch = 1f,
                                   bool loop = false, float spatialBlend = 1f,
                                   AudioMixerGroup mixerOverride = null, AudioSource template = null,
@@ -102,7 +94,6 @@ namespace Audio.Scripts
             dst.reverbZoneMix = tpl.reverbZoneMix;
             dst.spatialize = tpl.spatialize;
             dst.panStereo = tpl.panStereo;
-            // Mixer se resuelve por parámetro / factory
         }
     }
 }

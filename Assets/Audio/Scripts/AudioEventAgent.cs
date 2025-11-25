@@ -41,8 +41,6 @@ namespace Audio.Scripts
             AudioEventHub.Instance?.RegisterAgent(this);
 
 #if UNITY_EDITOR
-            // Mantener el inspector sincronizado en Edit Mode,
-            // pero SIN destruir las referencias a clips que ya configuraste.
             if (!Application.isPlaying)
             {
                 SyncEventConfigListWithReflectedMembers(EditorDetectedKeys());
@@ -55,32 +53,23 @@ namespace Audio.Scripts
             AudioEventHub.Instance?.UnregisterAgent(this);
         }
 
-        // ---------- Buscador de config por key (lo usa el Hub) ----------
         public EventConfig FindConfigByKey(string eventKey)
         {
             return events.FirstOrDefault(e => e.eventKey == eventKey);
         }
-
-        // ---------- Sync de inspector (no suscribe) ----------
-        /// <summary>
-        /// Sincroniza la lista 'events' con lo detectado por reflexión,
-        /// intentando siempre REUTILIZAR los EventConfig existentes para no perder clips ni ajustes.
-        /// </summary>
+        
         public void SyncEventConfigListWithReflectedMembers(IEnumerable<string> detectedKeys)
         {
-            // Keys únicas detectadas
             var detectedKeyList = detectedKeys
                 .Where(k => !string.IsNullOrEmpty(k))
                 .Distinct()
                 .ToList();
 
-            // Hacemos una copia de los EventConfig actuales para ir "consumiéndolos"
             var remainingExisting = new List<EventConfig>(events);
             var newEventList = new List<EventConfig>(detectedKeyList.Count);
 
             foreach (var key in detectedKeyList)
             {
-                // Parseamos la key en partes: "Namespace.Type::Member"
                 var parts = key.Split(new[] { "::" }, StringSplitOptions.None);
                 var member = parts.Length > 1 ? parts[1] : key;
 
@@ -93,13 +82,11 @@ namespace Audio.Scripts
 
                 EventConfig cfg = null;
 
-                // 1) Intentar matchear por eventKey exacto
                 if (!string.IsNullOrEmpty(key))
                 {
                     cfg = remainingExisting.FirstOrDefault(c => c.eventKey == key);
                 }
 
-                // 2) Si no encontró, intentar por eventName o displayName
                 if (cfg == null)
                 {
                     cfg = remainingExisting.FirstOrDefault(c =>
@@ -107,35 +94,27 @@ namespace Audio.Scripts
                         (!string.IsNullOrEmpty(c.displayName) && c.displayName == display));
                 }
 
-                // 3) Si tampoco, crear uno nuevo
                 if (cfg == null)
                 {
                     cfg = new EventConfig();
                 }
                 else
                 {
-                    // Lo sacamos de la lista de remanentes para no reutilizarlo de nuevo
                     remainingExisting.Remove(cfg);
                 }
 
-                // Actualizamos la info de UI / key
                 cfg.eventKey = key;
                 cfg.displayName = display;
                 cfg.eventName = member;
 
                 newEventList.Add(cfg);
             }
-
-            // 4) Los EventConfig que quedaron en remainingExisting son "huérfanos":
-            //    ya no aparecen en el código escaneado.
-            //    En lugar de borrarlos (y perder todo), los conservamos deshabilitados.
+            
             foreach (var leftover in remainingExisting)
             {
                 leftover.enabled = false;
                 newEventList.Add(leftover);
             }
-
-            // Reemplazamos la lista manteniendo las referencias a los objetos originales
             events.Clear();
             events.AddRange(newEventList);
         }
@@ -155,10 +134,9 @@ namespace Audio.Scripts
         {
             [HideInInspector] public string guid = Guid.NewGuid().ToString();
 
-            // Keys únicas (internal)
-            [HideInInspector] public string eventKey;     // Namespace.Type::Member
-            [HideInInspector] public string displayName;  // Script.Member (UI)
-            public string eventName;                      // nombre simple (solo miembro)
+            [HideInInspector] public string eventKey;
+            [HideInInspector] public string displayName;
+            public string eventName;
 
             [Tooltip("Habilitar/Deshabilitar este evento.")]
             public bool enabled = true;
@@ -169,6 +147,14 @@ namespace Audio.Scripts
             [Tooltip("Si hay múltiples clips, elige uno al azar.")]
             public bool randomOne;
             public List<ClipConfig> clips = new();
+            
+            [Header("Spatial Settings")]
+            [Tooltip("Define si forzamos 2D o 3D para todo el evento, ignorando la config individual de los clips.")]
+            public SpatialMode spatialMode = SpatialMode.UseClipSettings;
+
+            [Tooltip("Si es true, sobrescribe la Max Distance del AudioSource Template.")]
+            public bool overrideDistance = false;
+            [Min(0f)] public float customMaxDistance = 15f;
 
             [Header("Emitter Override (opcional)")]
             public Transform emitterOverride;
@@ -196,7 +182,6 @@ namespace Audio.Scripts
             [Tooltip("Bloquear duplicados en el mismo frame (útil con blends de animaciones).")]
             public bool blockSameFrameDuplicates = true;
 
-            // Runtime
             [NonSerialized] public int LastRandomIndex = -1;
         }
 
@@ -205,6 +190,13 @@ namespace Audio.Scripts
             ByClips,
             ByEvent,
             All
+        }
+        
+        public enum SpatialMode
+        {
+            UseClipSettings,
+            Force2D,
+            Force3D
         }
 
         [Serializable]
