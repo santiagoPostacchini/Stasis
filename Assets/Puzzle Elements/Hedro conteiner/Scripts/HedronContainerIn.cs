@@ -294,7 +294,7 @@ namespace Puzzle_Elements.Hedro_conteiner.Scripts
             {
                 if (Vector3.Distance(transform.position, _box.transform.position) > 5)
                 {
-                    _box.transform.position = transform.position + new Vector3(0, 4, 6);
+                    //_box.transform.position = transform.position + new Vector3(0, 4, 6);
                     Rigidbody rb = _box.GetComponent<Rigidbody>();
                     rb.useGravity = false;
                 }
@@ -432,7 +432,7 @@ namespace Puzzle_Elements.Hedro_conteiner.Scripts
             }
         }
 
-        void OnTriggerStay(Collider other)
+        void OnTriggerEnter(Collider other)
         {
             if (_current != null) return;
             if (!enabled) return;
@@ -465,15 +465,15 @@ namespace Puzzle_Elements.Hedro_conteiner.Scripts
             StartAttraction();
         }
 
-        void OnTriggerExit(Collider other)
-        {
-            // Si estamos atrayendo este mismo PhysicsBox y sale del trigger, reseteamos
-            var box = other.GetComponentInParent<PhysicsBox>();
-            if (box != null && box == _box && _state == ContainerState.Attracting)
-            {
-                ResetToIdle();
-            }
-        }
+        //void OnTriggerExit(Collider other)
+        //{
+        //    // Si estamos atrayendo este mismo PhysicsBox y sale del trigger, reseteamos
+        //    var box = other.GetComponentInParent<PhysicsBox>();
+        //    if (box != null && box == _box && _state == ContainerState.Attracting)
+        //    {
+        //        ResetToIdle();
+        //    }
+        //}
 
         void StartAttraction()
         {
@@ -605,7 +605,7 @@ namespace Puzzle_Elements.Hedro_conteiner.Scripts
             }
 
             // Destino: hacia adelante 1 unidad
-            _ejectTargetPos = _box.transform.position + _box.transform.forward * 1f;
+            _ejectTargetPos = pos.transform.position + pos.transform.forward * 1.4f;
 
             // Escala inicial: igual targetScale
             _box.transform.localScale = targetScale;

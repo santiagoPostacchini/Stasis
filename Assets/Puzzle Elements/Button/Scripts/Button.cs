@@ -63,6 +63,7 @@ namespace Puzzle_Elements.Button.Scripts
             EventManager.TriggerEvent("Click", gameObject);
             Debug.Log("Evento llamado");
             OnPressedAudio?.Invoke();
+            //
             //StartCoroutine(ReturnToIdle());
         }
         IEnumerator ActivateEvent()
