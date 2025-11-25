@@ -74,6 +74,7 @@ namespace Audio.Scripts
             var inst = Instantiate(prefab2D, transform);
             // reforzamos 2D
             inst.spatialBlend = 0f;
+            inst.playOnAwake = false;
             return inst;
         }
 
@@ -130,7 +131,7 @@ namespace Audio.Scripts
         public void Return2DSource(AudioSource src)
         {
             if (!src) return;
-            
+
             src.transform.SetParent(transform, false);
             _pool2D.ReturnObject(src);
         }

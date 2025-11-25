@@ -1,7 +1,6 @@
 using System.Collections;
 using UnityEngine;
 using UnityEngine.Audio;
-using ObjectPool;
 
 namespace Audio.Scripts
 {
@@ -16,7 +15,7 @@ namespace Audio.Scripts
         }
 
         /// <summary>
-        /// Pide un AudioSource del pool, lo posiciona y lo configura con template + mixer.
+        /// Pide un AudioSource del pool 3D, lo posiciona y lo configura con template + mixer.
         /// </summary>
         public AudioSource GetSourceAt(Vector3 position, AudioMixerGroup mixerOverride = null, AudioSource template = null)
         {
@@ -41,7 +40,7 @@ namespace Audio.Scripts
             return src;
         }
 
-        /// <summary> Devuelve el AudioSource al pool. </summary>
+        /// <summary> Devuelve el AudioSource al pool 3D. </summary>
         public void Return(AudioSource src)
         {
             if (!src) return;

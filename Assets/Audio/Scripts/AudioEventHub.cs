@@ -19,11 +19,18 @@ namespace Audio.Scripts
 
         // ----- Runtime state (voice limiting / coalesce) -----
         private readonly Dictionary<string, float> _lastPlayTimeByKey = new(StringComparer.Ordinal);
-        private readonly Dictionary<string, int>   _liveVoicesByKey   = new(StringComparer.Ordinal);
-        private readonly Dictionary<string, int>   _lastFrameByKey    = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, int> _liveVoicesByKey = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, int> _lastFrameByKey = new(StringComparer.Ordinal);
 
-        // Instancias reproduciéndose (para stop/fade out)
-        private readonly List<(AudioSource src, string tag, AudioEventAgent agent)> _playing = new();
+        private struct PlayingInstance
+        {
+            public AudioSource src;
+            public string tag;
+            public AudioEventAgent agent;
+            public bool is2D;
+        }
+
+        private readonly List<PlayingInstance> _playing = new();
 
         private const BindingFlags ScanFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
 
@@ -39,20 +46,16 @@ namespace Audio.Scripts
             if (!agent) return;
             UnregisterAgent(agent); // por si estaba
 
-            // almacenar mapas para el agente
             _eventsByKey[agent] = new Dictionary<string, (MonoBehaviour, EventInfo)>(StringComparer.Ordinal);
             _fieldsByKey[agent] = new Dictionary<string, (MonoBehaviour, FieldInfo)>(StringComparer.Ordinal);
 
-            // escanear target scripts (0 params)
             foreach (var script in agent.TargetScripts.Where(s => s))
                 ScanDelegateMembers(agent, script);
 
-            // sincronizar inspector (solo nombres/keys)
             agent.SyncEventConfigListWithReflectedMembers(GetAllKeysFor(agent));
 
             if (!Application.isPlaying) return;
 
-            // suscribir
             foreach (var kv in _eventsByKey[agent])
             {
                 string key = kv.Key;
@@ -85,7 +88,6 @@ namespace Audio.Scripts
         {
             if (!agent) return;
 
-            // quitar handlers de ese agente
             foreach (var key in GetAllKeysFor(agent))
             {
                 if (_handlersByKey.TryGetValue(key, out var del))
@@ -93,10 +95,7 @@ namespace Audio.Scripts
                     if (_eventsByKey.TryGetValue(agent, out var eMap) && eMap.TryGetValue(key, out var eInfo))
                     {
                         try { eInfo.ei.RemoveEventHandler(eInfo.script, del); }
-                        catch
-                        {
-                            // ignored
-                        }
+                        catch { }
                     }
                     else if (_fieldsByKey.TryGetValue(agent, out var fMap) && fMap.TryGetValue(key, out var fInfo))
                     {
@@ -106,23 +105,19 @@ namespace Audio.Scripts
                             var removed = Delegate.Remove(current, del);
                             fInfo.fi.SetValue(fInfo.script, removed);
                         }
-                        catch
-                        {
-                            // ignored
-                        }
+                        catch { }
                     }
                     _handlersByKey.Remove(key);
                 }
             }
 
-            // parar sonidos vivos de ese agente
             for (int i = _playing.Count - 1; i >= 0; i--)
             {
                 var p = _playing[i];
                 if (p.agent == agent)
                 {
                     if (p.src) p.src.Stop();
-                    TryReturn(p.src);
+                    TryReturn(p.src, p.is2D);
                     _playing.RemoveAt(i);
                     DecrementLive(p.tag);
                 }
@@ -193,9 +188,8 @@ namespace Audio.Scripts
             var cfg = agent.FindConfigByKey(eventKey);
             if (cfg == null || !cfg.enabled) return;
 
-            // ---- Voice limiter / Coalesce / Same-frame de-dupe ----
             string key = eventKey;
-            float now  = Time.time;
+            float now = Time.time;
 
             if (cfg.blockSameFrameDuplicates)
             {
@@ -262,7 +256,8 @@ namespace Audio.Scripts
                 {
                     if (p.agent != agent || !p.src) continue;
                     if (cfg.clips.Any(c => c.clip == p.src.clip))
-                    { StopInstance(p, cfg.fadeOutOnStop, cfg.fadeOutTime);
+                    {
+                        StopInstance(p, cfg.fadeOutOnStop, cfg.fadeOutTime);
                     }
                 }
             }
@@ -272,7 +267,8 @@ namespace Audio.Scripts
                 {
                     if (p.agent != agent) continue;
                     if (p.tag == cfg.stopTargetEventKey)
-                    { StopInstance(p, cfg.fadeOutOnStop, cfg.fadeOutTime);
+                    {
+                        StopInstance(p, cfg.fadeOutOnStop, cfg.fadeOutTime);
                     }
                 }
             }
@@ -284,12 +280,9 @@ namespace Audio.Scripts
                     StopInstance(p, cfg.fadeOutOnStop, cfg.fadeOutTime);
                 }
             }
-
-            // opcional: log si nada
-            // if (!stoppedAny) Debug.Log($"[AudioEventHub] Stop sin matches: {cfg.displayName}");
         }
 
-        private void StopInstance((AudioSource src, string tag, AudioEventAgent agent) inst, bool fade, float fadeTime)
+        private void StopInstance(PlayingInstance inst, bool fade, float fadeTime)
         {
             if (!inst.src) return;
 
@@ -298,13 +291,13 @@ namespace Audio.Scripts
             else
             {
                 inst.src.Stop();
-                TryReturn(inst.src);
+                TryReturn(inst.src, inst.is2D);
                 _playing.Remove(inst);
                 DecrementLive(inst.tag);
             }
         }
 
-        private IEnumerator FadeOutAndReturn((AudioSource src, string tag, AudioEventAgent agent) inst, float time)
+        private IEnumerator FadeOutAndReturn(PlayingInstance inst, float time)
         {
             if (!inst.src) yield break;
 
@@ -317,54 +310,114 @@ namespace Audio.Scripts
                 yield return null;
             }
             if (inst.src) inst.src.Stop();
-            TryReturn(inst.src);
+            TryReturn(inst.src, inst.is2D);
             _playing.Remove(inst);
             DecrementLive(inst.tag);
         }
 
         // ---------- Play ----------
-        private IEnumerator PlayClipRoutine(AudioEventAgent agent, AudioEventAgent.ClipConfig clipCfg, AudioEventAgent.EventConfig evCfg, string tagKey)
+        private IEnumerator PlayClipRoutine(
+            AudioEventAgent agent,
+            AudioEventAgent.ClipConfig clipCfg,
+            AudioEventAgent.EventConfig evCfg,
+            string tagKey)
         {
             if (clipCfg == null || !clipCfg.clip) yield break;
-            if (clipCfg.delay > 0f) yield return new WaitForSeconds(clipCfg.delay);
+            if (clipCfg.delay > 0f)
+                yield return new WaitForSeconds(clipCfg.delay);
 
-            var sfx = SfxManager.Instance;
-            if (!sfx) yield break;
+            var factory = AudioSourceFactory.Instance;
+            if (!factory) yield break;
 
             // emisor: per-event -> global -> transform del agente
-            Transform emitter = evCfg.emitterOverride ? evCfg.emitterOverride
-                                 : (agent.GlobalEmitterOverride ? agent.GlobalEmitterOverride : agent.transform);
+            Transform emitter = evCfg.emitterOverride
+                                ? evCfg.emitterOverride
+                                : (agent.GlobalEmitterOverride
+                                    ? agent.GlobalEmitterOverride
+                                    : agent.transform);
 
-            var src = sfx.GetSourceAt(emitter.position, agent.DefaultMixerGroup, agent.SourceTemplate);
-            if (!src) yield break;
+            AudioSource src;
+            bool is2D = !clipCfg.use3D;
 
-            src.clip   = clipCfg.clip;
-            src.loop   = clipCfg.loop;
-            src.pitch  = evCfg.usePitchRandom ? UnityEngine.Random.Range(evCfg.pitchMin, evCfg.pitchMax) : 1f;
+            if (clipCfg.use3D)
+            {
+                // Pool 3D
+                src = factory.GetSource();
+                if (!src) yield break;
+
+                src.transform.position = emitter.position;
+
+                if (agent.DefaultMixerGroup)
+                    src.outputAudioMixerGroup = agent.DefaultMixerGroup;
+
+                var template = agent.SourceTemplate;
+                if (template)
+                {
+                    src.spatialBlend = template.spatialBlend;
+                    src.rolloffMode = template.rolloffMode;
+                    src.minDistance = template.minDistance;
+                    src.maxDistance = template.maxDistance;
+                }
+                else
+                {
+                    src.spatialBlend = 1f;
+                }
+            }
+            else
+            {
+                // Pool 2D
+                src = factory.Get2DSource(parent: null, mixerOverride: agent.DefaultMixerGroup);
+                if (!src) yield break;
+                is2D = true;
+            }
+
+            src.clip = clipCfg.clip;
+            src.loop = clipCfg.loop;
+            src.pitch = evCfg.usePitchRandom
+                ? UnityEngine.Random.Range(evCfg.pitchMin, evCfg.pitchMax)
+                : 1f;
             src.volume = Mathf.Clamp01(clipCfg.volume);
 
             src.Play();
 
-            var inst = (src, tagKey, agent);
+            var inst = new PlayingInstance
+            {
+                src = src,
+                tag = tagKey,
+                agent = agent,
+                is2D = is2D
+            };
+
             _playing.Add(inst);
             IncrementLive(tagKey);
 
             if (!src.loop)
             {
                 yield return new WaitWhile(() => src && src.isPlaying);
-                TryReturn(src);
+                TryReturn(src, is2D);
                 _playing.Remove(inst);
                 DecrementLive(tagKey);
             }
         }
 
         // ---------- Helpers ----------
-        private static void TryReturn(AudioSource src)
+        private static void TryReturn(AudioSource src, bool is2D)
         {
             if (!src) return;
-            var sfx = SfxManager.Instance;
-            if (sfx) sfx.Return(src);
-            else src.gameObject.SetActive(false);
+
+            var factory = AudioSourceFactory.Instance;
+            if (factory != null)
+            {
+                if (is2D)
+                    factory.Return2DSource(src);
+                else
+                    factory.ReturnSource(src);
+            }
+            else
+            {
+                src.Stop();
+                src.gameObject.SetActive(false);
+            }
         }
 
         private void IncrementLive(string key)
@@ -373,6 +426,7 @@ namespace Audio.Scripts
             _liveVoicesByKey.TryGetValue(key, out var live);
             _liveVoicesByKey[key] = live + 1;
         }
+
         private void DecrementLive(string key)
         {
             if (string.IsNullOrEmpty(key)) return;

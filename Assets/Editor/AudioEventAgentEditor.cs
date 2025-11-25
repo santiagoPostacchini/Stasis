@@ -195,24 +195,32 @@ namespace Editor
             int removeAt = -1;
             for (int i = 0; i < listProp.arraySize; i++)
             {
-                var el     = listProp.GetArrayElementAtIndex(i);
-                var clip   = el.FindPropertyRelative("clip");
+                var el = listProp.GetArrayElementAtIndex(i);
+                var clip = el.FindPropertyRelative("clip");
                 var volume = el.FindPropertyRelative("volume");
-                var delay  = el.FindPropertyRelative("delay");
-                var loop   = el.FindPropertyRelative("loop");
+                var delay = el.FindPropertyRelative("delay");
+                var loop = el.FindPropertyRelative("loop");
+
+                var use3D = el.FindPropertyRelative("use3D");
 
                 EditorGUILayout.BeginVertical("box");
+
                 EditorGUILayout.BeginHorizontal();
-                EditorGUILayout.PropertyField(clip);
-                if (GUILayout.Button("X", GUILayout.Width(22))) removeAt = i;
+                EditorGUILayout.PropertyField(clip, new GUIContent("Clip"));
+                if (GUILayout.Button("X", GUILayout.Width(22)))
+                    removeAt = i;
                 EditorGUILayout.EndHorizontal();
 
                 EditorGUILayout.BeginHorizontal();
-                EditorGUILayout.Slider(volume, 0f, 1f);
-                EditorGUILayout.PropertyField(delay);
+                EditorGUILayout.Slider(volume, 0f, 1f, new GUIContent("Volume"));
+                EditorGUILayout.PropertyField(delay, new GUIContent("Delay"));
                 EditorGUILayout.EndHorizontal();
 
-                if (showLoop) EditorGUILayout.PropertyField(loop);
+                if (showLoop)
+                    EditorGUILayout.PropertyField(loop, new GUIContent("Loop"));
+
+                EditorGUILayout.PropertyField(use3D, new GUIContent("Usar 3D"));
+
                 EditorGUILayout.EndVertical();
             }
 
@@ -222,7 +230,6 @@ namespace Editor
             if (GUILayout.Button("+ Agregar clip"))
                 listProp.InsertArrayElementAtIndex(Mathf.Max(0, listProp.arraySize));
         }
-
         // ReorderableList mínima
         private class ReorderableList
         {

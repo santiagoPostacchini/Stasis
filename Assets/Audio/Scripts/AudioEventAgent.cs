@@ -16,7 +16,7 @@ namespace Audio.Scripts
         [Header("Mixer / Defaults")]
         [SerializeField] private AudioMixerGroup defaultMixerGroup;
 
-        [Tooltip("Opcional: template de AudioSource para aplicar a las instancias del pool.")]
+        [Tooltip("Opcional: template de AudioSource para aplicar a las instancias (distancias, rolloff, etc.).")]
         [SerializeField] private AudioSource sourceTemplate;
 
         [Header("Emitters")]
@@ -156,7 +156,7 @@ namespace Audio.Scripts
             [HideInInspector] public string guid = Guid.NewGuid().ToString();
 
             // Keys únicas (internal)
-            [HideInInspector] public string eventKey;     // agentID::scriptID::member (o lo que genere el Hub)
+            [HideInInspector] public string eventKey;     // Namespace.Type::Member
             [HideInInspector] public string displayName;  // Script.Member (UI)
             public string eventName;                      // nombre simple (solo miembro)
 
@@ -164,7 +164,9 @@ namespace Audio.Scripts
             public bool enabled = true;
 
             [Header("Play")]
+            [Tooltip("Si está marcado, este evento sirve para detener otros sonidos (no reproduce clips).")]
             public bool isStopEvent;
+            [Tooltip("Si hay múltiples clips, elige uno al azar.")]
             public bool randomOne;
             public List<ClipConfig> clips = new();
 
@@ -212,6 +214,10 @@ namespace Audio.Scripts
             [Range(0f, 1f)] public float volume = 1f;
             [Min(0f)] public float delay;
             public bool loop;
+
+            [Header("Spatialization")]
+            [Tooltip("Si está activado, este clip se reproduce en 3D (pool 3D). Si está desactivado, se reproduce en 2D (pool 2D).")]
+            public bool use3D = true;
         }
     }
 }
