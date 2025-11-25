@@ -191,7 +191,7 @@ Transform:
   m_GameObject: {fileID: 74578872670096009}
   serializedVersion: 2
   m_LocalRotation: {x: 0.0044092387, y: -0.9994195, z: 0.033493713, w: 0.0044100313}
-  m_LocalPosition: {x: 5.64, y: 12.35, z: 46.51}
+  m_LocalPosition: {x: 11.45, y: 5.2, z: 347.8}
   m_LocalScale: {x: 0.3, y: 0.3, z: 0.3}
   m_ConstrainProportionsScale: 1
   m_Children:
@@ -463,7 +463,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &7168304629200618234
 Transform:
   m_ObjectHideFlags: 0
@@ -1124,6 +1124,9 @@ MonoBehaviour:
   lockRollX: 1
   occlusionRadius: 0.08
   minOccluderSize: 0.3
+  occluderMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
 --- !u!114 &1902668657561929928
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1354,15 +1357,15 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1471178590121270133}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.0044092387, y: -0.9994195, z: 0.033493713, w: 0.0044100313}
-  m_LocalPosition: {x: -5.399, y: 12.257, z: 46.612}
+  m_LocalRotation: {x: -0.0334937, y: -0.004412904, z: 0.0044093346, w: -0.99941945}
+  m_LocalPosition: {x: 13.3, y: 3.79, z: 161.635}
   m_LocalScale: {x: 0.3, y: 0.3, z: 0.3}
   m_ConstrainProportionsScale: 1
   m_Children:
   - {fileID: 200121918778156844}
   - {fileID: 6740458626800265774}
   m_Father: {fileID: 695414086022048647}
-  m_LocalEulerAnglesHint: {x: 3.841, y: -179.511, z: -0.489}
+  m_LocalEulerAnglesHint: {x: 3.841, y: -359.51, z: -0.489}
 --- !u!1 &1579793814512149319
 GameObject:
   m_ObjectHideFlags: 0
@@ -1465,7 +1468,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &4534048869621886874
 Transform:
   m_ObjectHideFlags: 0
@@ -1581,7 +1584,6 @@ MonoBehaviour:
   clearColor: {r: 0, g: 0, b: 0, a: 1}
   allowHDR: 0
   allowMSAA: 0
-  debugMagenta: 0
   urpRendererIndex: 2
   overlayTopLayer:
     serializedVersion: 2
@@ -1590,17 +1592,17 @@ MonoBehaviour:
   recordFPS: 10
   recordMaxSeconds: 6
   recordFormat: 0
-  onlyRecordWhenTargetVisible: 1
   playbackTriggerTarget: {fileID: 0}
   playbackTriggerDistance: 20
   playbackRequiresView: 0
   playbackBlackoutSeconds: 1
+  loopPlayback: 1
   atlasUpdateFPS: 15
   maxCamRendersPerFrame: 3
   maxBlitsPerFrame: 6
   lazyClearAtlas: 1
   followerMaxCopiesPerFrame: 12
-  forceURPUnlit: 1
+  forceUrpUnlit: 1
   forceUnlitSetup: 1
   forceTextureProperty: 1
   customTextureProperty: _BaseMap
@@ -1613,7 +1615,6 @@ MonoBehaviour:
   atlasFormat: 0
   atlasFilterMode: 1
   atlasAniso: 0
-  artForceTestPattern: 0
 --- !u!1 &1698007625977554723
 GameObject:
   m_ObjectHideFlags: 0
@@ -1640,7 +1641,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1698007625977554723}
   serializedVersion: 2
-  m_LocalRotation: {x: -0.049128775, y: 0.94138545, z: -0.017393263, w: 0.3332826}
+  m_LocalRotation: {x: -0.032531083, y: 0.97573125, z: -0.007215533, w: 0.21642135}
   m_LocalPosition: {x: 0, y: 1.95, z: -2.3164177}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -1677,6 +1678,9 @@ MonoBehaviour:
   lockRollX: 1
   occlusionRadius: 0.08
   minOccluderSize: 0.3
+  occluderMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
 --- !u!114 &5969814563517378067
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1693,7 +1697,7 @@ MonoBehaviour:
   fieldOfView: 60
   cullingMask:
     serializedVersion: 2
-    m_Bits: 151937
+    m_Bits: 151681
   nearClip: 2
   farClip: 40
   startRecordingOnAwake: 1
@@ -1976,7 +1980,7 @@ GameObject:
   m_Component:
   - component: {fileID: 695414086022048647}
   m_Layer: 0
-  m_Name: Vigilance_Cameras
+  m_Name: Cameras
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2116,7 +2120,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2482307792844245172}
   serializedVersion: 2
-  m_LocalRotation: {x: -0.05243661, y: 0.7254425, z: -0.04947695, w: 0.68449664}
+  m_LocalRotation: {x: -0.03240201, y: 0.72607344, z: -0.030621279, w: 0.6861704}
   m_LocalPosition: {x: 0, y: 1.95, z: -2.3164177}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -2152,6 +2156,9 @@ MonoBehaviour:
   lockRollX: 1
   occlusionRadius: 0.08
   minOccluderSize: 0.3
+  occluderMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
 --- !u!114 &7238267921768789327
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2168,7 +2175,7 @@ MonoBehaviour:
   fieldOfView: 60
   cullingMask:
     serializedVersion: 2
-    m_Bits: 151937
+    m_Bits: 151681
   nearClip: 2
   farClip: 40
   startRecordingOnAwake: 1
@@ -2218,7 +2225,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2538033720827306731}
   serializedVersion: 2
-  m_LocalRotation: {x: -0.0495995, y: 0.6873834, z: -0.052149296, w: 0.7227202}
+  m_LocalRotation: {x: -0.018283742, y: -0.69962, z: 0.018660525, w: 0.7140374}
   m_LocalPosition: {x: 0, y: 1.95, z: -2.3164177}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -2254,6 +2261,9 @@ MonoBehaviour:
   lockRollX: 1
   occlusionRadius: 0.08
   minOccluderSize: 0.3
+  occluderMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
 --- !u!114 &3988598305647822775
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2270,7 +2280,7 @@ MonoBehaviour:
   fieldOfView: 60
   cullingMask:
     serializedVersion: 2
-    m_Bits: 151937
+    m_Bits: 151681
   nearClip: 2
   farClip: 40
   startRecordingOnAwake: 1
@@ -3003,6 +3013,9 @@ MonoBehaviour:
   lockRollX: 1
   occlusionRadius: 0.08
   minOccluderSize: 0.3
+  occluderMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
 --- !u!114 &2703685893080785572
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3151,8 +3164,8 @@ Transform:
   m_GameObject: {fileID: 4974231889973269109}
   serializedVersion: 2
   m_LocalRotation: {x: -0.10355386, y: -0.6035532, z: -0.07945963, w: 0.78656614}
-  m_LocalPosition: {x: -10.872, y: 7.009, z: 15.705}
-  m_LocalScale: {x: 0.3, y: 0.3, z: 0.3}
+  m_LocalPosition: {x: -9.18, y: 9.75, z: 15.705}
+  m_LocalScale: {x: 0.31, y: 0.31, z: 0.31}
   m_ConstrainProportionsScale: 1
   m_Children:
   - {fileID: 6283097035870809063}
@@ -3354,7 +3367,7 @@ Transform:
   m_GameObject: {fileID: 5226105642940838770}
   serializedVersion: 2
   m_LocalRotation: {x: 0.70710796, y: 0.000003844499, z: -0.00000042468304, w: 0.70710564}
-  m_LocalPosition: {x: 84.3, y: 11, z: 164.7}
+  m_LocalPosition: {x: 597.29, y: -29.86, z: 464.48}
   m_LocalScale: {x: 1, y: 1, z: 0.84696}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -3451,8 +3464,6 @@ MonoBehaviour:
   - {fileID: 7238267921768789327}
   - {fileID: 3988598305647822775}
   - {fileID: 7944535480172011101}
-  - {fileID: 2703685893080785572}
-  - {fileID: 1902668657561929928}
   targetRenderer: {fileID: 7504017150024283638}
   texturePropertyName: 
   columns: 3
@@ -3463,7 +3474,6 @@ MonoBehaviour:
   clearColor: {r: 0, g: 0, b: 0, a: 1}
   allowHDR: 0
   allowMSAA: 0
-  debugMagenta: 0
   urpRendererIndex: 2
   overlayTopLayer:
     serializedVersion: 2
@@ -3472,17 +3482,17 @@ MonoBehaviour:
   recordFPS: 10
   recordMaxSeconds: 6
   recordFormat: 0
-  onlyRecordWhenTargetVisible: 1
   playbackTriggerTarget: {fileID: 0}
-  playbackTriggerDistance: 20
+  playbackTriggerDistance: 40
   playbackRequiresView: 0
   playbackBlackoutSeconds: 1
+  loopPlayback: 1
   atlasUpdateFPS: 15
   maxCamRendersPerFrame: 3
   maxBlitsPerFrame: 6
   lazyClearAtlas: 1
   followerMaxCopiesPerFrame: 12
-  forceURPUnlit: 1
+  forceUrpUnlit: 1
   forceUnlitSetup: 1
   forceTextureProperty: 1
   customTextureProperty: _BaseMap
@@ -3495,7 +3505,6 @@ MonoBehaviour:
   atlasFormat: 0
   atlasFilterMode: 1
   atlasAniso: 0
-  artForceTestPattern: 0
 --- !u!1 &5254779626147010554
 GameObject:
   m_ObjectHideFlags: 0
@@ -3802,15 +3811,15 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5971962632896732671}
   serializedVersion: 2
-  m_LocalRotation: {x: -0.06526346, y: -0.00000055134296, z: -0.113039464, w: 0.9914448}
-  m_LocalPosition: {x: -9.922, y: 11.68, z: -17.085}
+  m_LocalRotation: {x: -0.00000020302824, y: -0.49572206, z: -0.13052678, w: 0.85861665}
+  m_LocalPosition: {x: 518.86, y: -24.52, z: 456.19}
   m_LocalScale: {x: 0.20000002, y: 0.2, z: 0.20000002}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 6172944859342740305}
   - {fileID: 6263156665208267897}
   m_Father: {fileID: 695414086022048647}
-  m_LocalEulerAnglesHint: {x: -7.436, y: 0.853, z: -13.064}
+  m_LocalEulerAnglesHint: {x: -7.436, y: -59.147, z: -13.064}
 --- !u!1 &6127571860530529050
 GameObject:
   m_ObjectHideFlags: 0
@@ -3830,7 +3839,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &7321320197269177429
 Transform:
   m_ObjectHideFlags: 0
@@ -3945,7 +3954,6 @@ MonoBehaviour:
   clearColor: {r: 0, g: 0, b: 0, a: 1}
   allowHDR: 0
   allowMSAA: 0
-  debugMagenta: 0
   urpRendererIndex: 2
   overlayTopLayer:
     serializedVersion: 2
@@ -3954,17 +3962,17 @@ MonoBehaviour:
   recordFPS: 10
   recordMaxSeconds: 6
   recordFormat: 0
-  onlyRecordWhenTargetVisible: 1
   playbackTriggerTarget: {fileID: 0}
   playbackTriggerDistance: 20
   playbackRequiresView: 0
   playbackBlackoutSeconds: 1
+  loopPlayback: 1
   atlasUpdateFPS: 15
   maxCamRendersPerFrame: 3
   maxBlitsPerFrame: 6
   lazyClearAtlas: 1
   followerMaxCopiesPerFrame: 12
-  forceURPUnlit: 1
+  forceUrpUnlit: 1
   forceUnlitSetup: 1
   forceTextureProperty: 1
   customTextureProperty: _BaseMap
@@ -3977,7 +3985,6 @@ MonoBehaviour:
   atlasFormat: 0
   atlasFilterMode: 1
   atlasAniso: 0
-  artForceTestPattern: 0
 --- !u!1 &6146049802439029830
 GameObject:
   m_ObjectHideFlags: 0
@@ -4518,7 +4525,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 7465763916833831984}
   serializedVersion: 2
-  m_LocalRotation: {x: -0.061382614, y: 0.52500015, z: -0.09857956, w: 0.8431424}
+  m_LocalRotation: {x: -0.10898757, y: 0.98438674, z: 0.015210127, w: -0.13737941}
   m_LocalPosition: {x: 0, y: 1.95, z: -2.3164177}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -4554,6 +4561,9 @@ MonoBehaviour:
   lockRollX: 1
   occlusionRadius: 0.08
   minOccluderSize: 0.3
+  occluderMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
 --- !u!114 &7944535480172011101
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4570,7 +4580,7 @@ MonoBehaviour:
   fieldOfView: 60
   cullingMask:
     serializedVersion: 2
-    m_Bits: 151937
+    m_Bits: 151681
   nearClip: 2
   farClip: 40
   startRecordingOnAwake: 1
@@ -4640,7 +4650,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &3197820561288352098
 Transform:
   m_ObjectHideFlags: 0
@@ -4926,7 +4936,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &2260674259117540474
 Transform:
   m_ObjectHideFlags: 0
@@ -5040,7 +5050,6 @@ MonoBehaviour:
   clearColor: {r: 0, g: 0, b: 0, a: 1}
   allowHDR: 0
   allowMSAA: 0
-  debugMagenta: 0
   urpRendererIndex: 2
   overlayTopLayer:
     serializedVersion: 2
@@ -5049,17 +5058,17 @@ MonoBehaviour:
   recordFPS: 10
   recordMaxSeconds: 6
   recordFormat: 0
-  onlyRecordWhenTargetVisible: 1
   playbackTriggerTarget: {fileID: 0}
   playbackTriggerDistance: 20
   playbackRequiresView: 0
   playbackBlackoutSeconds: 1
+  loopPlayback: 1
   atlasUpdateFPS: 15
   maxCamRendersPerFrame: 3
   maxBlitsPerFrame: 6
   lazyClearAtlas: 1
   followerMaxCopiesPerFrame: 12
-  forceURPUnlit: 1
+  forceUrpUnlit: 1
   forceUnlitSetup: 1
   forceTextureProperty: 1
   customTextureProperty: _BaseMap
@@ -5072,7 +5081,6 @@ MonoBehaviour:
   atlasFormat: 0
   atlasFilterMode: 1
   atlasAniso: 0
-  artForceTestPattern: 0
 --- !u!1 &8322355157346696206
 GameObject:
   m_ObjectHideFlags: 0
