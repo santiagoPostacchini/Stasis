@@ -8,7 +8,6 @@ namespace Player.Scripts
         [Header("Refs")]
         public CinemachineInputAxisController axisController;
 
-        // Rango permitido
         public const float MIN_SENS = 4f;
         public const float MAX_SENS = 15f;
 
@@ -36,10 +35,9 @@ namespace Player.Scripts
             if (!axisController) axisController = GetComponent<CinemachineInputAxisController>();
         }
 
-        /// <summary> Llamalo desde el Slider. </summary>
         public void SetSensitivity(float newValue)
         {
-            sensitivity = Mathf.Clamp(newValue, MIN_SENS, MAX_SENS);
+            sensitivity = Mathf.Clamp(newValue * MAX_SENS, MIN_SENS, MAX_SENS);
             PlayerPrefs.SetFloat(PREF_KEY, sensitivity);
             PlayerPrefs.Save();
             Apply();
@@ -55,7 +53,7 @@ namespace Player.Scripts
             {
                 var c = controllers[i];
                 c.Input.LegacyGain = (c.Input.LegacyGain >= 0f ? 20f : -20f) * sensitivity;
-                controllers[i] = c; // struct, reasignar
+                controllers[i] = c;
             }
         }
 

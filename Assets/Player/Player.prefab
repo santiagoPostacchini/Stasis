@@ -2807,10 +2807,10 @@ GameObject:
   - component: {fileID: 1070275657926916721}
   - component: {fileID: 2266810604640834902}
   - component: {fileID: 6357638521515402753}
+  - component: {fileID: 4883460434154009065}
   - component: {fileID: 8078871282229954272}
   - component: {fileID: 7897226680629307198}
   - component: {fileID: 6135088207579927890}
-  - component: {fileID: 4883460434154009065}
   - component: {fileID: 5480368105382122666}
   - component: {fileID: 6685315228876821770}
   - component: {fileID: 5321101572980791170}
@@ -2898,6 +2898,43 @@ AudioListener:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2777829696135426965}
   m_Enabled: 1
+--- !u!114 &4883460434154009065
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2777829696135426965}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 50f3911c5a6ede74d9ea26c37285f62d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  rightStasisOrigin: {fileID: 8744373008497399282}
+  leftStasisOrigin: {fileID: 3416220382156846441}
+  stasisOriginLegacy: {fileID: 0}
+  stasisBeamPrefab: {fileID: 7511541719265762720, guid: c1dc9d25ab9e7ad4b94fb39f47e19e8b,
+    type: 3}
+  particleStasisMissed: {fileID: 8753759091072199340, guid: e409391bbeabe294d8a796945d405db1,
+    type: 3}
+  radiusStasis: 0.2
+  maxDistance: 300
+  layer:
+    serializedVersion: 2
+    m_Bits: 20608
+  cameraOverride: {fileID: 2266810604640834902}
+  mainCam: {fileID: 0}
+  cooldown: 0.1
+  canShootStasis: 1
+  spamWindow: 0.15
+  debugDraw: 1
+  debugLogs: 1
+  debugPersist: 0.25
+  debugRayColor: {r: 0, g: 0.9, b: 1, a: 1}
+  debugBeamColor: {r: 0.5, g: 1, b: 0.5, a: 1}
+  debugNormalColor: {r: 1, g: 1, b: 0, a: 1}
+  debugMissColor: {r: 1, g: 0.3, b: 0.3, a: 1}
+  camHolder: {fileID: 6367908224590358707}
 --- !u!114 &8078871282229954272
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3021,43 +3058,6 @@ MonoBehaviour:
       m_PostInfinity: 2
       m_RotationOrder: 4
   CustomBlends: {fileID: 0}
---- !u!114 &4883460434154009065
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2777829696135426965}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 50f3911c5a6ede74d9ea26c37285f62d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  rightStasisOrigin: {fileID: 8744373008497399282}
-  leftStasisOrigin: {fileID: 3416220382156846441}
-  stasisOriginLegacy: {fileID: 0}
-  stasisBeamPrefab: {fileID: 7511541719265762720, guid: c1dc9d25ab9e7ad4b94fb39f47e19e8b,
-    type: 3}
-  particleStasisMissed: {fileID: 8753759091072199340, guid: e409391bbeabe294d8a796945d405db1,
-    type: 3}
-  radiusStasis: 0.2
-  maxDistance: 300
-  layer:
-    serializedVersion: 2
-    m_Bits: 20608
-  cameraOverride: {fileID: 2266810604640834902}
-  mainCam: {fileID: 0}
-  cooldown: 0.1
-  canShootStasis: 1
-  spamWindow: 0.15
-  debugDraw: 1
-  debugLogs: 1
-  debugPersist: 0.25
-  debugRayColor: {r: 0, g: 0.9, b: 1, a: 1}
-  debugBeamColor: {r: 0.5, g: 1, b: 0.5, a: 1}
-  debugNormalColor: {r: 1, g: 1, b: 0, a: 1}
-  debugMissColor: {r: 1, g: 0.3, b: 0.3, a: 1}
-  camHolder: {fileID: 6367908224590358707}
 --- !u!114 &5480368105382122666
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3078,6 +3078,7 @@ MonoBehaviour:
   objectGrabPointTransform: {fileID: 0}
   objectGrabPointBackTransform: {fileID: 0}
   releaseAimWindow: 0.5
+  _objectGrabbable: {fileID: 0}
   environmentMask:
     serializedVersion: 2
     m_Bits: 28801
@@ -6783,8 +6784,8 @@ GameObject:
   - component: {fileID: 4812101479202239431}
   - component: {fileID: 184731228571617352}
   - component: {fileID: 5095219399026788450}
-  - component: {fileID: 8354703168945386074}
   - component: {fileID: 2122600739204704095}
+  - component: {fileID: 8354703168945386074}
   - component: {fileID: 6232095795751100479}
   - component: {fileID: 7450713307908960934}
   - component: {fileID: 3708308717764851789}
@@ -6865,22 +6866,6 @@ CapsuleCollider:
   m_Height: 2
   m_Direction: 1
   m_Center: {x: 0, y: 1, z: 0}
---- !u!114 &8354703168945386074
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5403309902725592585}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ff9c66d447634894da660561d0071db1, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  cameraTransform: {fileID: 6367908224590358707}
-  headBone: {fileID: 4610564550093536255}
-  minPitch: -80
-  maxPitch: 80
 --- !u!114 &2122600739204704095
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -6894,6 +6879,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   rb: {fileID: 184731228571617352}
+  blockUseGravity: 0
   cameraHolderTransform: {fileID: 6367908224590358707}
   cinemachineBrain: {fileID: 0}
   probe:
@@ -7017,6 +7003,22 @@ MonoBehaviour:
   canRun: 1
   jumpDownThisFrame: 0
   hazardSpeedMultiplier: 1
+--- !u!114 &8354703168945386074
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5403309902725592585}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ff9c66d447634894da660561d0071db1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  cameraTransform: {fileID: 6367908224590358707}
+  headBone: {fileID: 4610564550093536255}
+  minPitch: -80
+  maxPitch: 80
 --- !u!114 &6232095795751100479
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -7181,6 +7183,7 @@ MonoBehaviour:
   positionLerpSpeed: 35
   rotationLerpSpeed: 35
   mantleHandYOffset: -0.1
+  handCastRadius: 0.05
 --- !u!114 &5674219836433596531
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -8844,14 +8847,20 @@ MonoBehaviour:
       volume: 0.1
       delay: 0
       loop: 0
+      use3D: 1
     - clip: {fileID: 8300000, guid: 60e0bbc9b61f6264292a8e96dd39f695, type: 3}
       volume: 0.1
       delay: 0
       loop: 0
+      use3D: 1
     - clip: {fileID: 8300000, guid: f27183989ad70814f8947b1a872705e8, type: 3}
       volume: 0.1
       delay: 0
       loop: 0
+      use3D: 1
+    spatialMode: 0
+    overrideDistance: 0
+    customMaxDistance: 15
     emitterOverride: {fileID: 3404453812625497753}
     usePitchRandom: 1
     pitchMin: 0.8
@@ -8875,14 +8884,20 @@ MonoBehaviour:
       volume: 0.1
       delay: 0
       loop: 0
+      use3D: 1
     - clip: {fileID: 8300000, guid: 4874c6c234f61934fb52292d4fb0f9fb, type: 3}
       volume: 0.1
       delay: 0
       loop: 0
+      use3D: 1
     - clip: {fileID: 8300000, guid: 90120c2fb2fe95f418bd935f16ee4376, type: 3}
       volume: 0.1
       delay: 0
       loop: 0
+      use3D: 1
+    spatialMode: 0
+    overrideDistance: 0
+    customMaxDistance: 15
     emitterOverride: {fileID: 6317389883001688803}
     usePitchRandom: 1
     pitchMin: 0.8

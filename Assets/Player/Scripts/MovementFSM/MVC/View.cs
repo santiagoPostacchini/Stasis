@@ -54,9 +54,6 @@ namespace Player.Scripts.MovementFSM.MVC
 
         private float _airElapsed;
 
-        // ============================================================
-        //                    SISTEMA DE INSPECT + SHOOT
-        // ============================================================
         private float inspectTimer = 0f;
         private float shootTimer = 0f;
         private const int ArmsLayer = 1;
@@ -70,7 +67,6 @@ namespace Player.Scripts.MovementFSM.MVC
 
         private void Update()
         {
-            // FREEZE ARMS LAYER DURANTE INSPECT
             if (inspectTimer > 0f)
             {
                 inspectTimer -= Time.deltaTime;
@@ -78,7 +74,6 @@ namespace Player.Scripts.MovementFSM.MVC
                 if (inspectTimer <= 0f) inspectTimer = 0f;
             }
 
-            // FREEZE ARMS LAYER DURANTE SHOOT
             if (shootTimer > 0f)
             {
                 shootTimer -= Time.deltaTime;
@@ -126,10 +121,6 @@ namespace Player.Scripts.MovementFSM.MVC
             }
         }
 
-        // ============================================================
-        //                           INSPECT
-        // ============================================================
-
         public void InspectHands()
         {
             if (inspectTimer > 0f || shootTimer > 0f) return;
@@ -150,10 +141,6 @@ namespace Player.Scripts.MovementFSM.MVC
             inspectTimer = clipLength;
         }
 
-        // ============================================================
-        //                           SHOOT
-        // ============================================================
-
         public void OnShootEvent()
         {
             if (shootTimer > 0f || inspectTimer > 0f) return;
@@ -173,10 +160,6 @@ namespace Player.Scripts.MovementFSM.MVC
 
             shootTimer = clipLength;
         }
-
-        // ============================================================
-        // EL RESTO DEL SCRIPT SIGUE IGUAL
-        // ============================================================
 
         public void OnMove(float x, float z)
         { _xAxis = x; _zAxis = z; }
