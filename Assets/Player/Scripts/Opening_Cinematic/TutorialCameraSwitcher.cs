@@ -30,7 +30,7 @@ namespace Player.Scripts.Opening_Cinematic
 
         [Header("🎭 REFERENCIAS PRINCIPALES")]
         public RagdollHanger ragdollHanger;
-        public GameObject objectToDeactivate; // opcional
+        public GameObject objectToDeactivate;
 
         [Header("🖼️ CANVAS CONFIGURACIÓN")]
         public CanvasGroup canvasGroup;
@@ -44,11 +44,11 @@ namespace Player.Scripts.Opening_Cinematic
         [Header("🎬 ANIMATOR CONFIGURACIÓN")]
         public Animator targetAnimator;
         public float animatorStartDelay = 1f;
-        public float transitionAfterAnimatorDelay = 3f; // tiempo antes de pasar de B→C
+        public float transitionAfterAnimatorDelay = 3f;
 
         [Header("🧩 SCRIPTS A ACTIVAR DESPUÉS DE LA TRANSICIÓN B→C")]
         public MonoBehaviour[] scriptsToEnable;
-        public float scriptsActivationDelay = 1f; // Delay configurable
+        public float scriptsActivationDelay = 1f;
 
         private bool isTransitioning = false;
         private bool prevA, prevB, prevC;
@@ -73,18 +73,15 @@ namespace Player.Scripts.Opening_Cinematic
 
         void Start()
         {
-            // Inicializar cámaras y objetos
             SetInitialCameraState();
 
-            // 🔸 Desactivar scripts desde el inicio
+            // Desactivar scripts desde el inicio
             if (scriptsToEnable != null)
-            {
                 foreach (var script in scriptsToEnable)
                     if (script != null)
                         script.enabled = false;
-            }
 
-            // Inicializar canvas
+            // Canvas inicial
             if (canvasGroup != null)
             {
                 canvasGroup.alpha = 1f;
@@ -93,7 +90,7 @@ namespace Player.Scripts.Opening_Cinematic
                 StartCoroutine(FadeOutAfterDelay());
             }
 
-            // Desactivar animator
+            // Desactivar Animator al inicio
             if (targetAnimator != null)
                 targetAnimator.enabled = false;
         }
@@ -103,10 +100,48 @@ namespace Player.Scripts.Opening_Cinematic
             if (ragdollHanger == null)
                 return;
 
+            // ⭐ SALTAR TODA LA CINEMÁTICA CON ENTER
+            if (Input.GetKeyDown(KeyCode.Return)) 
+            {
+                StartCoroutine(SkipToCameraC());
+                return;
+            }
+
             HandleCameraTransitions();
             HandleCanvasLogic();
             HandleAnimatorLogic();
         }
+
+        #region === SKIP DIRECTO A CÁMARA C ===
+        private IEnumerator SkipToCameraC()
+        {
+            // Forzar prioridad INMEDIATA a cámara C
+            foreach (var vcam in FindObjectsOfType<CinemachineVirtualCameraBase>())
+                vcam.Priority = (vcam == cameraC) ? 100 : 0;
+
+            // Activar objeto de cámara C inmediatamente
+            if (objectC) objectC.SetActive(true);
+
+            // Apagar cámaras A y B instantáneamente
+            if (objectA) objectA.SetActive(false);
+            if (objectB) objectB.SetActive(false);
+
+            // Apagar main camera si corresponde
+            if (mainCameraToDisable != null)
+                mainCameraToDisable.SetActive(false);
+
+            // Activar scripts del player al instante
+            if (scriptsToEnable != null)
+                foreach (var script in scriptsToEnable)
+                    if (script != null)
+                        script.enabled = true;
+
+            // 🔥 Apagar este GameObject inmediatamente
+            gameObject.SetActive(false);
+
+            yield break;
+        }
+        #endregion
 
         #region === CÁMARA ===
         private void SetInitialCameraState()
@@ -157,7 +192,7 @@ namespace Player.Scripts.Opening_Cinematic
             if (isTransitioning) yield break;
             isTransitioning = true;
 
-            // Activar objeto destino antes del blend
+            // Activar destino
             if (targetCamera == "B" && objectB) objectB.SetActive(true);
             if (targetCamera == "C" && objectC) objectC.SetActive(true);
 
@@ -166,7 +201,6 @@ namespace Player.Scripts.Opening_Cinematic
 
             yield return new WaitForSeconds(blendTime);
 
-            // Apagar objetos de cámaras previas según transición
             if (targetCamera == "B")
             {
                 if (objectA) objectA.SetActive(false);
@@ -176,11 +210,9 @@ namespace Player.Scripts.Opening_Cinematic
             {
                 if (objectB) objectB.SetActive(false);
 
-                // 🔹 Apagar la cámara principal asignada
                 if (mainCameraToDisable != null)
                     mainCameraToDisable.SetActive(false);
 
-                // 🔹 Activar scripts desactivados después de la transición B→C con delay
                 if (scriptsToEnable != null && scriptsToEnable.Length > 0)
                     StartCoroutine(ActivateScriptsWithDelay());
             }
@@ -298,7 +330,6 @@ namespace Player.Scripts.Opening_Cinematic
                 animatorActivated = true;
             }
 
-            // Esperar antes de pasar de cámara B a C
             yield return new WaitForSeconds(transitionAfterAnimatorDelay);
             if (cameraC != null)
                 StartCoroutine(SwitchRoutine(cameraC, "C"));
@@ -306,6 +337,7 @@ namespace Player.Scripts.Opening_Cinematic
         #endregion
     }
 }
+
 
 
 
