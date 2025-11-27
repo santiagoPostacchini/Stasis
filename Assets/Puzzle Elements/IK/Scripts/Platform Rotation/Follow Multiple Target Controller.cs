@@ -15,13 +15,13 @@ namespace Puzzle_Elements.IK.Scripts.Platform_Rotation
 
         [Header("Curva espacial (Bezier cuadr�tica)")]
         [Tooltip("Altura del arco entre puntos (unidades)")]
-        public float arcHeight = 0f;
+        public float arcHeight;
         [Tooltip("Eje para elevar el arco (si es null, usa Vector3.up)")]
         private Transform arcUp; // opcional
 
         [Header("Tiempos")]
         [Tooltip("Tiempo antes de iniciar cada movimiento")]
-        public float moveDelay = 0f;
+        public float moveDelay;
         [Tooltip("Tiempo de viaje entre puntos")]
         public float travelTime = 1f;
         [Tooltip("Pausa tras llegar al punto")]
@@ -29,7 +29,7 @@ namespace Puzzle_Elements.IK.Scripts.Platform_Rotation
 
         [Header("Orientaci�n")]
         [Tooltip("Alinear rotaci�n con la tangente de la curva")]
-        public bool orientAlongPath = false;
+        public bool orientAlongPath;
 
         [Header("Control")]
         public bool CanMove = true;
@@ -41,11 +41,11 @@ namespace Puzzle_Elements.IK.Scripts.Platform_Rotation
         public bool loop = true;
 
         // Estado interno
-        private int currentIndex = 0;
+        private int currentIndex;
         private bool forward = true;
         private Coroutine moveRoutine;
         private Rigidbody rb;
-        [SerializeField]public int shoots =0;
+        [SerializeField]public int shoots;
 
         private void Awake()
         {

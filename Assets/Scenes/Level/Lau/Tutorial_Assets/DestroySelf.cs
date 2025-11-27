@@ -1,6 +1,9 @@
+using TMPro;
 using UnityEngine;
-using UnityEngine.UI; // Para elementos de UI
-using TMPro;          // Por si usás TextMeshPro
+using UnityEngine.UI;
+// Para elementos de UI
+
+// Por si usás TextMeshPro
 
 public class DisableComponents : MonoBehaviour
 {

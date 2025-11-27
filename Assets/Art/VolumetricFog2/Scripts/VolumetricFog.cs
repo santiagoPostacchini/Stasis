@@ -511,7 +511,7 @@ namespace Art.VolumetricFog2.Scripts {
 
         void UpdateNoise() {
             if (profile == null) return;
-            Texture noiseTex = profile.noiseTexture as Texture2D;
+            Texture noiseTex = profile.noiseTexture;
             if (noiseTex == null) return;
 
             // --- Turbulence RT

@@ -16,7 +16,7 @@ namespace Puzzle_Elements.PlataformasCorregidas
 
         // Posici�n anterior del tren (para delta)
         [SerializeField] private Vector3 _lastTrainPosition = Vector3.zero;
-        [SerializeField] private bool _playerOnTrain = false;
+        [SerializeField] private bool _playerOnTrain;
 
         [Header("Umbral de movimiento (debug)")]
         [SerializeField] private float _startStopThreshold = 0.02f;

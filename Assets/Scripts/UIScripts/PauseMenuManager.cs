@@ -6,7 +6,7 @@ namespace UIScripts
 {
     public class PauseMenuManager : MonoBehaviour
     {
-        public static bool IsGamePaused = false;
+        public static bool IsGamePaused;
         public GameObject pauseMenuUI;
         public GameObject confirmQuitUI;
 

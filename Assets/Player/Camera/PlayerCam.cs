@@ -1,6 +1,6 @@
-using UnityEngine;
 using DG.Tweening;
 using UIScripts;
+using UnityEngine;
 
 namespace Player.Camera
 {
@@ -15,7 +15,7 @@ namespace Player.Camera
 
         float xRotation;
         float yRotation;
-        public bool canRotateCamera = false;
+        public bool canRotateCamera;
         private void Start()
         {
             LockCursor();

@@ -1,7 +1,7 @@
 using System.Collections;
+using ObjectPool;
 using UnityEngine;
 using UnityEngine.Audio;
-using ObjectPool;
 
 namespace Audio.Scripts
 {

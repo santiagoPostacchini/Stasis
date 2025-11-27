@@ -7,7 +7,7 @@ namespace Puzzle_Elements.PlataformasCorregidas
     {
         private Rigidbody rb;
         [SerializeField]private Rigidbody plataformaActual;
-        [SerializeField]private bool plataformaEsInercial = false;
+        [SerializeField]private bool plataformaEsInercial;
 
 
 

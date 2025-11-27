@@ -35,7 +35,7 @@ namespace Puzzle_Elements.Sistema_tren.Scripts.Tren
 
         [Header("Suavizado opcional de la velocidad de la plataforma (para c�lculos de v.y)")]
         [Tooltip("Suavizado (en segundos) de la velocidad vertical de la plataforma. 0 = sin suavizado.")]
-        public float platVelSmoothSeconds = 0.0f;
+        public float platVelSmoothSeconds;
 
         Rigidbody _playerRb;
         Collider _playerCol;

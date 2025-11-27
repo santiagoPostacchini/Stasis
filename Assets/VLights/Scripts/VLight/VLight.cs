@@ -1,7 +1,7 @@
 /*
  * VLight
  * Copyright Brian Su 2011-2019
-*/
+ */
 
 using System;
 using UnityEditor;
@@ -9,6 +9,7 @@ using UnityEngine;
 using UnityEngine.Rendering;
 using VLights.Scripts.PostProcess;
 using VLights.Scripts.Util;
+using Object = UnityEngine.Object;
 
 namespace VLights.Scripts.VLight
 {
@@ -43,10 +44,10 @@ namespace VLights.Scripts.VLight
         }
 
         [HideInInspector]
-        public bool lockTransforms = false;
+        public bool lockTransforms;
         [HideInInspector]
         [SerializeField]
-        public bool renderWireFrame = false;
+        public bool renderWireFrame;
 
         [Space(20, order = 0)]
         [Header("==== General light settings ====", order = 1)]
@@ -65,19 +66,19 @@ namespace VLights.Scripts.VLight
         public Vector3 noiseSpeed;
         [SerializeField]
         [Tooltip("- applies a dither pattern to reduce undersampling -")]
-        bool useDithering = false;
+        bool useDithering;
         [SerializeField]
         [Range(-200, 200)]
-        float ditherAmount = 0;
+        float ditherAmount;
         [SerializeField]
         [Tooltip("- smooth intersection between geometry -")]
-        bool useSoftBlend = false;
+        bool useSoftBlend;
         [SerializeField]
         [Tooltip("- control the falloff of the light using a curve -")]
         bool useCurves;
         [SerializeField]
         [Header("- amount to shift noise when light moves -")]
-        float worldScrollAmount = 0;
+        float worldScrollAmount;
         [Space(20, order = 0)]
         [Header("==== Shadow settings ====", order = 1)]
         public ShadowMode shadowMode;
@@ -86,15 +87,15 @@ namespace VLights.Scripts.VLight
         [Tooltip("- This must be a power of 2 -")]
         int shadowMapRes = 256;
         [SerializeField]
-        int shadowBlurPasses = 0;
+        int shadowBlurPasses;
         [SerializeField]
-        float shadowBlurSize = 0;
+        float shadowBlurSize;
         [SerializeField]
         [Header("- for special objects like speed tree -")]
-        bool renderFullShadows = false;
+        bool renderFullShadows;
         [SerializeField]
         [Header("- enable if shadow artifacts occur -")]
-        private bool _renderShadowMapInUpdate = false;
+        private bool _renderShadowMapInUpdate;
 
         [Space(20, order = 0)]
         [Header("==== Spot/Orthographic light settings ====", order = 1)]
@@ -125,7 +126,7 @@ namespace VLights.Scripts.VLight
         VolumeShape volumeShape = VolumeShape.Cube;
         [SerializeField]
         [Range(0, 1)]
-        float shapeValue = 0;
+        float shapeValue;
         [SerializeField]
         Vector3 volumeTextureOffset = Vector3.zero;
         [SerializeField]
@@ -133,10 +134,10 @@ namespace VLights.Scripts.VLight
 
         [SerializeField]
         [Header("- only changed when not playing -")]
-        Gradient lightGradient = new Gradient()
+        Gradient lightGradient = new Gradient
         {
-            alphaKeys = new GradientAlphaKey[] { new GradientAlphaKey(1, 0), new GradientAlphaKey(1, 1) },
-            colorKeys = new GradientColorKey[] { new GradientColorKey(Color.white, 0), new GradientColorKey(Color.black, 1) }
+            alphaKeys = new[] { new GradientAlphaKey(1, 0), new GradientAlphaKey(1, 1) },
+            colorKeys = new[] { new GradientColorKey(Color.white, 0), new GradientColorKey(Color.black, 1) }
         };
         [SerializeField]
         AnimationCurve fallOffCurve = AnimationCurve.EaseInOut(0, 0, 1, 1);
@@ -167,25 +168,25 @@ namespace VLights.Scripts.VLight
         [SerializeField]
         Mesh meshContainer;
 
-        int _idColorTint = 0;
-        int _idLightMultiplier = 0;
-        int _idSpotExponent = 0;
-        int _idConstantAttenuation = 0;
-        int _idLinearAttenuation = 0;
-        int _idQuadraticAttenuation = 0;
-        int _idLightParams = 0;
-        int _idMinBounds = 0;
-        int _idMaxBounds = 0;
-        int _idViewWorldLight = 0;
-        int _idRotation = 0;
-        int _idLocalRotation = 0;
-        int _idProjection = 0;
-        int _idNoiseOffset = 0;
-        int _idJitterAmount = 0;
-        int _idFallOffTex = 0;
-        int _idDitherTex = 0;
-        int _idVolumeParams = 0;
-        int _idVolumeOffset = 0;
+        int _idColorTint;
+        int _idLightMultiplier;
+        int _idSpotExponent;
+        int _idConstantAttenuation;
+        int _idLinearAttenuation;
+        int _idQuadraticAttenuation;
+        int _idLightParams;
+        int _idMinBounds;
+        int _idMaxBounds;
+        int _idViewWorldLight;
+        int _idRotation;
+        int _idLocalRotation;
+        int _idProjection;
+        int _idNoiseOffset;
+        int _idJitterAmount;
+        int _idFallOffTex;
+        int _idDitherTex;
+        int _idVolumeParams;
+        int _idVolumeOffset;
 
         LightTypes _prevLightType;
         ShadowMode _prevShadowMode;
@@ -212,13 +213,13 @@ namespace VLights.Scripts.VLight
         Vector3[] _frustrumPoints;
         Vector3 _angle = Vector3.zero;
         Vector3 _minBounds, _maxBounds;
-        bool _cameraHasBeenUpdated = false;
+        bool _cameraHasBeenUpdated;
         MeshFilter _meshFilter;
         RenderTexture _depthTexture;
         const int VERT_COUNT = 65000;
         const int TRI_COUNT = VERT_COUNT * 3;
-        const System.StringComparison STR_CMP_TYPE = System.StringComparison.OrdinalIgnoreCase;
-        bool _builtMesh = false;
+        const StringComparison STR_CMP_TYPE = StringComparison.OrdinalIgnoreCase;
+        bool _builtMesh;
         int _maxSlices;
         Material _postMaterial;
 
@@ -292,7 +293,7 @@ namespace VLights.Scripts.VLight
                 if (_emptyTexture3D == null)
                 {
                     _emptyTexture3D = new Texture3D(1, 1, 1, TextureFormat.ARGB32, false);
-                    _emptyTexture3D.SetPixels32(new Color32[] { new Color32(128, 128, 128, 128) });
+                    _emptyTexture3D.SetPixels32(new[] { new Color32(128, 128, 128, 128) });
                     _emptyTexture3D.hideFlags = HideFlags.DontSave;
                     _emptyTexture3D.Apply();
                 }
@@ -308,7 +309,7 @@ namespace VLights.Scripts.VLight
                 if (_emptyTexture2D == null)
                 {
                     _emptyTexture2D = new Texture2D(1, 1, TextureFormat.ARGB32, false);
-                    _emptyTexture2D.SetPixels32(new Color32[] { new Color32(128, 128, 128, 128) });
+                    _emptyTexture2D.SetPixels32(new[] { new Color32(128, 128, 128, 128) });
                     _emptyTexture2D.hideFlags = HideFlags.DontSave;
                     _emptyTexture2D.Apply();
                 }
@@ -574,16 +575,16 @@ namespace VLights.Scripts.VLight
             switch (lightType)
             {
                 case LightTypes.Spot:
-                    MeshRender.sharedMaterial = Instantiate(spotMaterial) as Material;
+                    MeshRender.sharedMaterial = Instantiate(spotMaterial);
                     break;
                 case LightTypes.Point:
-                    MeshRender.sharedMaterial = Instantiate(pointMaterial) as Material;
+                    MeshRender.sharedMaterial = Instantiate(pointMaterial);
                     break;
                 case LightTypes.Area:
-                    MeshRender.sharedMaterial = Instantiate(areaMaterial) as Material;
+                    MeshRender.sharedMaterial = Instantiate(areaMaterial);
                     break;
                 case LightTypes.Orthographic:
-                    MeshRender.sharedMaterial = Instantiate(orthoMaterial) as Material;
+                    MeshRender.sharedMaterial = Instantiate(orthoMaterial);
                     break;
             }
 
@@ -624,7 +625,6 @@ namespace VLights.Scripts.VLight
             Gizmos.DrawLine(CachedTransform.TransformPoint(_frustrumPoints[4]), CachedTransform.TransformPoint(_frustrumPoints[0]));
         }
 
-        [HideInInspector]
         Vector3[] _pointsViewSpace = new Vector3[8]; // cached these values
 
         void CalculateMinMax(out Vector3 min, out Vector3 max, bool forceFrustrumUpdate)
@@ -704,7 +704,7 @@ namespace VLights.Scripts.VLight
 
         void BuildMesh(bool manualPositioning, int planeCount, Vector3 minBounds, Vector3 maxBounds)
         {
-            if (meshContainer == null || meshContainer.name.IndexOf(GetInstanceID().ToString(), System.StringComparison.OrdinalIgnoreCase) != 0)
+            if (meshContainer == null || meshContainer.name.IndexOf(GetInstanceID().ToString(), StringComparison.OrdinalIgnoreCase) != 0)
             {
 #if DEBUG_MODE
             Debug.Log("Creating new mesh container");
@@ -725,7 +725,7 @@ namespace VLights.Scripts.VLight
             int vertBucketCount = 0;
             int triBucketCount = 0;
 
-            float depthOffset = 1.0f / (float)(planeCount - 1);
+            float depthOffset = 1.0f / (planeCount - 1);
             float depth = (manualPositioning) ? 1f : 0f;
             float xLeft = 0f;
             float xRight = 1f;
@@ -925,8 +925,6 @@ namespace VLights.Scripts.VLight
                                     cam.RenderToCubemap(_depthTexture, 63);
                                     cam.ResetReplacementShader();
                                     break;
-                                default:
-                                    break;
                             }
                         }
                         else
@@ -998,7 +996,7 @@ namespace VLights.Scripts.VLight
     bool _hasCalledUpdate = false;
 #endif
 
-        private bool _queueRenderShadowMap = false;
+        private bool _queueRenderShadowMap;
 
         public void OnWillRenderObject()
         {
@@ -1429,7 +1427,7 @@ namespace VLights.Scripts.VLight
             }
         }
 
-        void SafeDestroy(UnityEngine.Object obj, bool forceImmediate = false)
+        void SafeDestroy(Object obj, bool forceImmediate = false)
         {
             if (obj != null)
             {

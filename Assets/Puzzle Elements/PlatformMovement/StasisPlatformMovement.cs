@@ -1,3 +1,4 @@
+using System;
 using Player.Stasis;
 using UnityEngine;
 
@@ -7,12 +8,12 @@ namespace Puzzle_Elements.PlatformMovement
     {
         public void StatisEffectActivate()
         {
-            throw new System.NotImplementedException();
+            throw new NotImplementedException();
         }
 
         public void StatisEffectDeactivate()
         {
-            throw new System.NotImplementedException();
+            throw new NotImplementedException();
         }
 
         public bool IsFreezed => _isFreezed;

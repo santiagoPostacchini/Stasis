@@ -17,6 +17,7 @@
 //=========================================================================================================================================
 
 using UnityEngine;
+using UnityEngine.Events;
 
 #region PathFollower
 
@@ -37,7 +38,7 @@ namespace Puzzle_Elements.Path.CurvedPathGenerator.Scripts
         /// <summary>
         /// method to run when this is done moving
         /// </summary>
-        public UnityEngine.Events.UnityEvent EndEvent;
+        public UnityEvent EndEvent;
 
         /// <summary>
         /// choose the path to move
@@ -62,7 +63,7 @@ namespace Puzzle_Elements.Path.CurvedPathGenerator.Scripts
         /// <summary>
         /// does it move repeatedly?
         /// </summary>
-        public bool IsLoop = false;
+        public bool IsLoop;
 
 
 
@@ -75,12 +76,12 @@ namespace Puzzle_Elements.Path.CurvedPathGenerator.Scripts
         /// <summary>
         /// is End event enable?
         /// </summary>
-        public bool IsEndEventEnable = false;
+        public bool IsEndEventEnable;
 
         /// <summary>
         /// flag variable
         /// </summary>
-        private bool checkFlag = false;
+        private bool checkFlag;
 
         /// <summary>
         /// the rigidbody of the object to move
@@ -122,9 +123,9 @@ namespace Puzzle_Elements.Path.CurvedPathGenerator.Scripts
             particle = GetComponentInChildren<ParticleSystem>();
             if ( Generator != null )
             {
-                target = this.gameObject;
+                target = gameObject;
                 nextPath = Generator.PathList[1];
-                this.transform.position = Generator.PathList[0];
+                transform.position = Generator.PathList[0];
             }
         }
 
@@ -157,14 +158,12 @@ namespace Puzzle_Elements.Path.CurvedPathGenerator.Scripts
                 targetRigidbody.velocity = Vector3.zero;
                 return;
             }
-            else
+
+            if (particle != null)
             {
-                if (particle != null)
+                if (!particle.isPlaying)
                 {
-                    if (!particle.isPlaying)
-                    {
-                        particle.Play();
-                    }
+                    particle.Play();
                 }
             }
             if ( Generator == null )
@@ -177,9 +176,9 @@ namespace Puzzle_Elements.Path.CurvedPathGenerator.Scripts
             if ( !checkFlag )
             {
                 checkFlag = true;
-                target = this.gameObject;
+                target = gameObject;
                 nextPath = Generator.PathList[1];
-                this.transform.position = Generator.PathList[0];
+                transform.position = Generator.PathList[0];
             }
 
             //=============================================================================================================================
@@ -269,7 +268,7 @@ namespace Puzzle_Elements.Path.CurvedPathGenerator.Scripts
                             //=============================================================================================================
                             nextPath = Generator.PathList[1];
                             pathIndex = 1;
-                            this.transform.position = Generator.PathList[0];
+                            transform.position = Generator.PathList[0];
                             target.transform.LookAt(Generator.PathList[1]);
                             // If repeatEvent isn't null, run method.
                             // repeatEvent null이 아니면, method를 실행
@@ -315,16 +314,15 @@ namespace Puzzle_Elements.Path.CurvedPathGenerator.Scripts
 
             if ( pathIndex == 1 )
             {
-                return ( Generator.PathList[0] - this.transform.position ).magnitude;
+                return ( Generator.PathList[0] - transform.position ).magnitude;
             }
-            else if ( pathIndex >= Generator.PathList.Count )
+
+            if ( pathIndex >= Generator.PathList.Count )
             {
                 return Generator.GetLength();
             }
-            else
-            {
-                return Generator.PathLengths[pathIndex - 2] + ( Generator.PathList[pathIndex - 1] - this.transform.position ).magnitude;
-            }
+
+            return Generator.PathLengths[pathIndex - 2] + ( Generator.PathList[pathIndex - 1] - transform.position ).magnitude;
         }
 
         #endregion PathFollower_GetPassedLengthMethod

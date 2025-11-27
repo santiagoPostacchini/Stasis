@@ -1,7 +1,5 @@
 using Player.Scripts.MovementFSM.MVC;
 using Puzzle_Elements.PlataformasCorregidas;
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class TriggerEvent : MonoBehaviour

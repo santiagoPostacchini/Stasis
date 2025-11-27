@@ -15,6 +15,7 @@
 //  2025.10.09 _ Patch: Rebuild world positions from local each UpdatePath; optional TRS change detection.
 //=========================================================================================================================================
 
+using System;
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
@@ -25,16 +26,16 @@ namespace Puzzle_Elements.Path.CurvedPathGenerator.Scripts
 {
     [RequireComponent(typeof(MeshFilter))]
     [RequireComponent(typeof(MeshRenderer))]
-    [System.Serializable]
+    [Serializable]
     public class PathGenerator : MonoBehaviour
     {
         //============================== Public Settings ==============================
 
         /// <summary>Is this path closed?</summary>
-        public bool IsClosed = false;
+        public bool IsClosed;
 
         /// <summary>Recalculate every frame (runtime)?</summary>
-        public bool IsLivePath = false;
+        public bool IsLivePath;
 
         /// <summary>Show icons in the editor?</summary>
         public bool IsShowingIcons = true;
@@ -43,7 +44,7 @@ namespace Puzzle_Elements.Path.CurvedPathGenerator.Scripts
         public int PathDensity = 5;
 
         /// <summary>(Editor Only) edit mode flag</summary>
-        public int EditMode = 0;
+        public int EditMode;
 
         /// <summary>Create the mesh of the path</summary>
         public bool CreateMeshFlag = true;
@@ -199,7 +200,7 @@ namespace Puzzle_Elements.Path.CurvedPathGenerator.Scripts
                 float l = (PathList[PathList.Count - 2] - PathList[PathList.Count - 1]).magnitude;
                 PathLengths.Add(PathLengths[PathLengths.Count - 1] + l);
             }
-            catch (System.Exception e)
+            catch (Exception e)
             {
                 Debug.LogException(e);
             }
@@ -225,7 +226,7 @@ namespace Puzzle_Elements.Path.CurvedPathGenerator.Scripts
 
             if (IsShowingIcons)
             {
-                Gizmos.DrawIcon(this.transform.position, "PathGenerator/PG_Anchor.png", true);
+                Gizmos.DrawIcon(transform.position, "PathGenerator/PG_Anchor.png", true);
 
                 if (NodeList_World != null && NodeList_World.Count > 0)
                 {

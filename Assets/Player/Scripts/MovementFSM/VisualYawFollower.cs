@@ -1,3 +1,4 @@
+using Player.Scripts.MovementFSM.MVC;
 using UnityEngine;
 
 namespace Player.Scripts.MovementFSM
@@ -12,7 +13,7 @@ namespace Player.Scripts.MovementFSM
         [Header("Refs")]
         public Transform yawPivot;     // cam yaw
         public Transform visualRoot;   // graphics root
-        public MVC.Model model;        // <- asignar en Inspector (o por código)
+        public Model model;        // <- asignar en Inspector (o por código)
 
         [Header("Follow Tuning")]
         [Range(0f, 1f)] public float turnLerp = 0.2f;

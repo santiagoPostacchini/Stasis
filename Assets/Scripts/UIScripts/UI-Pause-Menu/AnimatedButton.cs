@@ -20,7 +20,7 @@ namespace UIScripts.UI_Pause_Menu
         [Header("Entry Animation")]
         public EntryDirection entryDirection = EntryDirection.Scale;
         public float entryDuration = 0.5f;
-        public float entryDelay = 0f;
+        public float entryDelay;
         public Vector2 offset = new Vector2(100, 0);
         [Tooltip("Easing al entrar moviendo.")]
         public Ease entryMoveEase = Ease.OutCubic;
@@ -32,7 +32,7 @@ namespace UIScripts.UI_Pause_Menu
         public float hoverScale = 1.1f;
         public float hoverDuration = 0.2f;
         public Ease hoverEase = Ease.OutBack;
-        public bool hoverSound = false;
+        public bool hoverSound;
         public AudioClip hoverClip;
 
         [Header("Click Animation")]
@@ -41,7 +41,7 @@ namespace UIScripts.UI_Pause_Menu
         public float clickScale = 0.9f;
         public float clickDuration = 0.1f;
         public Ease clickEase = Ease.OutFlash;
-        public bool clickSound = false;
+        public bool clickSound;
         public AudioClip clickClip;
 
         private RectTransform rect;

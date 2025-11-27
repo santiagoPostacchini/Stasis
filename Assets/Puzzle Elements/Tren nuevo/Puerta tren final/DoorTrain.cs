@@ -7,7 +7,7 @@ namespace Puzzle_Elements.Tren_nuevo.Puerta_tren_final
     public class DoorTrain : MonoBehaviour
     {
         private Animator _anim;
-        private bool _open = false;
+        private bool _open;
 
         private void Start()
         {

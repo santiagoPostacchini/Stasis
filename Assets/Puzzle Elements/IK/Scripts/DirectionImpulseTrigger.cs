@@ -59,9 +59,9 @@ namespace Puzzle_Elements.IK.Scripts
         public Color gizmoWire = new Color(0f, 0f, 0f, 1f);
 
         // Estado
-        [HideInInspector] public bool playerInContact = false;
-        private bool prevCanMove = false;
-        private bool overlapActive = false;
+        [HideInInspector] public bool playerInContact;
+        private bool prevCanMove;
+        private bool overlapActive;
 
         // Cache
         private BoxCollider boxCol;

@@ -2,18 +2,18 @@ using System;
 using System.Collections;
 using Managers.Game;
 using Player.Scripts.Interactor;
-using Player.Scripts.MovementFSM.MVC;
 using Puzzle_Elements.Hedron.Scripts;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
+using Random = UnityEngine.Random;
 
 namespace Puzzle_Elements.Hedro_conteiner.Scripts
 {
     [RequireComponent(typeof(Collider))]
     public class HedronContainerIn : MonoBehaviour, IInteractable
     {
-        [SerializeField] private PhysicsBox _box = null;
+        [SerializeField] private PhysicsBox _box;
 
         [Header("=== CORE REFERENCES ===")]
         [SerializeField] private Button.Scripts.Button _button;
@@ -38,7 +38,7 @@ namespace Puzzle_Elements.Hedro_conteiner.Scripts
         [SerializeField] private float attractionSpeed = 5f; // si no usás curvas
         [SerializeField] private float stopDistance = 0.05f;
         [SerializeField] private float ejectNudgeDistance = 0.08f;
-        [SerializeField] private float ejectTorque = 0f;
+        [SerializeField] private float ejectTorque;
         [SerializeField] private bool reenableColliderOnEject = true;
 
         [Header("=== SCALING SETTINGS ===")]
@@ -645,7 +645,7 @@ namespace Puzzle_Elements.Hedro_conteiner.Scripts
 
                 if (ejectTorque > 0f)
                 {
-                    Vector3 rand = UnityEngine.Random.onUnitSphere * ejectTorque;
+                    Vector3 rand = Random.onUnitSphere * ejectTorque;
                     _rb.AddTorque(rand, ForceMode.VelocityChange);
                 }
             }

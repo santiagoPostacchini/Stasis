@@ -1,3 +1,4 @@
+using System;
 using Player.Stasis;
 using UnityEngine;
 
@@ -7,8 +8,8 @@ namespace Puzzle_Elements.Tren_nuevo
     {
         [SerializeField] private ElevatorShipmentTrain _elevatorShipmentTrain;
         public bool IsFreezed => isFreezed;
-        public bool isFreezed = false;
-        public StasisEffect StasisEffect => throw new System.NotImplementedException();
+        public bool isFreezed;
+        public StasisEffect StasisEffect => throw new NotImplementedException();
 
         void Start()
         {

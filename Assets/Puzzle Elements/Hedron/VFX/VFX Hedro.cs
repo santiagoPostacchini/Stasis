@@ -20,7 +20,7 @@ namespace Puzzle_Elements.Hedron.VFX
 
 
         public List<Transform> transformParticlesOff = new List<Transform>();
-        private bool canRotate = false;
+        private bool canRotate;
         // Start is called before the first frame update
         void Start()
         {
@@ -82,7 +82,7 @@ namespace Puzzle_Elements.Hedron.VFX
                 ps1.Play();
                 ps2.Play();
                 ps3.Play();
-                IncreaseChildrenScale(form, 0.75f);
+                IncreaseChildrenScale(form);
                 yield return new WaitForSeconds(1.4f);
                 particlesExplosion[0].Play();
                 yield return new WaitForSeconds(0.2f);

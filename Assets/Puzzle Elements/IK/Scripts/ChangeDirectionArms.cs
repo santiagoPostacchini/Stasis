@@ -8,7 +8,7 @@ namespace Puzzle_Elements.IK.Scripts
     {
         public List<FollowTargetController> followTargetControllers;
         //public Material yellow, green;
-        private bool _alreadyCollision = false;
+        private bool _alreadyCollision;
 
         private int _layerDefault;
         private int _layerInvisible;

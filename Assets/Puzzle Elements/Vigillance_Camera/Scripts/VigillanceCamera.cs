@@ -15,7 +15,7 @@ namespace Puzzle_Elements.Vigillance_Camera.Scripts
         [Header("Clamps (�)")]
         public Vector2 yawMinMax = new Vector2(-90f, 90f);
         public Vector2 pitchMinMax = new Vector2(-20f, 20f);
-        public bool invertPitch = false;
+        public bool invertPitch;
 
         [Header("Rotaci�n")]
         public float turnSpeed = 8f;

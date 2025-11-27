@@ -1,5 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class FollowObject : MonoBehaviour
@@ -11,7 +9,7 @@ public class FollowObject : MonoBehaviour
     {
         if (target == null) return;
 
-        // Solo copiamos posición, nunca rotación
+        // Solo copiamos posiciï¿½n, nunca rotaciï¿½n
         transform.position = target.position + offset;
 
         if (!target.gameObject.activeSelf) gameObject.gameObject.SetActive(false);

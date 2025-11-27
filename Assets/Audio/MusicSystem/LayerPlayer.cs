@@ -1,3 +1,4 @@
+using System.Threading.Tasks;
 using UnityEngine;
 
 namespace Audio.MusicSystem
@@ -39,7 +40,7 @@ namespace Audio.MusicSystem
             _ = FadeRoutine(from, to, fadeBeats * (float)clock.SecondsPerBeat, targetVol);
         }
 
-        async System.Threading.Tasks.Task FadeRoutine(AudioSource from, AudioSource to, double seconds, float targetVol)
+        async Task FadeRoutine(AudioSource from, AudioSource to, double seconds, float targetVol)
         {
             float t = 0f;
             while (t < seconds)
@@ -48,7 +49,7 @@ namespace Audio.MusicSystem
                 float k = Mathf.Clamp01((float)(t / seconds));
                 if (to)   to.volume   = Mathf.Lerp(0f, targetVol, k);
                 if (from) from.volume = Mathf.Lerp(targetVol, 0f, k);
-                await System.Threading.Tasks.Task.Yield();
+                await Task.Yield();
             }
             if (from) from.volume = 0f;
             if (to)   to.volume = targetVol;

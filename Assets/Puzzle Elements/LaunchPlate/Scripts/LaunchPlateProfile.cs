@@ -59,7 +59,7 @@ namespace Puzzle_Elements.LaunchPlate.Scripts
 
         [Header("Nudges (micro-correcciones en vuelo)")]
         [Tooltip("Si > 0, remuestrea la ruta a esta cantidad de checkpoints uniformes (suaviza y hace los nudges más predecibles). 0 = usar hijos tal cual.")]
-        [Range(0, 32)] public int overrideCheckpointCount = 0;
+        [Range(0, 32)] public int overrideCheckpointCount;
 
         [Tooltip("Ventana temporal (seg) alrededor del instante objetivo de cada nudge. Más chico = corrección más puntual.")]
         [Range(0.02f, 0.6f)] public float nudgeTimeWindow = 0.12f;

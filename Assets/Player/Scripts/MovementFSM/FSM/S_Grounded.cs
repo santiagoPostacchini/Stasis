@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Player.Scripts.MovementFSM.MVC;
 using UnityEngine;
@@ -10,7 +11,7 @@ namespace Player.Scripts.MovementFSM
         private readonly Model _model;
         private readonly Transform _moveBasis;
 
-        private readonly List<System.Func<float>> _speedOverrides = new();
+        private readonly List<Func<float>> _speedOverrides = new();
 
         private Ray _moveCheckRay;
 
@@ -112,7 +113,7 @@ namespace Player.Scripts.MovementFSM
 
         public void OnLateUpdate()
         {
-            throw new System.NotImplementedException();
+            throw new NotImplementedException();
         }
 
         private void GetPlanarBasis(out Vector3 f, out Vector3 r)
@@ -279,11 +280,11 @@ namespace Player.Scripts.MovementFSM
             var scanner = _model.Scanner;
             if (!scanner || !_model.IsGroundedNow() || Time.time < _model.groundedIgnoreUntil)
             {
-                if (_model.rb.useGravity == false && !_model.blockUseGravity) _model.rb.useGravity = true;
+                if (!_model.rb.useGravity && !_model.blockUseGravity) _model.rb.useGravity = true;
                 return;
             }
 
-            if (_model.rb.useGravity == false && !_model.blockUseGravity) _model.rb.useGravity = true;
+            if (!_model.rb.useGravity && !_model.blockUseGravity) _model.rb.useGravity = true;
 
             float slope = scanner.CurrentGroundSlopeDeg;
             bool allowSlide = slope >= _model.slideFromSlopeDeg;
@@ -301,7 +302,7 @@ namespace Player.Scripts.MovementFSM
             }
             else
             {
-                if (_model.rb.useGravity == false && !_model.blockUseGravity) _model.rb.useGravity = true;
+                if (!_model.rb.useGravity && !_model.blockUseGravity) _model.rb.useGravity = true;
             }
         }
     }

@@ -14,10 +14,10 @@ namespace Player.Scripts
         public Collider[] ragdollColliders;
 
         [Header("<color=red>Activation Switches</color>")]
-        public bool activateRagdoll = false;
-        public bool deactivateRagdoll = false;
+        public bool activateRagdoll;
+        public bool deactivateRagdoll;
 
-        private bool isRagdollActive = false;
+        private bool isRagdollActive;
 
         void Awake()
         {

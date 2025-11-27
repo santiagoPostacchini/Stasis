@@ -108,7 +108,7 @@ namespace Puzzle_Elements.Sistema_tren.Scripts
         public Action OnTrenEndMovement;
 
 
-        private bool _alreadyActivate = false;
+        private bool _alreadyActivate;
 
         void Awake()
         {

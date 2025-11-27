@@ -1,6 +1,6 @@
+using System.Collections.Generic;
 using Puzzle_Elements.AllInterfaces;
 using UnityEngine;
-using System.Collections.Generic;
 
 namespace Puzzle_Elements.Pressure_Plate.Scripts
 {

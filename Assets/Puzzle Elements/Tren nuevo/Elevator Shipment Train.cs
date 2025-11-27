@@ -8,13 +8,13 @@ namespace Puzzle_Elements.Tren_nuevo
     public class ElevatorShipmentTrain : MonoBehaviour, IStasis
     {
         [Header("Movimiento")]
-        public bool canMove = false;
+        public bool canMove;
 
         [Header("Stasis Rendering")]
         [SerializeField] private List<Renderer> rends = new List<Renderer>();
 
         public bool IsFreezed => _isFreezed;
-        private bool _isFreezed = false;
+        private bool _isFreezed;
 
         public StasisEffect StasisEffect { get; private set; }
 

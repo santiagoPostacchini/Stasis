@@ -11,7 +11,7 @@ namespace Puzzle_Elements.Conteiners_with_arms
 
         public StasisEffect StasisEffect { get; private set; }
 
-        public bool isFreezed = false;
+        public bool isFreezed;
 
         public Material matStasis;
         public readonly string _outlineThicknessName = "_BorderThickness";

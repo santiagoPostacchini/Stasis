@@ -36,7 +36,7 @@ namespace Puzzle_Elements.IK.Scripts.Platform_Rotation
 
         public void NotifyTipController(bool a)
         {
-            if (a == true)
+            if (a)
             {
                 _stasisTipControllerPlatformRotation.StatisEffectActivate();
             }

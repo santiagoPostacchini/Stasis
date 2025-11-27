@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using UnityEditor;
 using UnityEngine;
 
 namespace Puzzle_Elements.LaunchPlate.Scripts
@@ -22,7 +23,7 @@ namespace Puzzle_Elements.LaunchPlate.Scripts
         [SerializeField] private Transform launchOrigin;
 
         [Tooltip("Si está activo y se usa origen fijo, teletransporta el cuerpo al origen antes del lanzamiento y limpia su velocidad/angular.")]
-        [SerializeField] private bool snapBodyToOrigin = false;
+        [SerializeField] private bool snapBodyToOrigin;
 
         [Header("Profile (curves & feel)")]
         [Tooltip("Perfil (ScriptableObject) con curvas y ajustes de 'feel'.\nSi es NULL, se usan los parámetros de 'Fallback' de abajo.")]
@@ -53,7 +54,7 @@ namespace Puzzle_Elements.LaunchPlate.Scripts
 
         [Header("Gizmos (editor)")]
         [Tooltip("Dibuja gizmos de la ruta y los checkpoints en el editor.")]
-        [SerializeField] private bool drawGizmos = true, alwaysDraw = false;
+        [SerializeField] private bool drawGizmos = true, alwaysDraw;
 
         [Tooltip("Detalle de la polilínea de la parábola dibujada (segmentos).")]
         [SerializeField, Range(8, 128)] private int gizmoDetail = 48;
@@ -453,7 +454,7 @@ namespace Puzzle_Elements.LaunchPlate.Scripts
         void OnDrawGizmos()
         {
             if (!drawGizmos) return;
-            if (!alwaysDraw && !UnityEditor.Selection.Contains(gameObject)) return;
+            if (!alwaysDraw && !Selection.Contains(gameObject)) return;
 
             DrawParent(playerTrajectoryParent, playerColor);
             DrawParent(objectTrajectoryParent, objectColor);

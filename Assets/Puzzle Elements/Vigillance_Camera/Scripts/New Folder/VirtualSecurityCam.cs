@@ -1,6 +1,7 @@
 using Managers.Game;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
+
 // GraphicsFormat, FormatUsage
 
 namespace Puzzle_Elements.Vigillance_Camera.Scripts.New_Folder
@@ -124,14 +125,13 @@ namespace Puzzle_Elements.Vigillance_Camera.Scripts.New_Folder
         {
             if (rt == null) return;
             try { if (rt.IsCreated()) rt.Release(); } catch { }
-            Object.Destroy(rt);
+            Destroy(rt);
             rt = null;
         }
 
         static RenderTexture SafeCreateRT(int w, int h, bool wantSRGB)
         {
-            GraphicsFormat[] candidates = new GraphicsFormat[]
-            {
+            GraphicsFormat[] candidates = {
                 wantSRGB ? GraphicsFormat.R8G8B8A8_SRGB  : GraphicsFormat.R8G8B8A8_UNorm,
                 wantSRGB ? GraphicsFormat.B8G8R8A8_SRGB  : GraphicsFormat.B8G8R8A8_UNorm,
                 GraphicsFormat.R16G16B16A16_SFloat
@@ -158,7 +158,7 @@ namespace Puzzle_Elements.Vigillance_Camera.Scripts.New_Folder
                     rt.wrapMode = TextureWrapMode.Clamp;
 
                     if (rt.Create()) return rt;
-                    Object.Destroy(rt);
+                    Destroy(rt);
                 }
             }
 
@@ -171,7 +171,7 @@ namespace Puzzle_Elements.Vigillance_Camera.Scripts.New_Folder
             rtLegacy.antiAliasing = 1;
 
             if (rtLegacy.Create()) return rtLegacy;
-            Object.Destroy(rtLegacy);
+            Destroy(rtLegacy);
             return null;
         }
 

@@ -8,13 +8,13 @@ namespace Puzzle_Elements.Hedron.Scripts
     [RequireComponent(typeof(Rigidbody))]
     public class ObjectInPlatform : MonoBehaviour
     {
-        public bool estaSubiendo = false;
+        public bool estaSubiendo;
 
         [Header("Ground Detection")]
         [SerializeField] private LayerMask groundLayer;
         public float groundCheckRadius = 0.25f;
         public float groundCheckDistance = 0.3f;
-        public float offSetY = 0f;
+        public float offSetY;
         public Transform groundProbe;
 
         [Header("Walkable Filter")]
@@ -49,9 +49,9 @@ namespace Puzzle_Elements.Hedron.Scripts
         private Vector3 _lastHitPoint;
 
         // Timers/estado
-        private float _airborneTimer = 0f;
+        private float _airborneTimer;
         private MovingPlatformDeltaPosition _pendingPlatform;
-        private float _swapTimer = 0f;
+        private float _swapTimer;
         private float _lastWalkableTime = -999f;
 
         private void Awake()

@@ -15,8 +15,8 @@ namespace Scenes.Level.Lau.Tutorial_Assets
         public float endSwingAngle = 8f;    // ángulo máximo del rebote final
         public float endSwingDuration = 0.5f; // duración del rebote final
 
-        private float swingTimer = 0f;
-        private float endSwingTimer = 0f;
+        private float swingTimer;
+        private float endSwingTimer;
         private Quaternion initialRotation;
 
         void Start()

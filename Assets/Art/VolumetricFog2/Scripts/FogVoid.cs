@@ -7,7 +7,7 @@ namespace Art.VolumetricFog2.Scripts {
     public class FogVoid : MonoBehaviour {
 
         public float radius = 10f;
-        [Range(0,1)] public float falloff = 0;
+        [Range(0,1)] public float falloff;
 
         private void OnEnable() {
             VolumetricFogManager.fogVoidManager.Refresh();

@@ -34,7 +34,7 @@ namespace Environment.Platforms
         public bool autoActivateTargetGO = true;
 
         [Tooltip("Desactivar automáticamente el GameObject del sistema al quedar en estado Close (opcional).")]
-        public bool autoDeactivateOnCloseEnd = false;
+        public bool autoDeactivateOnCloseEnd;
 
         // Interno
         bool _subscribed;

@@ -4,7 +4,7 @@ using UnityEngine;
 /*
  * VLight
  * Copyright Brian Su 2011-2015
-*/
+ */
 
 namespace VLights.Scripts.VLight
 {
@@ -26,7 +26,7 @@ namespace VLights.Scripts.VLight
 			{
 				if(_instance == null)
 				{
-					_instance = GameObject.FindObjectOfType(typeof(VLightManager)) as VLightManager;
+					_instance = FindObjectOfType(typeof(VLightManager)) as VLightManager;
 					if(_instance == null)
 					{
 						GameObject goManager = new GameObject("Volume Light Manager");
@@ -99,7 +99,6 @@ namespace VLights.Scripts.VLight
 				 
 				if(cam == null)
 				{
-					return;
 				}
 			
 				//// Flush out and lights deleted while running
@@ -121,14 +120,14 @@ namespace VLights.Scripts.VLight
 		private void Start()
 		{
 			_vLights.Clear();
-			VLight[] vLights = GameObject.FindObjectsOfType(typeof(VLight)) as VLight[];
+			VLight[] vLights = FindObjectsOfType(typeof(VLight)) as VLight[];
 			_vLights.AddRange(vLights);
 		}
 	
 		private void Enabled()
 		{
 			_vLights.Clear();
-			VLight[] vLights = GameObject.FindObjectsOfType(typeof(VLight)) as VLight[];
+			VLight[] vLights = FindObjectsOfType(typeof(VLight)) as VLight[];
 			_vLights.AddRange(vLights);
 		}
 	}

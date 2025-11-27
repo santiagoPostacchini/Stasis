@@ -1,7 +1,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using Managers.Game;
 using Player.Stasis;
 using Puzzle_Elements.Conteiners_with_arms;
 using UnityEngine;
@@ -14,7 +13,7 @@ namespace Puzzle_Elements.IK.Scripts
         public StasisConectionTipControllerWithCargo _stasisConection;
         public bool IsFreezed => _isFreezed;
         public StasisEffect StasisEffect { get; }
-        [SerializeField]private bool _isFreezed = false;
+        [SerializeField]private bool _isFreezed;
         [Header("Stasis")]
         public Material matStasis;
         public readonly string _outlineThicknessName = "_BorderThickness";
@@ -86,7 +85,7 @@ namespace Puzzle_Elements.IK.Scripts
             if(_stasisConection != null)
             {
                 //_stasisConection.Conection(true,this,null);
-                _stasisConection.Notify(true, _isFreezed, this, null);
+                _stasisConection.Notify(true, _isFreezed, this);
             }
             _followTargetController.canMove = false;
         }
@@ -98,7 +97,7 @@ namespace Puzzle_Elements.IK.Scripts
             if (_stasisConection != null)
             {
                 //_stasisConection.Conection(true,this,null);
-                _stasisConection.Notify(true, _isFreezed, this, null);
+                _stasisConection.Notify(true, _isFreezed, this);
             }
             _followTargetController.canMove = true;
         }

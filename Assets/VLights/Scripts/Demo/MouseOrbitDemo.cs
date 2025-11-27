@@ -6,7 +6,7 @@ namespace VLights.Scripts.Demo
     {
         //Copied from the standard assets and renamed to MouseOrbitDemo to avoid any conflicts. Feel free to delete this file.
 
-        public Transform target = null;
+        public Transform target;
         public float distance = 8.0f;
 
         public float xSpeed = 250.0f;
@@ -15,8 +15,8 @@ namespace VLights.Scripts.Demo
         public float yMinLimit = -90f;
         public float yMaxLimit = 90f;
 
-        private float x = 0.0f;
-        private float y = 0.0f;
+        private float x;
+        private float y;
 
         private void Start ()
         {

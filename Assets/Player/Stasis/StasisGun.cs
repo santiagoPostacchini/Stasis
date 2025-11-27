@@ -1,15 +1,14 @@
 ﻿using System;
-using Managers.Events;
-using Player.Scripts.Interactor;
-using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using Managers.Game;
+using Player.Scripts.Interactor;
 using Player.Scripts.MovementFSM.MVC;
 using Puzzle_Elements;
 using Puzzle_Elements.Hedron.Scripts;
 using UIScripts.FeedBack_UI.Crosshair;
-using Managers.Game;
+using UnityEngine;
 
 namespace Player.Stasis
 {
@@ -77,7 +76,7 @@ namespace Player.Stasis
         private Hand _wallOnSide; // lado donde está la pared (Left = pared a la izquierda del jugador)
 
 
-        private bool _stasisActivate = false;
+        private bool _stasisActivate;
         public Transform camHolder;
 
         private void Start()

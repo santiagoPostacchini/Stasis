@@ -42,11 +42,11 @@ namespace Puzzle_Elements.MagicSwitch.Scripts
 
         private Color baseEmissionRight;
         private Color baseEmissionLeft;
-        private bool isShining = false;
-        private float shineTimer = 0f;
+        private bool isShining;
+        private float shineTimer;
         private float totalShineTime;
 
-        private bool _allReady = false;
+        private bool _allReady;
 
         private void Awake()
         {
@@ -234,7 +234,7 @@ namespace Puzzle_Elements.MagicSwitch.Scripts
             Debug.Log("Hedro");
             if (hedro != null && hedro.transform.parent != null)
             {
-                if (hedro.transform.parent.parent.TryGetComponent<PlayerInteractor>(out PlayerInteractor player))
+                if (hedro.transform.parent.parent.TryGetComponent(out PlayerInteractor player))
                 {
                     Debug.Log("Player");
                     player.TryDropObject();

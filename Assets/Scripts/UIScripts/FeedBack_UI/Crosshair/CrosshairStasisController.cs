@@ -1,3 +1,4 @@
+using System;
 using Player.Stasis;
 using UnityEngine;
 using UnityEngine.UI;
@@ -86,8 +87,8 @@ namespace UIScripts.FeedBack_UI.Crosshair
         public Color rayColorMiss = Color.red;
 
         // ---------------- Eventos ----------------
-        public event System.Action<IStasis> OnAcquireTarget = delegate { };
-        public event System.Action<IStasis> OnLoseTarget = delegate { };
+        public event Action<IStasis> OnAcquireTarget = delegate { };
+        public event Action<IStasis> OnLoseTarget = delegate { };
 
         // Runtime
         private bool _wantTarget;

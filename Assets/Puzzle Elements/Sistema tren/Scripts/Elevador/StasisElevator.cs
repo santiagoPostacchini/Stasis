@@ -16,7 +16,7 @@ namespace Puzzle_Elements.Sistema_tren.Scripts.Elevador
         private void Awake()
         {
             _rend = GetComponent<Renderer>();
-            StasisEffect = new StasisEffect(_rend, null);
+            StasisEffect = new StasisEffect(_rend);
             _trainSystem = GetComponentInParent<TrainSystem>();
         }
 

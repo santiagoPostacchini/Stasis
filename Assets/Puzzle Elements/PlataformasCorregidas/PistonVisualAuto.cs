@@ -82,14 +82,14 @@ namespace Puzzle_Elements.PlataformasCorregidas
         [Header("Alineación y escala")]
         public Axis stretchAxis = Axis.Y;      // Eje local del rodTube que se estira
         [Min(0f)] public float minRodLength = 0.1f;
-        public float lengthOffset = 0.0f;      // Offset adicional de largo
+        public float lengthOffset;      // Offset adicional de largo
         public bool keepVertical = true;       // Si true, no orienta hacia el destino; usa Vector3.up
 
         [Header("Actualización")]
         public bool useFixedUpdate = true;     // Si el movimiento viene de Rigidbody, conviene FixedUpdate
 
         [Tooltip("Compensa (aprox.) escalas no uniformes en padres. Déjalo OFF salvo que lo necesites.")]
-        public bool compensateParentScale = false;
+        public bool compensateParentScale;
 
         [SerializeField] private ElevatorShipmentTrain _elevatorShipmentTrain;
 
@@ -170,7 +170,7 @@ namespace Puzzle_Elements.PlataformasCorregidas
                 // Nota: esto es una aproximación porque la rotación del rod puede mezclar ejes.
                 // Úsalo solo si realmente lo necesitás.
                 Vector3 lossy = rodTube.lossyScale;
-                float axisLossy = AxisComponent(lossy, stretchAxis, 1f);
+                float axisLossy = AxisComponent(lossy, stretchAxis);
                 if (axisLossy <= 1e-5f) axisLossy = 1f;
                 L /= axisLossy;
             }

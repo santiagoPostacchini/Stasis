@@ -1,9 +1,9 @@
 using System;
+using System.Collections;
+using Audio.Scripts;
 using Player.Stasis;
 using Puzzle_Elements.AllInterfaces;
 using UnityEngine;
-using System.Collections;
-using Audio.Scripts;
 
 namespace Puzzle_Elements.Hedron.Scripts
 {

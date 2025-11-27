@@ -8,7 +8,7 @@ namespace Player.Scripts
         [SerializeField] private Transform bone; // El hueso donde se va a pegar
 
         [Header("Options")]
-        [SerializeField] private bool keepWorldPosition = false; 
+        [SerializeField] private bool keepWorldPosition; 
         // true = mantiene la posición global actual
         // false = adopta la posición local del hueso
 

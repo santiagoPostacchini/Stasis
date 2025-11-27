@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -6,14 +7,14 @@ namespace UIScripts.UI_Reboot
     [CreateAssetMenu(fileName = "BootSequenceAsset", menuName = "UI/Boot Sequence Asset")]
     public class BootSequenceAsset : ScriptableObject
     {
-        [System.Serializable]
+        [Serializable]
         public class BootStep
         {
             [TextArea(1, 4)] public string text = "SYSTEM: ONLINE";
             public float typingSpeed = -1f;   // -1 = usa default
             public float afterDelay = -1f;    // -1 = usa default
             public bool playTypeBeep = true;
-            public bool playLineBeep = false;
+            public bool playLineBeep;
         }
 
         public List<BootStep> steps = new List<BootStep>();

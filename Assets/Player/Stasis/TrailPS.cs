@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using UnityEngine;
 
@@ -32,12 +33,12 @@ namespace Player.Stasis
             ps.Play(true);
         }
 
-        public void StopWithLinger(System.Action onDone = null)
+        public void StopWithLinger(Action onDone = null)
         {
             StartCoroutine(CoStop(onDone));
         }
 
-        IEnumerator CoStop(System.Action onDone)
+        IEnumerator CoStop(Action onDone)
         {
             // Deja de emitir; los trails quedan porque Trails->WorldSpace está ON
             ps.Stop(true, ParticleSystemStopBehavior.StopEmitting);
