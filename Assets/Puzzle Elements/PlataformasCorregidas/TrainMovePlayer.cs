@@ -121,6 +121,7 @@ namespace Puzzle_Elements.PlataformasCorregidas
                         // Restamos la componente hacia adelante:
                         // esto �aplana� la velocidad contra el vidrio
                         playerRb.velocity -= dir * forwardComp * 3;
+                       
                         // Opcional: puedes agregar un peque�o empuje hacia atr�s si quer�s que rebote un poquito
                         // playerRb.velocity += -dir * 0.2f;
 
