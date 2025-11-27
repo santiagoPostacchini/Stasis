@@ -78,6 +78,7 @@ namespace Puzzle_Elements.LaserSensor.Scripts
         }
         private void OnTriggerEnter(Collider other)
         {
+            if (!_canKillPlayer) return;
             Model player = other.GetComponent<Model>();
             if(player != null)
             {
