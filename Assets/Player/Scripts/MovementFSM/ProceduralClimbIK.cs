@@ -1,3 +1,4 @@
+using System;
 using Player.Scripts.MovementFSM.MVC;
 using UnityEngine;
 
@@ -8,8 +9,8 @@ namespace Player.Scripts.MovementFSM
         [Header("References")] [SerializeField]
         private Model model;
 
-        [SerializeField] private Transform rHandTarget; // Target de la mano Izquierda
-        [SerializeField] private Transform lHandTarget; // Target de la mano Derecha
+        [SerializeField] private Transform rHandTarget;
+        [SerializeField] private Transform lHandTarget;
 
         [Header("Cycle Settings")]
         [Tooltip("Velocidad del ciclo de escalada (más rápido = manos más rápidas)")]
@@ -53,14 +54,34 @@ namespace Player.Scripts.MovementFSM
         private float _climbCycle;
         private Vector3 _rHandNormal;
         private Vector3 _lHandNormal;
+        
+        private Vector3 _defaultLocalPosR;
+        private Quaternion _defaultLocalRotR;
+        
+        private Vector3 _defaultLocalPosL;
+        private Quaternion _defaultLocalRotL;
+        
+        private bool _initialized;
 
-        // Public methods for camera effects
+        private void Start()
+        {
+            if (model && rHandTarget && lHandTarget)
+            {
+                _defaultLocalPosR = model.transform.InverseTransformPoint(rHandTarget.position);
+                _defaultLocalRotR = Quaternion.Inverse(model.transform.rotation) * rHandTarget.rotation;
+
+                _defaultLocalPosL = model.transform.InverseTransformPoint(lHandTarget.position);
+                _defaultLocalRotL = Quaternion.Inverse(model.transform.rotation) * lHandTarget.rotation;
+                
+                _initialized = true;
+            }
+        }
+
         public float GetClimbCycle() => _climbCycle;
         
         public float GetHandHeightDifference()
         {
             if (!rHandTarget || !lHandTarget) return 0f;
-            // Positive = right hand higher, negative = left hand higher
             return rHandTarget.position.y - lHandTarget.position.y;
         }
 
@@ -70,6 +91,8 @@ namespace Player.Scripts.MovementFSM
             {
                 return;
             }
+            
+            if (!_initialized) Start();
 
             if (model.isMantlingState)
             {
@@ -83,6 +106,10 @@ namespace Player.Scripts.MovementFSM
             {
                 HandleClimbIK();
             }
+            else
+            {
+                LerpTargetsToBody();
+            }
         }
 
         private void HandleClimbIK()
@@ -92,19 +119,19 @@ namespace Player.Scripts.MovementFSM
             Vector3 wallPoint = model.climbWallPoint;
             LayerMask wallMask = model.wallMask | model.groundMask;
 
-            if (wallNormal.sqrMagnitude < 0.1f) return;
+            if (wallNormal.sqrMagnitude < 0.01f)
+            {
+                LerpTargetsToBody();
+                return;
+            }
             
-            if (_rHandNormal.sqrMagnitude < 0.1f)
-                _rHandNormal = wallNormal;
-            if (_lHandNormal.sqrMagnitude < 0.1f)
-                _lHandNormal = wallNormal;
+            if (_rHandNormal.sqrMagnitude < 0.1f) _rHandNormal = wallNormal;
+            if (_lHandNormal.sqrMagnitude < 0.1f) _lHandNormal = wallNormal;
 
             _climbCycle += vSpeed * cycleSpeed * Time.deltaTime;
 
             Vector3 wallRight = Vector3.Cross(Vector3.up, wallNormal).normalized;
             
-            Debug.DrawRay(model.rb.position + Vector3.up * 1.5f, wallRight * 2f, Color.red);
-
             Vector3 playerOnWall = wallPoint + Vector3.ProjectOnPlane(model.rb.position - wallPoint, wallNormal);
 
             UpdateHandClimb(rHandTarget, -1, _climbCycle, playerOnWall, wallRight, wallNormal, wallMask, ref _rHandNormal);
@@ -116,27 +143,54 @@ namespace Player.Scripts.MovementFSM
             Vector3 wallNormal = model.climbWallNormal;
             Vector3 ledgePoint = model.mantleLedgePoint;
 
-            if (wallNormal.sqrMagnitude < 0.1f) return;
+            if (wallNormal.sqrMagnitude < 0.1f)
+            {
+                LerpTargetsToBody(); 
+                return;
+            }
 
             Vector3 wallRight = Vector3.Cross(Vector3.up, wallNormal).normalized;
-
             Vector3 verticalOffset = Vector3.up * mantleHandYOffset;
 
             Vector3 leftPos = ledgePoint + wallRight * (-shoulderWidth / 2f) + verticalOffset;
-            
             Vector3 rightPos = ledgePoint + wallRight * (shoulderWidth / 2f) + verticalOffset;
 
             Quaternion targetRot = Quaternion.LookRotation(Vector3.down, wallNormal);
 
-            rHandTarget.position =
-                Vector3.Lerp(rHandTarget.position, leftPos, Time.deltaTime * positionLerpSpeed);
-            rHandTarget.rotation =
-                Quaternion.Slerp(rHandTarget.rotation, targetRot, Time.deltaTime * rotationLerpSpeed);
+            rHandTarget.position = Vector3.Lerp(rHandTarget.position, leftPos, Time.deltaTime * positionLerpSpeed);
+            rHandTarget.rotation = Quaternion.Slerp(rHandTarget.rotation, targetRot, Time.deltaTime * rotationLerpSpeed);
 
-            lHandTarget.position =
-                Vector3.Lerp(lHandTarget.position, rightPos, Time.deltaTime * positionLerpSpeed);
-            lHandTarget.rotation =
-                Quaternion.Slerp(lHandTarget.rotation, targetRot, Time.deltaTime * rotationLerpSpeed);
+            lHandTarget.position = Vector3.Lerp(lHandTarget.position, rightPos, Time.deltaTime * positionLerpSpeed);
+            lHandTarget.rotation = Quaternion.Slerp(lHandTarget.rotation, targetRot, Time.deltaTime * rotationLerpSpeed);
+        }
+        
+        public void ResetTargetsToBody()
+        {
+            if (!_initialized || !model) return;
+
+            rHandTarget.position = model.transform.TransformPoint(_defaultLocalPosR);
+            rHandTarget.rotation = model.transform.rotation * _defaultLocalRotR;
+
+            lHandTarget.position = model.transform.TransformPoint(_defaultLocalPosL);
+            lHandTarget.rotation = model.transform.rotation * _defaultLocalRotL;
+        }
+        
+        private void LerpTargetsToBody()
+        {
+            Vector3 targetPosR = model.transform.TransformPoint(_defaultLocalPosR);
+            Quaternion targetRotR = model.transform.rotation * _defaultLocalRotR;
+            
+            Vector3 targetPosL = model.transform.TransformPoint(_defaultLocalPosL);
+            Quaternion targetRotL = model.transform.rotation * _defaultLocalRotL;
+
+            float speedPos = positionLerpSpeed * 2f;
+            float speedRot = rotationLerpSpeed * 2f;
+
+            rHandTarget.position = Vector3.Lerp(rHandTarget.position, targetPosR, Time.deltaTime * speedPos);
+            rHandTarget.rotation = Quaternion.Slerp(rHandTarget.rotation, targetRotR, Time.deltaTime * speedRot);
+
+            lHandTarget.position = Vector3.Lerp(lHandTarget.position, targetPosL, Time.deltaTime * speedPos);
+            lHandTarget.rotation = Quaternion.Slerp(lHandTarget.rotation, targetRotL, Time.deltaTime * speedRot);
         }
 
         private void UpdateHandClimb(Transform target, float side, float cycle, Vector3 playerOnWall, Vector3 wallRight,
@@ -162,7 +216,6 @@ namespace Player.Scripts.MovementFSM
             {
                 targetPosition = hit.point + hit.normal * handOffsetFromWall;
                 targetRotation = Quaternion.LookRotation(-hit.normal, Vector3.up);
-                
                 lastHitNormal = hit.normal;
             }
             else
