@@ -24,7 +24,7 @@ namespace Puzzle_Elements.PlataformasCorregidas
         [Header("Bloqueo frontal")]
         [Tooltip("Collider del frente del tren contra el que NO quiero que el player avance.")]
         public Collider frontCollider;
-
+        public float maxVelocity;
         [Tooltip("Origen del raycast (si es null, usa el centro de masa del player).")]
         public Transform rayOrigin;
 
@@ -114,6 +114,10 @@ namespace Puzzle_Elements.PlataformasCorregidas
                     // Solo si est� intentando avanzar hacia el frente
                     if (forwardComp > 0f)
                     {
+                        if(forwardComp > maxVelocity)
+                        {
+                            forwardComp = maxVelocity;
+                        }
                         // Restamos la componente hacia adelante:
                         // esto �aplana� la velocidad contra el vidrio
                         playerRb.velocity -= dir * forwardComp * 3;

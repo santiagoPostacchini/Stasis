@@ -1,5 +1,7 @@
 using System;
+using Player.Scripts.Interactor;
 using Player.Scripts.MovementFSM.MVC;
+using Puzzle_Elements.Hedron.Scripts;
 using UnityEngine;
 using UnityEngine.Events;
 
@@ -79,8 +81,44 @@ namespace Puzzle_Elements.LaserSensor.Scripts
             Model player = other.GetComponent<Model>();
             if(player != null)
             {
+
+                PlayerInteractor playerInteractor = player.GetComponentInChildren<PlayerInteractor>();
+                if (playerInteractor._objectGrabbable != null)
+                {
+                    PhysicsBox box = playerInteractor._objectGrabbable.GetComponent<PhysicsBox>();
+                    if (box != null)
+                    {
+                        playerInteractor.TryDropObject();
+                        box.transform.position = box.posInitial;
+                        Rigidbody rbBox = box.GetComponent<Rigidbody>();
+                        if (rbBox != null)
+                        {
+                            rbBox.velocity = Vector3.zero;
+                            rbBox.useGravity = false;
+                            rbBox.isKinematic = true;
+                            rbBox.isKinematic = false;
+                        }
+                    }
+                }
+
+
+
+
                 Debug.Log("Player intruso");
                 _detectPlayer = true;
+            }
+
+
+
+            PhysicsBox hedro = other.GetComponent<PhysicsBox>();
+            if (hedro != null)
+            {
+                hedro.transform.position = hedro.posInitial;
+                Rigidbody rb = hedro.GetComponent<Rigidbody>();
+                if (rb != null)
+                {
+                    rb.velocity = Vector3.zero;
+                }
             }
         }
         private void OnTriggerExit(Collider other)

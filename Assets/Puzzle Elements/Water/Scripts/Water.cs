@@ -6,6 +6,7 @@ using Checkpoint;
 using UnityEngine;
 using UnityEngine.Events;
 using Managers.Game;
+using Player.Scripts.Interactor;
 
 namespace Puzzle_Elements.Water.Scripts
 {
@@ -17,24 +18,43 @@ namespace Puzzle_Elements.Water.Scripts
 
         [SerializeField] private CheckpointSequence _checkpoint;
 
-      //
+        
         private void OnTriggerEnter(Collider other)
         {
             player = other.GetComponent<Model>();
-            if(player != null)
+            if (player != null)
             {
-
+                PlayerInteractor playerInteractor = player.GetComponentInChildren<PlayerInteractor>();
+                if (playerInteractor._objectGrabbable != null)
+                {
+                    PhysicsBox box = playerInteractor._objectGrabbable.GetComponent<PhysicsBox>();
+                    if (box != null)
+                    {
+                        playerInteractor.TryDropObject();
+                        box.transform.position = box.posInitial;
+                        Rigidbody rbBox = box.GetComponent<Rigidbody>();
+                        if (rbBox != null)
+                        {
+                            rbBox.velocity = Vector3.zero;
+                            rbBox.useGravity = false;
+                            rbBox.isKinematic = true;
+                            rbBox.isKinematic = false;
+                        }
+                    }
+                }
                 GameManager.Instance.PlayerDeath();
                 // player.transform.position = _checkpoint.CurrentCheckpointPos();
                 Rigidbody rb = player.GetComponent<Rigidbody>();
-                if(rb != null)
+                if (rb != null)
                 {
                     rb.velocity = Vector3.zero;
                 }
+
+
             }
 
             PhysicsBox hedro = other.GetComponent<PhysicsBox>();
-            if(hedro != null)
+            if (hedro != null)
             {
                 hedro.transform.position = hedro.posInitial;
                 Rigidbody rb = hedro.GetComponent<Rigidbody>();
