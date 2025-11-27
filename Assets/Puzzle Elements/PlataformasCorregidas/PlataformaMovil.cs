@@ -8,8 +8,8 @@ namespace Puzzle_Elements.PlataformasCorregidas
     public class PlataformaMovil : MonoBehaviour
     {
         [Tooltip("Tiempo de gracia para enganchar otra plataforma antes de desparentar.")]
-        [SerializeField] private float unparentDelay = 0.5f;
-        private void OnTriggerEnter(Collider other)
+        [SerializeField] private float unparentDelay = 2f;
+        private void OnTriggerStay(Collider other)
         {
             if (other.GetComponent<Model>() != null)
             {
@@ -20,11 +20,16 @@ namespace Puzzle_Elements.PlataformasCorregidas
 
         private void OnTriggerExit(Collider other)
         {
-            if (other.GetComponent<Model>() != null)
+            var model = other.GetComponent<Model>();
+            if (model == null) return;
+
+            // Solo desparentar si el objeto que sale es hijo directo de ESTE objeto
+            if (other.transform.parent == transform)
             {
-                // Desparentar diferido: solo si despu�s del
+
                 other.transform.SetParent(null, true);
-                //  StartCoroutine(UnparentAfterDelay(other.transform, unparentDelay));
+                Debug.Log("cambio");
+               // StartCoroutine(UnparentAfterDelay(other.transform, unparentDelay));
             }
         }
 
