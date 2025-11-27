@@ -119,6 +119,9 @@ namespace Puzzle_Elements.LaserSensor.Scripts
                 if (rb != null)
                 {
                     rb.velocity = Vector3.zero;
+                    rb.useGravity = false;
+                    rb.isKinematic = true;
+                    rb.isKinematic = false;
                 }
             }
         }

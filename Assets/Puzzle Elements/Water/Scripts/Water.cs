@@ -59,6 +59,9 @@ namespace Puzzle_Elements.Water.Scripts
                 if (rb != null)
                 {
                     rb.velocity = Vector3.zero;
+                    rb.useGravity = false;
+                    rb.isKinematic = true;
+                    rb.isKinematic = false;
                 }
             }
         }
