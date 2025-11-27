@@ -14,6 +14,7 @@ namespace Puzzle_Elements.PlataformasCorregidas
 
         Vector3 _lastPosition;
         public Vector3 platformVelocity;
+
         public enum Mode { PingPong, Loop, Once }
         private enum Phase { Idle, Accel, Cruise, Decel, Dwell }
 
@@ -56,12 +57,13 @@ namespace Puzzle_Elements.PlataformasCorregidas
             _lastPosition = _rb.position;
             platformVelocity = Vector3.zero;
         }
+
         void OnEnable()
         {
             if (!pointA || !pointB)
             {
                 Debug.LogError("[PlatformMoverTrapezoid] Asigna pointA/pointB.");
-                enabled = false; 
+                enabled = false;
                 return;
             }
 
@@ -110,7 +112,7 @@ namespace Puzzle_Elements.PlataformasCorregidas
             delayFinished = true;
             waitingDelay = false;
 
-            if (!_elevatorShipmentTrain.IsFreezed)
+            if (_elevatorShipmentTrain == null || !_elevatorShipmentTrain.IsFreezed)
                 _phase = Phase.Accel;
         }
 
@@ -144,12 +146,13 @@ namespace Puzzle_Elements.PlataformasCorregidas
         private void OnTriggerEnter(Collider other)
         {
             Model model = other.GetComponent<Model>();
-            if(model != null)
+            if (model != null)
             {
                 player = model;
                 player.blockUseGravity = true;
             }
         }
+
         private void OnTriggerExit(Collider other)
         {
             Model model = other.GetComponent<Model>();
@@ -158,25 +161,19 @@ namespace Puzzle_Elements.PlataformasCorregidas
                 model.blockUseGravity = false;
                 model.rb.useGravity = true;
                 player = null;
-                
             }
         }
 
         // -----------------------------
         void FixedUpdate()
         {
-            if (waitingDelay) return; // ⭐ AHORA EL DELAY SE RESPETA
-
+            if (waitingDelay) return;
             if (_phase == Phase.Idle) return;
 
             float dt = Time.fixedDeltaTime;
 
-
-
-
-            // 1) Calcular velocidad de la plataforma (antes de moverla este frame)
-            platformVelocity = (_rb.position - _lastPosition) / Mathf.Max(dt, 0.0001f);
-            _lastPosition = _rb.position;
+            // *** NO calculamos platformVelocity acá ***
+            // Antes lo hacías aquí, eso estaba 1 frame desfasado.
 
             float dAccel = (cruiseSpeed * cruiseSpeed) / (2f * Mathf.Max(acceleration, 1e-4f));
             float dDecel = dAccel;
@@ -234,17 +231,25 @@ namespace Puzzle_Elements.PlataformasCorregidas
                     break;
             }
 
+            // *** CAMBIO 1: calcular platformVelocity con el movimiento REAL de este frame ***
+            Vector3 newPos = _rb.position;
+            platformVelocity = (newPos - _lastPosition) / Mathf.Max(dt, 0.0001f);
+            _lastPosition = newPos;
 
-
-            if(player !=null )
+            // *** CAMBIO 2: solo ajustamos al player cuando la plataforma REALMENTE baja ***
+            if (player != null)
             {
-                Debug.Log("Esta el player y la plataforma esta bajando");
-                Vector3 v = player.rb.velocity;
-
-                if (v.y <= 0f)
+                // Solo tiene sentido corregir si la plataforma va hacia abajo
+                if (platformVelocity.y < 0f)
                 {
-                    v.y = platformVelocity.y;
-                    player.rb.velocity = v;
+                    Vector3 v = player.rb.velocity;
+
+                    // Solo si el player no está subiendo
+                    if (v.y <= 0f)
+                    {
+                        v.y = platformVelocity.y;
+                        player.rb.velocity = v;
+                    }
                 }
             }
         }
@@ -271,4 +276,3 @@ namespace Puzzle_Elements.PlataformasCorregidas
         }
     }
 }
-
