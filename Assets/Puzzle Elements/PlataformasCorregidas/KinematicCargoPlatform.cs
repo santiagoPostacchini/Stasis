@@ -143,7 +143,7 @@ namespace Puzzle_Elements.PlataformasCorregidas
         public void ActivateKinematic() => _rb.isKinematic = true;
         public void DesactivateKinematic() => _rb.isKinematic = false;
 
-        private void OnTriggerEnter(Collider other)
+        private void OnTriggerStay(Collider other)
         {
             Model model = other.GetComponent<Model>();
             if (model != null)
