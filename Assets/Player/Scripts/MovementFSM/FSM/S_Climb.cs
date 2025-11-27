@@ -351,12 +351,10 @@ namespace Player.Scripts.MovementFSM
 
             Vector3 vCleaned = _rb.velocity;
             
-            // If jumping very early, use entry velocity more conservatively to prevent absurd launch
             if (isEarlyJump)
             {
-                // Clean horizontal velocity more aggressively for early jumps
                 vCleaned = Vector3.zero;
-                vCleaned.y = Mathf.Max(0f, _entryVelocity.y); // Only keep upward velocity if any
+                vCleaned.y = 0f; 
             }
             else
             {
@@ -367,9 +365,8 @@ namespace Player.Scripts.MovementFSM
                 }
                 vCleaned.y = 0f;
             }
-            
-            _rb.velocity = vCleaned;
 
+            _rb.velocity = vCleaned;
             _rb.AddForce(velChange, ForceMode.VelocityChange);
 
             // Restore gravity and movement

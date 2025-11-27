@@ -1,5 +1,4 @@
 using DG.Tweening;
-using Player.Scripts.MovementFSM.MVC;
 using UnityEngine;
 using UnityEngine.Animations.Rigging;
 
@@ -296,7 +295,11 @@ namespace Player.Scripts.MovementFSM.MVC
             {
                 if (leftHandIkRig) leftHandIkRig.weight = 0f;
                 if (rightHandIkRig) rightHandIkRig.weight = 0f;
-                if (climbIKHandler) climbIKHandler.enabled = false;
+                if (climbIKHandler)
+                {
+                    climbIKHandler.ResetTargetsToBody();
+                    climbIKHandler.enabled = false;
+                }
             }
             else
             {
