@@ -10,7 +10,7 @@ namespace Puzzle_Elements.Gears
     {
         public bool IsFreezed => isFreezed;
         public StasisEffect StasisEffect { get; private set; }
-        public bool isFreezed = false;
+        public bool isFreezed;
 
         [Header("Visual Stasis (Outline)")]
         public Material matStasis;
@@ -23,7 +23,7 @@ namespace Puzzle_Elements.Gears
         public Color emissiveOnColor = Color.white;
         [Min(0f)] public float emissiveOnIntensity = 1.0f;
         public Color emissiveOffColor = Color.black;
-        [Min(0f)] public float emissiveOffIntensity = 0f;
+        [Min(0f)] public float emissiveOffIntensity;
         public bool forceEnableEmissionKeyword = true;
         private readonly string _emissionColorName = "_EmissionColor";
         private readonly string _emissionKeyword = "_EMISSION";
@@ -45,17 +45,17 @@ namespace Puzzle_Elements.Gears
         public float maxLinkDistance = 2.5f;
 
         [Tooltip("Requiere línea de vista limpia (raycast) entre engranes.")]
-        public bool requireLineOfSight = false;
+        public bool requireLineOfSight;
         public LayerMask losMask = ~0;
 
         [Tooltip("Qué efecto aplicar al vecino.")]
         public LinkMode linkMode = LinkMode.PauseAndVisual;
 
         // Evita recursión (los vecinos no siguen encadenando)
-        private bool _isChainActivation = false;
+        private bool _isChainActivation;
 
         // Pausas que hicimos nosotros (para reanudar correctamente)
-        private bool _pausedThisItem = false;
+        private bool _pausedThisItem;
         private readonly List<Transform> _extraPaused = new List<Transform>(8);
 
         private void Start()
@@ -245,11 +245,8 @@ namespace Puzzle_Elements.Gears
                         // Activación visual/pausa del vecino SIN reencadenar
                         sg.ActivateFromChain();
                     }
-                    else
-                    {
-                        // Si el vecino no tiene StasisGear, podríamos aplicar solo outline/emission por MPB aquí si lo necesitás.
-                        // Lo omitimos para mantener el sistema limpio.
-                    }
+                    // Si el vecino no tiene StasisGear, podríamos aplicar solo outline/emission por MPB aquí si lo necesitás.
+                    // Lo omitimos para mantener el sistema limpio.
                 }
             }
         }

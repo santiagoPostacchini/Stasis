@@ -1,9 +1,11 @@
+using System;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.Rendering.Universal;
 using UnityEngine.UI;
+
 // URP
 
 namespace Puzzle_Elements.Vigillance_Camera.Scripts.New_Folder
@@ -27,10 +29,10 @@ namespace Puzzle_Elements.Vigillance_Camera.Scripts.New_Folder
         // === Render ===
         [Header("Render")]
         public Color clearColor = Color.black;
-        public bool allowHDR = false;
-        public bool allowMSAA = false;
-        public bool previewEvenIfIdle = false;
-        public bool debugPaintPattern = false;
+        public bool allowHDR;
+        public bool allowMSAA;
+        public bool previewEvenIfIdle;
+        public bool debugPaintPattern;
 
         [Header("URP")]
         [Tooltip("�ndice del Renderer limpio (sin features) en el URP Asset")]
@@ -69,8 +71,8 @@ namespace Puzzle_Elements.Vigillance_Camera.Scripts.New_Folder
         }
         public Canvas OverlayCanvas { get { return _canvas; } }
 
-        public static System.Collections.Generic.IReadOnlyList<VirtualSecurityCam> Cams { get { return _cams; } }
-        public static event System.Action CamsChanged;
+        public static IReadOnlyList<VirtualSecurityCam> Cams { get { return _cams; } }
+        public static event Action CamsChanged;
 
         void Awake()
         {

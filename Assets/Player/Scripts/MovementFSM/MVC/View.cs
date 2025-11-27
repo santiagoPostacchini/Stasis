@@ -53,8 +53,8 @@ namespace Player.Scripts.MovementFSM.MVC
 
         private float _airElapsed;
 
-        private float inspectTimer = 0f;
-        private float shootTimer = 0f;
+        private float inspectTimer;
+        private float shootTimer;
         private const int ArmsLayer = 1;
 
         private void Awake()

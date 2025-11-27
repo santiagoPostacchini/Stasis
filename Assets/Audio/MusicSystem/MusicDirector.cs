@@ -2,9 +2,11 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using Audio.Scripts;
 using UnityEngine;
 using UnityEngine.Audio;
-using Audio.Scripts; // AudioSourceFactory
+
+// AudioSourceFactory
 
 namespace Audio.MusicSystem
 {
@@ -70,7 +72,7 @@ namespace Audio.MusicSystem
             }
 
             // Arranque inmediato sin stinger
-            GoToNode(start, MusicGraph.Quantization.Immediate, 0f, false, null);
+            GoToNode(start, MusicGraph.Quantization.Immediate, 0f);
         }
 
         private void Update()

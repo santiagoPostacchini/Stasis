@@ -1,12 +1,10 @@
-using Player.Scripts;
-using Player.Scripts.MovementFSM.MVC;
-using Puzzle_Elements.Hedron.Scripts;
-using System.Collections;
 using Checkpoint;
-using UnityEngine;
-using UnityEngine.Events;
 using Managers.Game;
 using Player.Scripts.Interactor;
+using Player.Scripts.MovementFSM.MVC;
+using Puzzle_Elements.Hedron.Scripts;
+using UnityEngine;
+using UnityEngine.Events;
 
 namespace Puzzle_Elements.Water.Scripts
 {

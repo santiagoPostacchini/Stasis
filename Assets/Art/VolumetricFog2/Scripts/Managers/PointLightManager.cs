@@ -147,7 +147,7 @@ namespace Art.VolumetricFog2.Scripts.Managers {
         public LayerMask lightLayerMask = ~0; // Everything
 
         [Tooltip("Si > 0, solo se consideran luces dentro de este radio del centro de tracking.")]
-        [Min(0f)] public float trackingRadius = 0f;
+        [Min(0f)] public float trackingRadius;
 
         [Tooltip("Descarta luces con intensidad menor a este valor (antes de multiplicadores).")]
         [Min(0f)] public float minLightIntensity = 0.01f;
@@ -166,7 +166,7 @@ namespace Art.VolumetricFog2.Scripts.Managers {
         [Min(0f)] public float intensity = 1f;
 
         [Tooltip("Atenúa la intensidad cuando la cámara/fragmento está muy cerca de la luz. 0 = sin atenuación, 1 = máxima.")]
-        [Range(0f, 1f)] public float insideAtten = 0f;
+        [Range(0f, 1f)] public float insideAtten;
 
         [Tooltip("Si está activo, solo se envían luces habilitadas (isActiveAndEnabled).")]
         public bool onlyEnabledLights = true;
@@ -182,7 +182,7 @@ namespace Art.VolumetricFog2.Scripts.Managers {
         [Min(0f)] public float previousStayBiasMeters = 3f;
 
         [Tooltip("Cuántas luces crudas máximo se consideran por barrido antes de ordenar/filtrar (0 = sin límite).")]
-        [Min(0f)] public int maxCandidatesPerScan = 0;
+        [Min(0f)] public int maxCandidatesPerScan;
 
         // ==============================
         //     Buffers y Estado Interno

@@ -1,4 +1,5 @@
-﻿using UnityEditor;
+﻿using System;
+using UnityEditor;
 using UnityEngine;
 
 namespace VLights.Scripts.VLight
@@ -84,11 +85,9 @@ namespace VLights.Scripts.VLight
 					
 							pointShadow = bakedShadowMap;
 							break;
-						default:
-							break;
 					}
 
-					AssetDatabase.CreateAsset(bakedShadowMap, "Assets/" + name + "-shadowmap-" + System.DateTime.Now.ToString("HH-MM-ss") + ".asset");
+					AssetDatabase.CreateAsset(bakedShadowMap, "Assets/" + name + "-shadowmap-" + DateTime.Now.ToString("HH-MM-ss") + ".asset");
 
 					SafeDestroy(_depthTexture);
 					shadowMode = ShadowMode.Baked;

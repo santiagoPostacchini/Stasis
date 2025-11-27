@@ -10,7 +10,7 @@ namespace Scenes.Level.Lau.Tutorial_Assets
         public float speed = 5f;
 
         [HideInInspector]
-        public bool hasReachedEnd = false;
+        public bool hasReachedEnd;
 
         void Start()
         {

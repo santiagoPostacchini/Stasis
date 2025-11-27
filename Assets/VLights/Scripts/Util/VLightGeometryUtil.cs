@@ -4,7 +4,7 @@ using UnityEngine;
 /*
  * VLight
  * Copyright Brian Su 2011-2015
-*/
+ */
 
 namespace VLights.Scripts.Util
 {
@@ -94,9 +94,6 @@ namespace VLights.Scripts.Util
 							{
 								_outputList[outCount++] = output;
 							}
-							else
-							{
-							}
 						}
 						_outputList[outCount++] = E;
 					}
@@ -117,7 +114,6 @@ namespace VLights.Scripts.Util
 
 				if(outCount == 0)
 				{
-					continue;
 				}
 			}
 
@@ -178,7 +174,7 @@ namespace VLights.Scripts.Util
 
 		private static Vector3[] _cachedPoints = new Vector3[8];
 		private static Vector3[] _cachedScreenPoints = new Vector3[8];
-		private static Rect _cachedRect = new Rect();
+		private static Rect _cachedRect;
 
 		public static Rect BoundsToRect(Bounds b, Camera camera)
 		{

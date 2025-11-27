@@ -10,9 +10,9 @@ namespace Player.Scripts.Opening_Cinematic
         public CinemachineImpulseSource impulseSource;     // Componente de Cinemachine que genera el impulso
 
         [Header("Configuración")]
-        public float delayBeforeShake = 0f;                // Retraso opcional antes del shake
+        public float delayBeforeShake;                // Retraso opcional antes del shake
 
-        private bool hasShaken = false;
+        private bool hasShaken;
 
         void Update()
         {

@@ -1,6 +1,6 @@
-using UnityEngine;
-using Unity.Cinemachine;
 using Player.Scripts.MovementFSM;
+using Unity.Cinemachine;
+using UnityEngine;
 
 namespace Player.Scripts
 {

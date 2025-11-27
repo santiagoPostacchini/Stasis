@@ -11,9 +11,9 @@ namespace Puzzle_Elements.LaserSensor.Scripts
         public LineRenderer line;
         public float maxDistance = 128;
         public int maxBounces = 128;
-        public bool checkForIntruders = false;
-        public bool intruderConfirm = false;
-        public bool otherDetectIntruder = false;
+        public bool checkForIntruders;
+        public bool intruderConfirm;
+        public bool otherDetectIntruder;
         public LayerMask intruderMask;
 
         [Header("State")]

@@ -14,7 +14,7 @@ namespace Scenes.Level.Lau.Tutorial_Assets
         public float speed = 2f;
 
         [Header("Delay aleatorio de inicio")]
-        public float minDelay = 0f;
+        public float minDelay;
         public float maxDelay = 1f;
 
         private Quaternion _initialRotation;

@@ -5,21 +5,21 @@ using VLights.Scripts.VLight;
 /*
  * VLight
  * Copyright Brian Su 2011-2019
-*/
+ */
 
 namespace VLights.Scripts.PostProcess
 {
-    [ExecuteInEditMode()]
+    [ExecuteInEditMode]
     [RequireComponent(typeof(Camera))]
     [AddComponentMenu("V-Lights/VLight Image Effects")]
     public class VLightInterleavedSampling : MonoBehaviour
     {
-        public static bool renderingInterleaved = false;
-        public static bool lightsModified = false;
+        public static bool renderingInterleaved;
+        public static bool lightsModified;
 
         [SerializeField]
         [Header("Reduces banding. Requires floating point textures support.")]
-        private bool _useHighPrecisionFrameBuffer = false;
+        private bool _useHighPrecisionFrameBuffer;
         [SerializeField]
         [Header("Min pixel width to use interleaved")]
         private int minInterleavedRes = 128;
@@ -42,7 +42,7 @@ namespace VLights.Scripts.PostProcess
 
         [Header("Reduce edge bleeding at a cost to performance")]
         [SerializeField]
-        private bool _useBilateralFiltering = false;
+        private bool _useBilateralFiltering;
         [SerializeField]
         private Shader _downScaleDepthShader;
         [SerializeField]
@@ -51,7 +51,7 @@ namespace VLights.Scripts.PostProcess
         private float _blurDepth = 100.0f;
 
         //
-        private Camera _ppCameraGO = null;
+        private Camera _ppCameraGO;
         private LayerMask _volumeLightLayer;
         private RenderTexture interleavedBuffer;
         private VLight.VLight[] _vlights;
@@ -107,7 +107,7 @@ namespace VLights.Scripts.PostProcess
             CleanUp();
         }
 
-        public static int renderCount = 0;
+        public static int renderCount;
 
         //	private void OnGUI()
         //	{
@@ -130,13 +130,13 @@ namespace VLights.Scripts.PostProcess
             var planes = GeometryUtility.CalculateFrustumPlanes(cam);
             if (!Application.isPlaying)
             {
-                _vlights = GameObject.FindObjectsOfType<VLight.VLight>();
+                _vlights = FindObjectsOfType<VLight.VLight>();
             }
 
             if (lightsModified)
             {
                 lightsModified = false;
-                _vlights = GameObject.FindObjectsOfType<VLight.VLight>();
+                _vlights = FindObjectsOfType<VLight.VLight>();
             }
 
             var bounds = new Bounds();
@@ -409,7 +409,7 @@ namespace VLights.Scripts.PostProcess
                 volumeLightShader = Shader.Find(VLightShaderUtil.INTERLEAVED_SHADER_NAME);
             }
 
-            _vlights = GameObject.FindObjectsOfType<VLight.VLight>();
+            _vlights = FindObjectsOfType<VLight.VLight>();
         }
 
         private void CleanUp()

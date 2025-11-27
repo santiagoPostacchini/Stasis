@@ -36,6 +36,10 @@ namespace UIScripts.UI_Reboot
         [SerializeField] private bool clearTextOnEnd = true;
         [SerializeField] private bool deactivateTextGOOnEnd = false;
 
+        [Header("Persistencia de texto")]
+        [Tooltip("Si está activo, el texto no se limpia ni se hace fade/clear al final. Todo lo escrito permanece en pantalla.")]
+        [SerializeField] private bool keepTextPersistent = false;
+
         private bool _skipping;
 
         private void Reset()
@@ -58,7 +62,10 @@ namespace UIScripts.UI_Reboot
 
             if (consoleText != null)
             {
-                consoleText.text = string.Empty;
+                // Si NO queremos persistencia, limpiamos el texto al inicio
+                if (!keepTextPersistent)
+                    consoleText.text = string.Empty;
+
                 consoleText.alpha = 1f;
                 consoleText.canvasRenderer.SetAlpha(1f);
             }
@@ -80,24 +87,35 @@ namespace UIScripts.UI_Reboot
             StartCoroutine(RunSequence());
         }
 
-        // --- AGREGADO ---
         /// <summary>
         /// Permite activar la secuencia desde otros scripts, botones o eventos.
         /// </summary>
-        public void Activate()     // <--- AGREGADO
+        public void Activate()
         {
             StartSequence();
         }
-        // -----------------
 
         // ---------- CORE ----------
         private IEnumerator RunSequence()
         {
             onSequenceStart?.Invoke();
 
-            consoleText.text = string.Empty;
-            consoleText.alpha = 1f;
-            consoleText.canvasRenderer.SetAlpha(1f);
+            if (consoleText != null)
+            {
+                // Si NO queremos persistencia, limpiamos al inicio de la secuencia.
+                // Si SÍ queremos persistencia, dejamos lo que ya hay y opcionalmente agregamos un salto de línea.
+                if (!keepTextPersistent)
+                {
+                    consoleText.text = string.Empty;
+                }
+                else if (!string.IsNullOrEmpty(consoleText.text))
+                {
+                    consoleText.text += "\n";
+                }
+
+                consoleText.alpha = 1f;
+                consoleText.canvasRenderer.SetAlpha(1f);
+            }
 
             foreach (var step in asset.steps)
             {
@@ -113,7 +131,8 @@ namespace UIScripts.UI_Reboot
 
             Play(asset.finishSfx);
 
-            if (fadeTextOnEnd && consoleText != null)
+            // Si NO queremos persistencia, aplicamos el comportamiento de fade/clear
+            if (!keepTextPersistent && fadeTextOnEnd && consoleText != null)
             {
                 yield return StartCoroutine(DelayOrSkip(endFadeDelay));
                 yield return StartCoroutine(FadeTMPText(consoleText, 1f, 0f, endFadeDuration));
@@ -122,7 +141,8 @@ namespace UIScripts.UI_Reboot
                 if (deactivateTextGOOnEnd) consoleText.gameObject.SetActive(false);
             }
 
-            if (asset.autoFadeOut && canvasGroup != null)
+            // Si NO queremos persistencia, respetamos el autoFadeOut del CanvasGroup
+            if (!keepTextPersistent && asset.autoFadeOut && canvasGroup != null)
             {
                 yield return StartCoroutine(DelayOrSkip(asset.fadeDelay));
                 yield return StartCoroutine(FadeCanvas(canvasGroup, 1f, 0f, asset.fadeDuration));
@@ -130,14 +150,22 @@ namespace UIScripts.UI_Reboot
 
             onSequenceEnd?.Invoke();
 
-            if (canvasGroup != null)
-                canvasGroup.gameObject.SetActive(false);
-            else
-                gameObject.SetActive(false);
+            // Si queremos persistencia, NO desactivamos el CanvasGroup ni el GameObject,
+            // para que el texto persista en pantalla.
+            if (!keepTextPersistent)
+            {
+                if (canvasGroup != null)
+                    canvasGroup.gameObject.SetActive(false);
+                else
+                    gameObject.SetActive(false);
+            }
         }
 
         private IEnumerator TypeLine(string line, float typingSpeed, bool beepPerChar)
         {
+            if (consoleText == null)
+                yield break;
+
             for (int i = 0; i < line.Length; i++)
             {
                 if (_skipping)
@@ -263,4 +291,3 @@ namespace UIScripts.UI_Reboot
         }
     }
 }
-

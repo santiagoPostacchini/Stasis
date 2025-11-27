@@ -350,7 +350,7 @@ namespace Player.Scripts.MovementFSM
 
             _reorientTween = DOTween.To(
                     () => percent,
-                    (x) => percent = x,
+                    x => percent = x,
                     1f,
                     _model.wallReorientDuration)
                 .SetEase(Ease.OutCubic)

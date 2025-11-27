@@ -28,16 +28,16 @@ namespace Puzzle_Elements.IK_OBJECT.Scripts
         // SOLO se usan en PlatformRotation
         public AnimationCurve rotation_remapLerp = AnimationCurve.Linear(0, 0, 1, 1);
         public float rotation_arcHeight = 1.0f;
-        public float rotation_moveDelay = 0.0f;
+        public float rotation_moveDelay;
         public float rotation_travelTime = 1.0f;
-        public float rotation_stopDuration = 0.0f;
+        public float rotation_stopDuration;
 
         // SOLO se usan en PlatformRotation_Stairs
-        public bool stairs_useRotationValues = false;
+        public bool stairs_useRotationValues;
         public AnimationCurve stairs_remapLerp = AnimationCurve.Linear(0, 0, 1, 1);
         public float stairs_arcHeight = 1.0f;
-        public float stairs_moveDelay = 0.0f;
+        public float stairs_moveDelay;
         public float stairs_travelTime = 1.0f;
-        public float stairs_stopDuration = 0.0f;
+        public float stairs_stopDuration;
     }
 }

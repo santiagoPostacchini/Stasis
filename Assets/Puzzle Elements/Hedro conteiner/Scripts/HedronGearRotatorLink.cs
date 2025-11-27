@@ -1,6 +1,8 @@
-using Environment; // MultiGearRotator
-using Puzzle_Elements.Hedro_conteiner.Scripts; // HedronContainerIn
+using Environment;
+using Puzzle_Elements.Hedro_conteiner.Scripts;
 using UnityEngine;
+// MultiGearRotator
+// HedronContainerIn
 
 public class HedronGearRotatorLink : MonoBehaviour
 {

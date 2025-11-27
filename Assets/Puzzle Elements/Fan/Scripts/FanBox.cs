@@ -18,27 +18,27 @@ namespace Puzzle_Elements.Fan.Scripts
         public Vector2 halfSizeXY = new Vector2(1.0f, 1.0f);
 
         [Header("Fuerza")]
-        [Tooltip("Aceleración máxima aplicada en la dirección forward.")]
+        [Tooltip("Aceleraciï¿½n mï¿½xima aplicada en la direcciï¿½n forward.")]
         public float maxAcceleration = 25f;
 
-        [Tooltip("Fracción de fuerza que se aplica hacia arriba (levantar objetos).")]
+        [Tooltip("Fracciï¿½n de fuerza que se aplica hacia arriba (levantar objetos).")]
         [Range(0f, 0.5f)] public float liftFraction = 0.1f;
 
-        [Tooltip("Caída longitudinal a lo largo de la longitud (0 al inicio, 1 al final).")]
+        [Tooltip("Caï¿½da longitudinal a lo largo de la longitud (0 al inicio, 1 al final).")]
         public AnimationCurve longitudinalFalloff = AnimationCurve.Linear(0f, 1f, 1f, 0f);
 
-        [Tooltip("Caída lateral según cercanía a los bordes del box (0 centro, 1 borde).")]
+        [Tooltip("Caï¿½da lateral segï¿½n cercanï¿½a a los bordes del box (0 centro, 1 borde).")]
         public AnimationCurve lateralFalloff = AnimationCurve.Linear(0f, 1f, 1f, 0f);
 
         [Header("Capas afectadas")]
         public LayerMask affectLayers = ~0;
 
-        [Header("Aproximación de rozamiento estático")]
-        [Tooltip("µ estático aproximado para vencer la inercia en objetos en reposo.")]
+        [Header("Aproximaciï¿½n de rozamiento estï¿½tico")]
+        [Tooltip("ï¿½ estï¿½tico aproximado para vencer la inercia en objetos en reposo.")]
         public float approxMuStatic = 0.5f;
 
-        [Header("Línea de visión (opcional)")]
-        public bool requireLineOfSight = false;
+        [Header("Lï¿½nea de visiï¿½n (opcional)")]
+        public bool requireLineOfSight;
         public LayerMask occluderLayers = ~0;
         public float losOriginYOffset = 0.1f;
         public float losProbeRadius = 0.2f;
@@ -101,17 +101,17 @@ namespace Puzzle_Elements.Fan.Scripts
                                   Mathf.Clamp01(lateralFalloff.Evaluate(tLat));
                 if (intensity <= 0f) continue;
 
-                // --- Diseñado en aceleración -> convertir a fuerza ---
+                // --- Diseï¿½ado en aceleraciï¿½n -> convertir a fuerza ---
                 Vector3 accel = transform.forward * (maxAcceleration * intensity);
 
-                // Vencer rozamiento estático mínimo (en aceleración)
+                // Vencer rozamiento estï¿½tico mï¿½nimo (en aceleraciï¿½n)
                 float g = Physics.gravity.magnitude;
                 float minAccel = approxMuStatic * g;
                 float mag = accel.magnitude;
                 if (mag < minAccel && mag > 1e-4f)
                     accel = accel.normalized * Mathf.Min(minAccel, maxAcceleration);
 
-                // Lift opcional (en aceleración)
+                // Lift opcional (en aceleraciï¿½n)
                 Vector3 liftAccel = (liftFraction > 0f) ? Vector3.up * (accel.magnitude * liftFraction) : Vector3.zero;
 
                 // Convertimos a fuerza (N): F = m * a

@@ -126,10 +126,10 @@ namespace Art.VolumetricFog2.Scripts.Managers {
         public LayerMask fogVoidLayerMask = ~0; // Everything
 
         [Tooltip("Si > 0, solo se consideran FogVoids dentro de este radio del centro de tracking.")]
-        [Min(0f)] public float trackingRadius = 0f;
+        [Min(0f)] public float trackingRadius;
 
         [Tooltip("Cantidad máxima de candidatos a considerar por barrido (0 = sin límite). Ayuda a performance en escenas grandes).")]
-        [Min(0)] public int maxCandidatesPerScan = 0;
+        [Min(0)] public int maxCandidatesPerScan;
 
         // ==============================
         //      Buffers y Estado

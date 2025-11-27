@@ -10,7 +10,7 @@ namespace Puzzle_Elements.Path
         public float speed = 5f;
 
         private List<Vector3> pathPoints;
-        private int currentPointIndex = 0;
+        private int currentPointIndex;
 
         private void Start()
         {

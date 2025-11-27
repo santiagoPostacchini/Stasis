@@ -87,7 +87,7 @@ namespace Art.VolumetricFog2.Scripts.RenderFeatures {
         public static bool installed;
 
         public override void Create() {
-            m_ScriptablePass = new DepthRenderPass() {
+            m_ScriptablePass = new DepthRenderPass {
                 // Configures where the render pass should be injected.
                 renderPassEvent = RenderPassEvent.AfterRenderingOpaques
             };

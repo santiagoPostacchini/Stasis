@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using UnityEngine;
+using Random = UnityEngine.Random;
 
 namespace Audio.Scripts
 {
@@ -257,7 +258,7 @@ namespace Audio.Scripts
             int count = cfg.clips.Count;
             if (count <= 1) return 0;
             int last = cfg.LastRandomIndex, idx, attempts = 0;
-            do { idx = UnityEngine.Random.Range(0, count); attempts++; }
+            do { idx = Random.Range(0, count); attempts++; }
             while (idx == last && attempts < 8);
             if (idx == last) idx = (idx + 1) % count;
             return idx;
@@ -416,7 +417,7 @@ namespace Audio.Scripts
             src.clip = clipCfg.clip;
             src.loop = clipCfg.loop;
             src.pitch = evCfg.usePitchRandom
-                ? UnityEngine.Random.Range(evCfg.pitchMin, evCfg.pitchMax)
+                ? Random.Range(evCfg.pitchMin, evCfg.pitchMax)
                 : 1f;
             src.volume = Mathf.Clamp01(clipCfg.volume);
 

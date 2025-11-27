@@ -14,7 +14,7 @@ namespace Puzzle_Elements.Hedron.Scripts
 
         [Header("Seguimiento")]
         public bool applyPlatformRotation = true;
-        public bool rotateBodyWithPlatform = false;
+        public bool rotateBodyWithPlatform;
         public float maxSnapSpeed = 8f;
         public float stickDownAccel = 15f;
 

@@ -4,6 +4,7 @@
 //------------------------------------------------------------------------------------------------------------------
 
 using System.Collections.Generic;
+using UnityEditor;
 using UnityEngine;
 
 namespace Art.VolumetricFog2.Scripts {
@@ -193,7 +194,7 @@ namespace Art.VolumetricFog2.Scripts {
 
 #if UNITY_EDITOR
                 if (!Application.isPlaying) {
-                    UnityEditor.EditorUtility.SetDirty(_fogOfWarTexture);
+                    EditorUtility.SetDirty(_fogOfWarTexture);
                 }
 #endif
 
@@ -311,7 +312,7 @@ namespace Art.VolumetricFog2.Scripts {
                                 Color32 colorBuffer = fogOfWarColorBuffer[colorBufferPos];
                                 if (!blendAlpha) colorBuffer.a = 255;
                                 distanceSqr = deltaSqr - distanceSqr;
-                                float t = (float)distanceSqr / (deltaSqr * sm);
+                                float t = distanceSqr / (deltaSqr * sm);
                                 t = 1f - t;
                                 if (t < 0) t = 0; else if (t > 1f) t = 1f;
                                 byte targetAlpha = (byte)(newAlpha8 + (colorBuffer.a - newAlpha8) * t);
@@ -400,7 +401,7 @@ namespace Art.VolumetricFog2.Scripts {
                 if (r > 0 && r < th - 1) {
                     int distancezSqr = (pz - r) * (pz - r);
                     distancezSqr = deltazSqr - distancezSqr;
-                    float t1 = (float)distancezSqr * aspect1 / (deltazSqr * sm);
+                    float t1 = distancezSqr * aspect1 / (deltazSqr * sm);
                     for (int c = px - deltax; c <= px + deltax; c++) {
                         if (c > 0 && c < tw - 1) {
                             int distancexSqr = (px - c) * (px - c);
@@ -408,7 +409,7 @@ namespace Art.VolumetricFog2.Scripts {
                             Color32 colorBuffer = fogOfWarColorBuffer[colorBufferPos];
                             if (!blendAlpha) colorBuffer.a = 255;
                             distancexSqr = deltaxSqr - distancexSqr;
-                            float t2 = (float)distancexSqr * aspect2 / (deltaxSqr * sm);
+                            float t2 = distancexSqr * aspect2 / (deltaxSqr * sm);
                             float t = t1 < t2 ? t1 : t2;
                             t = 1f - t;
                             if (t < 0) t = 0; else if (t > 1f) t = 1f;

@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 
 namespace Puzzle_Elements.LaunchPlate.Scripts
@@ -17,7 +18,7 @@ namespace Puzzle_Elements.LaunchPlate.Scripts
         public AnimationCurve forceCurve = AnimationCurve.Linear(0, 1, 1, 1);
         public float duration = 0.5f;
 
-        private bool useCurve = false;
+        private bool useCurve;
 
         // Ahora se obtiene automáticamente
         private Rigidbody playerRb;
@@ -62,7 +63,7 @@ namespace Puzzle_Elements.LaunchPlate.Scripts
             }
         }
 
-        System.Collections.IEnumerator LaunchCurve()
+        IEnumerator LaunchCurve()
         {
             float t = 0f;
             Vector3 dir = launchPoint ? launchPoint.forward : direction.normalized;

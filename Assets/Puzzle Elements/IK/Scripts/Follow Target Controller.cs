@@ -25,7 +25,7 @@ namespace Puzzle_Elements.IK.Scripts
 
         [Space(4)]
         [Tooltip("If true, allows changing layers/tags on the platform object (editor-side toggle).")]
-        [SerializeField] private bool isTagModifiable = false;
+        [SerializeField] private bool isTagModifiable;
 
         [Tooltip("Layer to assign when the current tip is the StartAnchor (controller mode). Use a single layer, not a mask.")]
         [SerializeField] private LayerMask _layerTipController;
@@ -54,7 +54,7 @@ namespace Puzzle_Elements.IK.Scripts
         [Min(0f)] public float inMax = 5f;
 
         [Tooltip("Output range min for the remap (usually 0).")]
-        [Range(0f, 1f)] public float outMin = 0f;
+        [Range(0f, 1f)] public float outMin;
 
         [Tooltip("Output range max for the remap (usually 1).")]
         [Range(0f, 1f)] public float outMax = 1f;
@@ -133,8 +133,8 @@ namespace Puzzle_Elements.IK.Scripts
         private bool atStart = true;
         private Coroutine moveRoutine;
 
-        private float targetWeight = 0f;
-        private float currentWeight = 0f;
+        private float targetWeight;
+        private float currentWeight;
         private float weightVel;
 
         private float distRaw;
@@ -149,12 +149,12 @@ namespace Puzzle_Elements.IK.Scripts
         private Vector3 aPosLocal;
         private Quaternion aRotLocal;
 
-        private float brotherCurrentMin = 0f;
+        private float brotherCurrentMin;
 
         public Action OnArmMove;
         [Header("Eventos de movimiento")]
         [SerializeField] private float armMoveSignificantDelta = 0.05f;
-        private bool armMovingNotified = false;
+        private bool armMovingNotified;
 
         // -------------------------
         // Helpers

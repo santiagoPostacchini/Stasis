@@ -31,7 +31,7 @@ namespace Puzzle_Elements.Spider
         [SerializeField] private float tiltSlerp = 12f;
 
         [Header("Debug")]
-        [SerializeField] private bool debugGizmos = false;
+        [SerializeField] private bool debugGizmos;
 
         float _heightVel;
 

@@ -18,7 +18,7 @@ namespace Scenes.Level.Lau.Tutorial_Assets
         [Header("Tag del Player")]
         public string playerTag = "Player";
 
-        private bool isRunning = false;
+        private bool isRunning;
 
         private void OnTriggerEnter(Collider other)
         {

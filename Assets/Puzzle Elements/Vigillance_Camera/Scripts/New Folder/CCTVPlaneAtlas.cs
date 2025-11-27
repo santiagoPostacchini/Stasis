@@ -6,6 +6,7 @@
 
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
 
 namespace Puzzle_Elements.Vigillance_Camera.Scripts.New_Folder
@@ -341,7 +342,7 @@ namespace Puzzle_Elements.Vigillance_Camera.Scripts.New_Folder
 
                     if (forceUnlitSetup)
                     {
-                        targetRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                        targetRenderer.shadowCastingMode = ShadowCastingMode.Off;
                         targetRenderer.receiveShadows = false;
                         var m = targetRenderer.material;
                         if (m)
@@ -698,10 +699,8 @@ namespace Puzzle_Elements.Vigillance_Camera.Scripts.New_Folder
                         // NO render ni grab si no ve (ahorra costo)
                         continue;
                     }
-                    else
-                    {
-                        cr.noTargetTimer = 0f;
-                    }
+
+                    cr.noTargetTimer = 0f;
 
                     // Render solo si ve al Player
                     int maskBase = v.cullingMask.value;

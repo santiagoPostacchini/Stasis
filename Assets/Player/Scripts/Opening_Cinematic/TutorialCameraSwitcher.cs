@@ -50,19 +50,19 @@ namespace Player.Scripts.Opening_Cinematic
         public MonoBehaviour[] scriptsToEnable;
         public float scriptsActivationDelay = 1f;
 
-        private bool isTransitioning = false;
+        private bool isTransitioning;
         private bool prevA, prevB, prevC;
-        private bool fadeBlackPrev = false;
+        private bool fadeBlackPrev;
 
         // Canvas
-        private bool hasStartedFade = false;
-        private bool hasReappeared = false;
-        private bool hasFadedAfterBlack = false;
-        private bool hasActivatedExtraCanvas = false;
+        private bool hasStartedFade;
+        private bool hasReappeared;
+        private bool hasFadedAfterBlack;
+        private bool hasActivatedExtraCanvas;
 
         // Animator
-        private bool animatorStarted = false;
-        public bool animatorActivated = false;
+        private bool animatorStarted;
+        public bool animatorActivated;
 
         public enum StartCamera
         {

@@ -27,7 +27,7 @@ namespace Puzzle_Elements.Hedro_conteiner.Scripts
         public UnityEvent events;
         public UnityEvent eventsTrainOn;
 
-        private bool _canTrainMove = false;
+        private bool _canTrainMove;
 
         void Start()
         {

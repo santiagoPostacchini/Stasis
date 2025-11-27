@@ -1,11 +1,12 @@
-﻿using UnityEngine;
+﻿using System;
+using UnityEngine;
 
 namespace Player.Stasis
 {
     [ExecuteAlways]
     public class MoveToTrailUV : MonoBehaviour
     {
-        [System.Serializable]
+        [Serializable]
         public struct MaterialData
         {
             public MaterialData(TrailRenderer trailRenderer, Material material, Vector2 uvScale, float move)

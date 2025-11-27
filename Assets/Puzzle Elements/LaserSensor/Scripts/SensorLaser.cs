@@ -17,8 +17,8 @@ namespace Puzzle_Elements.LaserSensor.Scripts
         [Tooltip("Eventos que se llaman cuando el laser detecta al Player")]
         public UnityEvent OnIntruderDetected;
 
-        private bool _detectPlayer = false;
-        private bool alreadyEventInit = false;
+        private bool _detectPlayer;
+        private bool alreadyEventInit;
 
 
         public Action OnLaser;

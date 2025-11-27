@@ -10,7 +10,7 @@ namespace Puzzle_Elements.IK.Scripts.Platform_Rotation
     {
         public bool IsFreezed => _isFreezed;
         public StasisEffect StasisEffect { get; }
-        [SerializeField]private bool _isFreezed = false;
+        [SerializeField]private bool _isFreezed;
         [Header("Stasis")]
         public Material matStasis;
         public readonly string _outlineThicknessName = "_BorderThickness";

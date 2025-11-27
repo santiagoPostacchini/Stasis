@@ -13,12 +13,12 @@ namespace Player.Scripts.Opening_Cinematic
         public float maxDistance = 0.1f;     // Qué tanto puede moverse del punto
 
         [Header("Release Settings")]
-        public bool releaseRagdoll = false;      // Si está en true, suelta el ragdoll manualmente
-        public bool useTimer = false;            // Si está en true, el ragdoll se soltará después de cierto tiempo
+        public bool releaseRagdoll;      // Si está en true, suelta el ragdoll manualmente
+        public bool useTimer;            // Si está en true, el ragdoll se soltará después de cierto tiempo
         public float releaseDelay = 2f;          // Tiempo (en segundos) antes de soltar el ragdoll
 
         [Header("Fade Settings")]
-        public bool fadeBlack = false;           // Bool que se activa tras la espera
+        public bool fadeBlack;           // Bool que se activa tras la espera
         public float fadeDelayAfterRelease = 2f; // Segundos después de soltar el ragdoll para activar fade
 
         [Header("Scripts to Disable On Release")]
@@ -34,8 +34,8 @@ namespace Player.Scripts.Opening_Cinematic
         public Animator animatorToTrigger;
 
         private ConfigurableJoint joint;
-        public bool hasReleased = false;        // Para evitar que se suelte más de una vez
-        private float timer = 0f;
+        public bool hasReleased;        // Para evitar que se suelte más de una vez
+        private float timer;
 
         void Start()
         {

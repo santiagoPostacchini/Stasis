@@ -1,3 +1,4 @@
+using System;
 using Player.Scripts.MovementFSM.MVC;
 using UnityEngine;
 
@@ -99,7 +100,7 @@ namespace Player.Scripts.MovementFSM
 
         public void OnLateUpdate()
         {
-            throw new System.NotImplementedException();
+            throw new NotImplementedException();
         }
 
         private void OnJumpPressed(bool a)

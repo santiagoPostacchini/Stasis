@@ -1,7 +1,9 @@
+using Environment;
 using UnityEngine;
-using Environment; // Necesario para MultiGearRotator
 
-/// Controlador de un engranaje específico dentro de un MultiGearRotator.
+// Necesario para MultiGearRotator
+
+/// Controlador de un engranaje especï¿½fico dentro de un MultiGearRotator.
 /// Permite leer/escribir el "speed" del RotatorItem asociado.
 public class Move_Gear : MonoBehaviour
 {
@@ -10,24 +12,24 @@ public class Move_Gear : MonoBehaviour
     public MultiGearRotator gearRotator;
 
     [Tooltip("Transform del engranaje asociado al RotatorItem (debe coincidir con 'target' en la lista del MultiGearRotator). " +
-             "Si se deja vacío, usará este mismo transform.")]
+             "Si se deja vacï¿½o, usarï¿½ este mismo transform.")]
     public Transform gearTransform;
 
-    [Header("Selección de item")]
-    [Tooltip("Si está activado, se usará 'itemIndex' en lugar de 'gearTransform' para encontrar el RotatorItem.")]
-    public bool useIndex = false;
+    [Header("Selecciï¿½n de item")]
+    [Tooltip("Si estï¿½ activado, se usarï¿½ 'itemIndex' en lugar de 'gearTransform' para encontrar el RotatorItem.")]
+    public bool useIndex;
 
-    [Tooltip("Índice del item en la lista 'items' del MultiGearRotator.")]
-    public int itemIndex = 0;
+    [Tooltip("ï¿½ndice del item en la lista 'items' del MultiGearRotator.")]
+    public int itemIndex;
 
-    [Header("Configuración de velocidad")]
-    [Tooltip("Velocidad cuando el engranaje está girando.")]
+    [Header("Configuraciï¿½n de velocidad")]
+    [Tooltip("Velocidad cuando el engranaje estï¿½ girando.")]
     public float runningSpeed = 120f;
 
-    [Tooltip("Velocidad cuando el engranaje está detenido (normalmente 0).")]
-    public float stoppedSpeed = 0f;
+    [Tooltip("Velocidad cuando el engranaje estï¿½ detenido (normalmente 0).")]
+    public float stoppedSpeed;
 
-    [Tooltip("Si está activado, el engranaje arranca girando. Si no, arranca detenido.")]
+    [Tooltip("Si estï¿½ activado, el engranaje arranca girando. Si no, arranca detenido.")]
     public bool startRunning = true;
 
     // Cache interno del item asociado
@@ -35,19 +37,19 @@ public class Move_Gear : MonoBehaviour
 
     private void Awake()
     {
-        // Si no se asignó el rotator por inspector, intentamos encontrar uno en la escena
+        // Si no se asignï¿½ el rotator por inspector, intentamos encontrar uno en la escena
         if (gearRotator == null)
         {
             gearRotator = FindObjectOfType<MultiGearRotator>();
             if (gearRotator == null)
             {
-                Debug.LogError("[Move_Gear] No se encontró ningún MultiGearRotator en la escena.", this);
+                Debug.LogError("[Move_Gear] No se encontrï¿½ ningï¿½n MultiGearRotator en la escena.", this);
             }
         }
 
         if (gearTransform == null)
         {
-            // Por defecto, usamos el mismo GameObject donde está este script
+            // Por defecto, usamos el mismo GameObject donde estï¿½ este script
             gearTransform = transform;
         }
     }
@@ -58,7 +60,7 @@ public class Move_Gear : MonoBehaviour
 
         if (_item == null)
         {
-            Debug.LogError("[Move_Gear] No se pudo encontrar un RotatorItem asociado. Revisá 'gearTransform' o 'itemIndex'.", this);
+            Debug.LogError("[Move_Gear] No se pudo encontrar un RotatorItem asociado. Revisï¿½ 'gearTransform' o 'itemIndex'.", this);
             return;
         }
 
@@ -70,12 +72,12 @@ public class Move_Gear : MonoBehaviour
 
     private void OnValidate()
     {
-        // Intentamos mantener coherencia básica en editor
+        // Intentamos mantener coherencia bï¿½sica en editor
         if (itemIndex < 0) itemIndex = 0;
     }
 
     /// <summary>
-    /// Busca y cachea el RotatorItem correspondiente, ya sea por índice o por Transform.
+    /// Busca y cachea el RotatorItem correspondiente, ya sea por ï¿½ndice o por Transform.
     /// </summary>
     private void CacheItem()
     {
@@ -114,10 +116,10 @@ public class Move_Gear : MonoBehaviour
     {
         SetRunning(true);
     }
-    // ===================== API PÚBLICA =====================
+    // ===================== API Pï¿½BLICA =====================
 
     /// <summary>
-    /// Activa o desactiva la rotación del engranaje.
+    /// Activa o desactiva la rotaciï¿½n del engranaje.
     /// true = runningSpeed, false = stoppedSpeed.
     /// </summary>
     public void SetRunning(bool running)
@@ -164,10 +166,10 @@ public class Move_Gear : MonoBehaviour
 
     // ===================== EJEMPLO OPCIONAL: Input =====================
 
-    // Si querés probar rápido, podés usar esto: con la tecla T toggles el engranaje.
+    // Si querï¿½s probar rï¿½pido, podï¿½s usar esto: con la tecla T toggles el engranaje.
     private void Update()
     {
-        // Elimina esto si no querés input directo
+        // Elimina esto si no querï¿½s input directo
         if (Input.GetKeyDown(KeyCode.T))
         {
             ToggleRunning();

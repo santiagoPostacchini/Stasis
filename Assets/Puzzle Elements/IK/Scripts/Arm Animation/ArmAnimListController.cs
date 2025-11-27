@@ -10,22 +10,22 @@ namespace Puzzle_Elements.IK.Scripts.Arm_Animation
         public List<ArmAnimController> armList;
 
         [Tooltip("Posici�n m�nima que puede alcanzar el brazo (valor normalizado entre 0 y 1).")]
-        [Range(0, 1)] public float posMin = 0f;
+        [Range(0, 1)] public float posMin;
 
         [Tooltip("Posici�n m�xima que puede alcanzar el brazo (valor normalizado entre 0 y 1).")]
         [Range(0, 1)] public float posMax = 1f;
 
         [Tooltip("Intensidad m�nima del efecto de 'shake' (valor normalizado entre 0 y 1).")]
-        [Range(0, 1)] public float shakeMin = 0f;
+        [Range(0, 1)] public float shakeMin;
 
         [Tooltip("Intensidad m�xima del efecto de 'shake' (valor normalizado entre 0 y 1).")]
         [Range(0, 1)] public float shakeMax = 1f;
 
         [Tooltip("Separaci�n de fase base entre cada brazo.")]
-        public float offset = 0f;
+        public float offset;
 
         [Tooltip("Amplitud adicional de la fase por �ndice de brazo.")]
-        public float amp = 0f;
+        public float amp;
 
         // Tiempo LOCAL por brazo (solo avanza cuando NO est� en stasis)
         private List<float> localTimes = new List<float>();

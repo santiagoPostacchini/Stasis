@@ -1,3 +1,4 @@
+using System;
 using Player.Scripts.MovementFSM.MVC;
 using Player.Scripts.MovementFSM.Player.Scripts.MovementFSM;
 using UnityEngine;
@@ -193,7 +194,7 @@ namespace Player.Scripts.MovementFSM
 
         public void OnLateUpdate()
         {
-            throw new System.NotImplementedException();
+            throw new NotImplementedException();
         }
 
         private void BuildVaultCurve(in ParkourProbe p)

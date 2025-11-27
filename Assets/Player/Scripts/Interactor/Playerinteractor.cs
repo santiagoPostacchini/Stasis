@@ -1,12 +1,12 @@
 using System;
+using System.Collections;
 using Managers.Events;
+using Managers.Game;
+using Player.Scripts.MovementFSM.MVC;
 using Player.Stasis;
 using Puzzle_Elements.Hedron.Scripts;
-using UnityEngine;
-using System.Collections;
-using Player.Scripts.MovementFSM.MVC;
-using Managers.Game;
 using UIScripts;
+using UnityEngine;
 
 namespace Player.Scripts.Interactor
 {

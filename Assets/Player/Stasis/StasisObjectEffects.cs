@@ -1,6 +1,7 @@
 ﻿using Fracture.Destruction_System.Refractored;
 using UnityEngine;
 using UnityEngine.UI;
+
 namespace Player.Stasis
 {
     [RequireComponent(typeof(AudioSource))]

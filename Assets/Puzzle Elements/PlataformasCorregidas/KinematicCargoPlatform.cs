@@ -44,9 +44,9 @@ namespace Puzzle_Elements.PlataformasCorregidas
 
         [SerializeField] private ElevatorShipmentTrain _elevatorShipmentTrain;
 
-        bool delayFinished = false;
+        bool delayFinished;
         float delayRemaining = 1.5f;
-        bool waitingDelay = false;
+        bool waitingDelay;
 
         void Awake()
         {

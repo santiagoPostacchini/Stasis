@@ -18,25 +18,25 @@ public class ConteinerEventFallAndMove : MonoBehaviour
     [Tooltip("Velocidad con la que el contenedor se mueve hacia los waypoints.")]
     [SerializeField] private float moveSpeed = 3f;
 
-    [Tooltip("Distancia máxima para considerar que 'llegó' a un waypoint.")]
+    [Tooltip("Distancia mï¿½xima para considerar que 'llegï¿½' a un waypoint.")]
     [SerializeField] private float stopDistance = 0.05f;
 
     [Header("=== TIEMPOS ===")]
     [Tooltip("Tiempo que espera en el waypointPiso antes de ir al waypoint final.")]
     [SerializeField] private float waitAtFloorSeconds = 1f;
 
-    [Header("=== LÁSERES A DESACTIVAR AL LLEGAR AL FINAL ===")]
+    [Header("=== Lï¿½SERES A DESACTIVAR AL LLEGAR AL FINAL ===")]
     public List<GameObject> lasers = new List<GameObject>();
     public List<BoxCollider> colliders = new List<BoxCollider>();
 
     // Estados internos
-    private bool _sequenceStarted = false;
-    private bool _isMoving = false;
-    private bool _movingToPiso = false;
-    private bool _movingToFinal = false;
-    private bool _waitingAtFloor = false;
+    private bool _sequenceStarted;
+    private bool _isMoving;
+    private bool _movingToPiso;
+    private bool _movingToFinal;
+    private bool _waitingAtFloor;
 
-    private Coroutine _waitCoroutine = null;
+    private Coroutine _waitCoroutine;
 
     private void Awake()
     {
@@ -69,12 +69,12 @@ public class ConteinerEventFallAndMove : MonoBehaviour
     }
 
     /// <summary>
-    /// MÉTODO QUE LLAMA EL EVENTO EXTERNO.
+    /// Mï¿½TODO QUE LLAMA EL EVENTO EXTERNO.
     /// Al llamarlo: primero va a waypointPiso, luego de 1s a waypoint.
     /// </summary>
     public void TriggerFallAndMove()
     {
-        if (_sequenceStarted) return; // Evita múltiples disparos
+        if (_sequenceStarted) return; // Evita mï¿½ltiples disparos
 
         if (!rb)
         {
@@ -134,13 +134,13 @@ public class ConteinerEventFallAndMove : MonoBehaviour
         float distance = Vector3.Distance(next, target);
         if (distance <= stopDistance)
         {
-            // Llegó al waypoint actual
+            // Llegï¿½ al waypoint actual
             rb.velocity = Vector3.zero;
             rb.angularVelocity = Vector3.zero;
 
             if (_movingToPiso)
             {
-                // Terminó de ir al piso
+                // Terminï¿½ de ir al piso
                 _movingToPiso = false;
                 _isMoving = false;
 
@@ -153,7 +153,7 @@ public class ConteinerEventFallAndMove : MonoBehaviour
             }
             else if (_movingToFinal)
             {
-                // Llegó al destino final
+                // Llegï¿½ al destino final
                 _movingToFinal = false;
                 _isMoving = false;
 

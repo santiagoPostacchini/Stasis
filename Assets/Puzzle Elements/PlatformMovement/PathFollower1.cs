@@ -1,5 +1,6 @@
 ﻿using Puzzle_Elements.Path.CurvedPathGenerator.Scripts;
 using UnityEngine;
+using UnityEngine.Events;
 
 namespace Puzzle_Elements.PlatformMovement
 {
@@ -7,13 +8,13 @@ namespace Puzzle_Elements.PlatformMovement
     public class PathFollower1 : MonoBehaviour
     {
         public ParticleSystem particle;
-        public UnityEngine.Events.UnityEvent EndEvent;
+        public UnityEvent EndEvent;
         public PathGenerator Generator;
         public float Speed = 100f;
         public float DistanceThreshold = 0.2f;
-        public bool IsLoop = false;
+        public bool IsLoop;
         public bool IsMove = true;
-        public bool InvokeEndEventAtExtremes = false;
+        public bool InvokeEndEventAtExtremes;
 
         Rigidbody _rb;
         int _index;

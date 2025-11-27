@@ -21,9 +21,9 @@ namespace Player.Scripts.Opening_Cinematic
 
         private Quaternion startRotation;
         private Quaternion targetRotation = Quaternion.identity;
-        private bool isLerping = false;
-        private float lerpTimer = 0f;
-        private bool hasTriggeredLerp = false;
+        private bool isLerping;
+        private float lerpTimer;
+        private bool hasTriggeredLerp;
 
         void Start()
         {

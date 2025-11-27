@@ -11,7 +11,7 @@ public class WaypointMover : MonoBehaviour
     [Header("Distancia mínima para considerar que llegó")]
     public float reachThreshold = 0.2f;
 
-    private int currentIndex = 0;
+    private int currentIndex;
 
     private void Update()
     {

@@ -24,7 +24,7 @@ namespace UIScripts.FeedBack_UI.Crosshair
         [Tooltip("Propiedad HDR del shader (URP Lit usa _EmissionColor).")]
         public string emissionProp = "_EmissionColor";
         [Tooltip("Habilitar el keyword _EMISSION una vez (utiliza renderer.material).")]
-        public bool enableEmissionKeywordOnce = false;
+        public bool enableEmissionKeywordOnce;
         public string emissionKeyword = "_EMISSION";
 
         [Header("Outline")]
@@ -32,7 +32,7 @@ namespace UIScripts.FeedBack_UI.Crosshair
         [Tooltip("Propiedad de grosor de borde (tu shader usa _BorderThickness).")]
         public string outlineProp = "_BorderThickness";
         public float outlineOn = 1.05f;
-        public float outlineOff = 0f;
+        public float outlineOff;
 
         [Header("Animación")]
         [Tooltip("Tiempo de fundido al entrar/salir (seg).")]

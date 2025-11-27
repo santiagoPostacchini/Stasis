@@ -153,7 +153,7 @@ namespace Audio.Scripts
             public SpatialMode spatialMode = SpatialMode.UseClipSettings;
 
             [Tooltip("Si es true, sobrescribe la Max Distance del AudioSource Template.")]
-            public bool overrideDistance = false;
+            public bool overrideDistance;
             [Min(0f)] public float customMaxDistance = 15f;
 
             [Header("Emitter Override (opcional)")]

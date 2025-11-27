@@ -30,7 +30,7 @@ namespace Puzzle_Elements.IK.Scripts.Platform_Movement
 
         public void NotifyTipController(bool a)
         {
-            if (a == true)
+            if (a)
             {
                 stasisTipControllerPlatformMovement.StatisEffectActivate();
             }

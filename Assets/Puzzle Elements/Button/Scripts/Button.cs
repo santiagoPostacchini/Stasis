@@ -1,14 +1,12 @@
+using System;
+using System.Collections;
+using System.Threading.Tasks;
+using Audio.Scripts;
+using Managers.Events;
 using Player.Scripts.Interactor;
+using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
-using TMPro;
-using Managers.Events;
-using Player.Scripts.MovementFSM;
-using Player.Scripts.MovementFSM.MVC;
-using System.Threading.Tasks;
-using System.Collections;
-using Audio.Scripts;
-using System;
 
 namespace Puzzle_Elements.Button.Scripts
 {

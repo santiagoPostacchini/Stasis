@@ -14,8 +14,8 @@ namespace Puzzle_Elements.IK.Scripts
         public string triggerRight = "TriggerRight";
         public float lerpTime = 1f;
         public float holdTime = 4f;
-        public bool useCoroutine = false;
-        public bool useBlendSimple = false;
+        public bool useCoroutine;
+        public bool useBlendSimple;
         #endregion
 
         private CancellationTokenSource cancellationTokenSource;

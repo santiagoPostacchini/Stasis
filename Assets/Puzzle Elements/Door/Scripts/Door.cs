@@ -1,6 +1,5 @@
 using System;
 using System.Collections;
-using Managers.Events;
 using Puzzle_Elements.AllInterfaces;
 using UnityEngine;
 
@@ -27,7 +26,7 @@ namespace Puzzle_Elements.Door.Scripts
         private Coroutine _currentSequence;
 
         public bool autoClose = true;
-        public bool autoOpen = false;
+        public bool autoOpen;
         public bool playerCanOpen;
         public float autoCloseDelay = 1f;
 
