@@ -1,4 +1,4 @@
-﻿//  S_TesseractCore v5‑Mini (URP Unlit Glowing Core simplificado)
+﻿//  S_TesseractCore v5-Mini (URP Unlit Glowing Core simplificado)
 
 Shader "S_TesseractCore"
 {
@@ -9,10 +9,10 @@ Shader "S_TesseractCore"
         _EmissionIntensity  ("Emission Intensity",      Range(0,10)) = 5
         _LayerCount         ("Glow Layer Count",        Range(0,8))  = 3
 
-        // ====== Vertex‑Displacement ======
+        // ====== Vertex-Displacement ======
         _DisplaceStrength   ("Displace Strength",       Range(0,1))  = 0.2
         _DisplaceNoiseScale ("Displace Noise Scale",    Range(0.1,5))= 1
-        _DisplaceType       ("Displace (0=Radial 1=Noise)", Int)      = 0
+        _DisplaceType       ("Displace (0=Radial 1=Noise)", Int)      = 0
 
         // ====== Textures ======
         _NoiseTex           ("Noise Texture",           2D)          = "white" {}
@@ -57,17 +57,26 @@ Shader "S_TesseractCore"
                 float3 normalWS    : TEXCOORD2;
             };
 
-            // ---------- uniforms ----------
-            float4  _CoreColor;
-            float   _EmissionIntensity, _LayerCount;
-            float   _DistortionStrength, _DistortionScale;
-            float   _GlowMaskStrength, _GlowPulseSpeed, _GlobalAlpha;
+            // ---------- textures (outside CBUFFER per SRP convention) ----------
+            sampler2D _NoiseTex;
+            sampler2D _GlowTex;
 
-            float   _DisplaceStrength, _DisplaceNoiseScale;
-            int     _DisplaceType;
-
-            sampler2D _NoiseTex; float4 _NoiseTex_ST;
-            sampler2D _GlowTex;  float4 _GlowTex_ST;
+            // ---------- SRP Batcher CBUFFER ----------
+            CBUFFER_START(UnityPerMaterial)
+                float4  _CoreColor;
+                float   _EmissionIntensity;
+                float   _LayerCount;
+                float   _DistortionStrength;
+                float   _DistortionScale;
+                float   _GlowMaskStrength;
+                float   _GlowPulseSpeed;
+                float   _GlobalAlpha;
+                float   _DisplaceStrength;
+                float   _DisplaceNoiseScale;
+                int     _DisplaceType;
+                float4  _NoiseTex_ST;
+                float4  _GlowTex_ST;
+            CBUFFER_END
 
             // ---------- helper ----------
             float noise2D(float2 uv) { return tex2Dlod(_NoiseTex, float4(uv,0,0)).r*2-1; }
@@ -78,7 +87,7 @@ Shader "S_TesseractCore"
                 float3 posOS   = IN.positionOS.xyz;
                 float3 normalO = IN.normalOS;
 
-                // Vertex‑displacement
+                // Vertex-displacement
                 if (_DisplaceStrength > 0)
                 {
                     float3 disp = 0;
@@ -132,7 +141,7 @@ Shader "S_TesseractCore"
 
                 finalGlow /= max(1, _LayerCount);
 
-                // Máscara + pulso
+                // Mascara + pulso
                 float glowMask = tex2D(_GlowTex, TRANSFORM_TEX(IN.uv, _GlowTex)).r;
                 float pulse    = saturate(sin(_Time.y * _GlowPulseSpeed));
                 finalGlow += _CoreColor.rgb * glowMask * _EmissionIntensity

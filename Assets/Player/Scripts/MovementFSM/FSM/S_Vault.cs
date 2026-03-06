@@ -1,4 +1,3 @@
-using System;
 using Player.Scripts.MovementFSM.MVC;
 using Player.Scripts.MovementFSM.Player.Scripts.MovementFSM;
 using UnityEngine;
@@ -192,10 +191,7 @@ namespace Player.Scripts.MovementFSM
                 Debug.Log($"[VaultState] EXIT | endPos={_rb.position:F3} vel={_rb.velocity:F2}");
         }
 
-        public void OnLateUpdate()
-        {
-            throw new NotImplementedException();
-        }
+        public void OnLateUpdate() { }
 
         private void BuildVaultCurve(in ParkourProbe p)
         {

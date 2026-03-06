@@ -25,22 +25,12 @@ namespace Player.Scripts.MovementFSM
 
         public void ChangeState(States state)
         {
-            if (_states.ContainsKey(state))
+            if (_states.TryGetValue(state, out var next))
             {
-                if(_currentState != null)
-                {
-                    _currentState.OnExit();
-                    _currentState = _states[state];
-                    _currentState.OnEnter();
-                }
-                else
-                {
-                    _currentState = _states[state];
-                    _currentState.OnEnter();
-                }
-            
+                _currentState?.OnExit();
+                _currentState = next;
+                _currentState.OnEnter();
             }
-
         }
 
         public void ArtificialUpdate()

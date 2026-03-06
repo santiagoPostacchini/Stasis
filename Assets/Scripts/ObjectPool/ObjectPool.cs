@@ -9,7 +9,7 @@ namespace ObjectPool
         private readonly Action<T, bool> _turnOnOffCallback;
         private readonly bool _dynamic;
 
-        private readonly List<T> _currentStock = new List<T>();
+        private readonly Stack<T> _currentStock = new Stack<T>();
 
         public ObjectPool(Func<T> factoryMethod, Action<T, bool> callback, int initialStonks = 1, bool dynamic = true)
         {
@@ -21,7 +21,7 @@ namespace ObjectPool
             {
                 T obj = _factoryMethod();
                 _turnOnOffCallback(obj, false);
-                _currentStock.Add(obj);
+                _currentStock.Push(obj);
             }
         }
 
@@ -30,8 +30,7 @@ namespace ObjectPool
             var result = default(T);
             if(_currentStock.Count > 0)
             {
-                result = _currentStock[0];
-                _currentStock.RemoveAt(0);
+                result = _currentStock.Pop();
             }
             else if(_dynamic)
             {
@@ -46,7 +45,7 @@ namespace ObjectPool
         public void ReturnObject(T obj)
         {
             _turnOnOffCallback(obj, false);
-            _currentStock.Add(obj);
+            _currentStock.Push(obj);
         }
     }
 }

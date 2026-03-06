@@ -1,4 +1,3 @@
-using System;
 using Player.Scripts.MovementFSM.MVC;
 
 namespace Player.Scripts.MovementFSM
@@ -34,9 +33,6 @@ namespace Player.Scripts.MovementFSM
         
         }
 
-        public void OnLateUpdate()
-        {
-            throw new NotImplementedException();
-        }
+        public void OnLateUpdate() { }
     }
 }

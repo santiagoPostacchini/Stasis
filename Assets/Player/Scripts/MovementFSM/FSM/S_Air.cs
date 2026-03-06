@@ -1,4 +1,3 @@
-using System;
 using Player.Scripts.MovementFSM.MVC;
 using UnityEngine;
 
@@ -98,10 +97,7 @@ namespace Player.Scripts.MovementFSM
             _model.OnJump -= OnJumpPressed;
         }
 
-        public void OnLateUpdate()
-        {
-            throw new NotImplementedException();
-        }
+        public void OnLateUpdate() { }
 
         private void OnJumpPressed(bool a)
         {

@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 using Managers.Game;
 using Player.Scripts.Interactor;
 using Player.Scripts.MovementFSM.MVC;
@@ -59,7 +58,6 @@ namespace Player.Stasis
         private readonly int _maxStasisObjects = 2;
         private readonly List<(GameObject obj, IStasis stasis)> _stasisList = new();
 
-        private StasisBeam _activeBeam;
         private PlayerInteractor _playerInteractor;
         private View _view;
         private Model _model;                 // Model para eventos de wallrun
@@ -74,6 +72,17 @@ namespace Player.Stasis
         // Estado de wallrun (decidido por eventos del Model)
         private bool _isWallrunning;
         private Hand _wallOnSide; // lado donde está la pared (Left = pared a la izquierda del jugador)
+
+        // Cooldown timer (replaces coroutine)
+        private float _nextShootTime;
+
+        // Beam pool
+        private const int BeamPoolSize = 3;
+        private readonly Queue<StasisBeam> _beamPool = new();
+
+        // Miss FX pool
+        private const int MissFxPoolSize = 4;
+        private readonly Queue<GameObject> _missFxPool = new();
 
 
         private bool _stasisActivate;
@@ -106,6 +115,28 @@ namespace Player.Stasis
             if (!mainCam && debugLogs)
                 Debug.LogWarning("[StasisGun] No se encontró cámara. Asigna una Camera en escena.");
 
+            // Pre-pool beams
+            if (stasisBeamPrefab)
+            {
+                for (int i = 0; i < BeamPoolSize; i++)
+                {
+                    var go = Instantiate(stasisBeamPrefab);
+                    go.SetActive(false);
+                    var beam = go.GetComponent<StasisBeam>();
+                    if (beam) _beamPool.Enqueue(beam);
+                }
+            }
+
+            // Pre-pool miss FX
+            if (particleStasisMissed)
+            {
+                for (int i = 0; i < MissFxPoolSize; i++)
+                {
+                    var go = Instantiate(particleStasisMissed);
+                    go.SetActive(false);
+                    _missFxPool.Enqueue(go);
+                }
+            }
 
             GameManager.Instance.OnDeathPlayer += PlayerDeath;
         }
@@ -129,6 +160,8 @@ namespace Player.Stasis
 
         private void Update()
         {
+            // Timer-based cooldown (replaces coroutine)
+            if (Time.time < _nextShootTime) return;
             if (!canShootStasis) return;
             if (!Input.GetMouseButtonDown(0)) return;
 
@@ -176,8 +209,7 @@ namespace Player.Stasis
             if (layer.value == 0 && debugLogs)
                 Debug.LogWarning("[StasisGun] LayerMask objetivo está en 0; usando fallback ~0 temporalmente.");
 
-            canShootStasis = false;
-            StartCoroutine(ResetShootAfter(cooldown));
+            _nextShootTime = Time.time + cooldown;
             OnShoot?.Invoke();
 
             Ray ray = GetForwardRay(camHolder, 20);
@@ -220,9 +252,7 @@ namespace Player.Stasis
                     var root = objStaseable.GetComponentInParent<StasisRoot>();
                     if (root)
                     {
-                        var found = root.GetComponentsInChildren<MonoBehaviour>()
-                                        .OfType<IStasis>()
-                                        .FirstOrDefault();
+                        var found = root.GetComponentInChildren<IStasis>();
                         if (found != null)
                         {
                             stasisComponent = found;
@@ -271,10 +301,9 @@ namespace Player.Stasis
 
         private void FireDirect(GameObject targetObj, IStasis stasisComp, Vector3 hitPoint)
         {
-            if (!canShootStasis) return;
+            if (Time.time < _nextShootTime) return;
 
-            canShootStasis = false;
-            StartCoroutine(ResetShootAfter(cooldown));
+            _nextShootTime = Time.time + cooldown;
             OnShoot?.Invoke();
 
             // Delay corto y toggle en ApplyStasisEffect (mismo patrón que funcionaba)
@@ -353,9 +382,6 @@ namespace Player.Stasis
                 yield break;
             }
 
-            // Si tenías un solo beam persistente, limpiamos el anterior
-            if (_activeBeam) Destroy(_activeBeam.gameObject);
-
             switch (mode)
             {
                 case FireMode.Right:
@@ -376,10 +402,36 @@ namespace Player.Stasis
         private void SpawnOneBeam(Vector3 origin, Vector3 hitPoint, bool stasisHit)
         {
             if (!stasisBeamPrefab) return;
-            var go = Instantiate(stasisBeamPrefab, origin, Quaternion.identity);
-            var beam = go.GetComponent<StasisBeam>();
-            if (beam) beam.SetBeam(origin, hitPoint, stasisHit);
-            _activeBeam = beam;
+
+            StasisBeam beam;
+            if (_beamPool.Count > 0)
+            {
+                beam = _beamPool.Dequeue();
+                beam.transform.position = origin;
+                beam.transform.rotation = Quaternion.identity;
+                beam.gameObject.SetActive(true);
+            }
+            else
+            {
+                var go = Instantiate(stasisBeamPrefab, origin, Quaternion.identity);
+                beam = go.GetComponent<StasisBeam>();
+            }
+
+            if (beam)
+            {
+                beam.SetBeam(origin, hitPoint, stasisHit);
+                StartCoroutine(ReturnBeamToPool(beam));
+            }
+        }
+
+        private IEnumerator ReturnBeamToPool(StasisBeam beam)
+        {
+            yield return new WaitForSeconds(1f);
+            if (beam && beam.gameObject)
+            {
+                beam.gameObject.SetActive(false);
+                _beamPool.Enqueue(beam);
+            }
         }
 
         private IEnumerator ResetShootAfter(float t)
@@ -420,11 +472,34 @@ namespace Player.Stasis
         {
             if (!particleStasisMissed) return;
             Vector3 spawnPos = point + normal.normalized * 0.15f;
-            GameObject fx = Instantiate(particleStasisMissed, spawnPos, Quaternion.LookRotation(normal));
-            fx.SetActive(true);
+
+            GameObject fx;
+            if (_missFxPool.Count > 0)
+            {
+                fx = _missFxPool.Dequeue();
+                fx.transform.position = spawnPos;
+                fx.transform.rotation = Quaternion.LookRotation(normal);
+                fx.SetActive(true);
+            }
+            else
+            {
+                fx = Instantiate(particleStasisMissed, spawnPos, Quaternion.LookRotation(normal));
+                fx.SetActive(true);
+            }
+
             var ps = fx.GetComponent<ParticleSystem>();
             if (ps) ps.Play();
-            Destroy(fx, 5f);
+            StartCoroutine(ReturnMissFxToPool(fx, 5f));
+        }
+
+        private IEnumerator ReturnMissFxToPool(GameObject fx, float delay)
+        {
+            yield return new WaitForSeconds(delay);
+            if (fx)
+            {
+                fx.SetActive(false);
+                _missFxPool.Enqueue(fx);
+            }
         }
 
         private void OnDisable()

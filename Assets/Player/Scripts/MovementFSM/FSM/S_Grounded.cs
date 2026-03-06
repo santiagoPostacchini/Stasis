@@ -111,10 +111,7 @@ namespace Player.Scripts.MovementFSM
             if (_model && _model.rb && !_model.blockUseGravity) _model.rb.useGravity = true;
         }
 
-        public void OnLateUpdate()
-        {
-            throw new NotImplementedException();
-        }
+        public void OnLateUpdate() { }
 
         private void GetPlanarBasis(out Vector3 f, out Vector3 r)
         {

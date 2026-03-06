@@ -13,7 +13,7 @@ Shader "UI/TechGradient"
 
     SubShader
     {
-        Tags { "Queue"="Transparent" "IgnoreProjector"="True" "RenderType"="Transparent" }
+        Tags { "Queue"="Transparent" "IgnoreProjector"="True" "RenderType"="Transparent" "RenderPipeline"="UniversalPipeline" }
         Lighting Off
         ZWrite Off
         Cull Off
@@ -21,54 +21,59 @@ Shader "UI/TechGradient"
 
         Pass
         {
-            CGPROGRAM
+            HLSLPROGRAM
             #pragma vertex vert
             #pragma fragment frag
-            #include "UnityCG.cginc"
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 
-            sampler2D _MainTex;
-            sampler2D _MaskTex;
-            float4 _MainColor;
-            float4 _LineColor;
-            float _Speed;
-            float _Thickness;
-            float _EffectActive;
+            TEXTURE2D(_MainTex); SAMPLER(sampler_MainTex);
+            TEXTURE2D(_MaskTex); SAMPLER(sampler_MaskTex);
 
-            struct appdata
+            CBUFFER_START(UnityPerMaterial)
+                float4 _MainTex_ST;
+                float4 _MaskTex_ST;
+                float4 _MainColor;
+                float4 _LineColor;
+                float _Speed;
+                float _Thickness;
+                float _EffectActive;
+            CBUFFER_END
+
+            struct Attributes
             {
-                float4 vertex : POSITION;
+                float4 positionOS : POSITION;
                 float2 uv : TEXCOORD0;
             };
 
-            struct v2f
+            struct Varyings
             {
-                float4 pos : SV_POSITION;
+                float4 positionHCS : SV_POSITION;
                 float2 uv : TEXCOORD0;
             };
 
-            v2f vert(appdata v)
+            Varyings vert(Attributes v)
             {
-                v2f o;
-                o.pos = UnityObjectToClipPos(v.vertex);
+                Varyings o;
+                o.positionHCS = TransformObjectToHClip(v.positionOS.xyz);
                 o.uv = v.uv;
                 return o;
             }
 
-            fixed4 frag(v2f i) : SV_Target
+            half4 frag(Varyings i) : SV_Target
             {
-                float mask = tex2D(_MaskTex, i.uv).a;
+                float mask = SAMPLE_TEXTURE2D(_MaskTex, sampler_MaskTex, i.uv).a;
                 if (mask < 0.1) discard;
 
                 // El tiempo solo se mueve si _EffectActive > 0
                 float t = fmod(_Time.y * _Speed * _EffectActive + i.uv.y, 1.0);
                 float lineMask = smoothstep(0.0, _Thickness, abs(t - 0.5));
 
-                fixed4 baseColor = _MainColor;
-                fixed4 lineColor = _LineColor * (1.0 - lineMask);
+                half4 baseColor = _MainColor;
+                half4 lineColor = _LineColor * (1.0 - lineMask);
 
                 return baseColor + lineColor;
             }
-            ENDCG
+            ENDHLSL
         }
     }
 }
